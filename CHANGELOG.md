@@ -3,6 +3,23 @@
 All notable changes to this extension are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1] - 2026-05-23
+
+Maintenance release. Refreshes the Marketplace and Open VSX listings with the
+full-resolution icon, and updates the README to reflect that the extension is
+now published to both stores.
+
+### Changed
+
+- **High-resolution icon.** Bundled the full-resolution Marketplace / Open VSX
+  listing icon (`icon.png`: 91 KB → 1.4 MB). No functional change; the
+  store listing icons now match the intended artwork.
+- **README install paths.** Documented the VS Code Marketplace, Open VSX, and
+  manual `.vsix` install paths. Replaced the placeholder badge block with
+  live badges; the Marketplace badge uses a dynamic shields.io endpoint so
+  it tracks the published version automatically. Dropped the "not yet
+  published" and "no Marketplace icon yet" caveats.
+
 ## [1.0.0] - 2026-05-23
 
 The first public release. UiPath Artifact Designer provides visual designers
