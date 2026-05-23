@@ -2,8 +2,8 @@
 
 *A community extension — not an official UiPath product. Adds visual editing
 for five UiPath artifact file types — `agent.json`, `*.flow`, `*.bpmn`,
-`caseplan.json`, and `action-schema.json` — directly inside VS Code,
-without switching to UiPath Studio Web.*
+`caseplan.json`, and `action-schema.json` — directly inside VS Code, Cursor,
+and other VS Code-based IDEs, without switching to UiPath Studio Web.*
 
 <!-- Badges (uncomment once the repo + Marketplace listing are live):
 [![CI](https://github.com/marcelocruzrpa/uipath-artifact-designer/actions/workflows/ci.yml/badge.svg)](https://github.com/marcelocruzrpa/uipath-artifact-designer/actions/workflows/ci.yml)
