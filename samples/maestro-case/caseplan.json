@@ -1,0 +1,248 @@
+{
+  "id": "case-mOR3XLCki5",
+  "name": "Invoice Review",
+  "version": "20.0.0",
+  "description": "Sample case plan for testing the Maestro Case designer",
+  "bindings": [],
+  "variables": {
+    "inputOutputs": []
+  },
+  "metadata": {
+    "caseIdentifier": "Invoice Review",
+    "caseAppEnabled": false,
+    "caseIdentifierType": "constant",
+    "publishVersion": 2,
+    "slaRules": [
+      {
+        "expression": "=js:true",
+        "count": 5,
+        "unit": "d",
+        "escalationRule": [
+          {
+            "id": "esc_8cDWiz",
+            "displayName": "test",
+            "triggerInfo": {
+              "type": "at-risk"
+            },
+            "action": {
+              "type": "notification",
+              "recipients": []
+            }
+          }
+        ]
+      }
+    ],
+    "caseExitRules": [
+      {
+        "id": "Condition_W8saG5",
+        "displayName": "",
+        "rules": [
+          []
+        ],
+        "marksCaseComplete": true
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "Stage_imDJeQ",
+      "type": "case-management:ExceptionStage",
+      "position": {
+        "x": 1600,
+        "y": 200
+      },
+      "style": {
+        "width": 304,
+        "opacity": 0.8
+      },
+      "measured": {
+        "width": 304,
+        "height": 128
+      },
+      "width": 304,
+      "zIndex": 1001,
+      "data": {
+        "label": "Dispute Handling",
+        "parentElement": {
+          "id": "root",
+          "type": "case-management:root"
+        },
+        "isInvalidDropTarget": false,
+        "isPendingParent": false,
+        "tasks": [],
+        "entryConditions": [
+          {
+            "id": "Condition_wTVkY4",
+            "displayName": "Invoice disputed",
+            "rules": [
+              [
+                {
+                  "rule": "case-entered",
+                  "id": "Rule_wWUOlk"
+                }
+              ]
+            ],
+            "isInterrupting": true
+          }
+        ],
+        "exitConditions": [],
+        "description": "Handle a disputed invoice"
+      }
+    },
+    {
+      "id": "Stage_yJrD7O",
+      "type": "case-management:Stage",
+      "position": {
+        "x": 1100,
+        "y": 200
+      },
+      "style": {
+        "width": 304,
+        "opacity": 0.8
+      },
+      "measured": {
+        "width": 304,
+        "height": 128
+      },
+      "width": 304,
+      "zIndex": 1001,
+      "data": {
+        "label": "Approval",
+        "parentElement": {
+          "id": "root",
+          "type": "case-management:root"
+        },
+        "isInvalidDropTarget": false,
+        "isPendingParent": false,
+        "tasks": [],
+        "description": "Manager approves payment",
+        "isRequired": true,
+        "slaRules": [
+          {
+            "expression": "=js:true",
+            "count": 2,
+            "unit": "d"
+          }
+        ]
+      }
+    },
+    {
+      "id": "Stage_ANKkiY",
+      "type": "case-management:Stage",
+      "position": {
+        "x": 600,
+        "y": 200
+      },
+      "style": {
+        "width": 304,
+        "opacity": 0.8
+      },
+      "measured": {
+        "width": 304,
+        "height": 128
+      },
+      "width": 304,
+      "zIndex": 1001,
+      "data": {
+        "label": "Review",
+        "parentElement": {
+          "id": "root",
+          "type": "case-management:root"
+        },
+        "isInvalidDropTarget": false,
+        "isPendingParent": false,
+        "tasks": [],
+        "description": "Reviewer checks the invoice",
+        "exitConditions": [
+          {
+            "id": "Condition_8BB9cQ",
+            "displayName": "Review approved",
+            "rules": [
+              [
+                {
+                  "rule": "wait-for-connector",
+                  "id": "Rule_GtkiZJ"
+                }
+              ]
+            ],
+            "type": "wait-for-user"
+          }
+        ]
+      }
+    },
+    {
+      "id": "Stage_edsQpk",
+      "type": "case-management:Stage",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "style": {
+        "width": 304,
+        "opacity": 0.8
+      },
+      "measured": {
+        "width": 304,
+        "height": 128
+      },
+      "width": 304,
+      "zIndex": 1001,
+      "data": {
+        "label": "Intake",
+        "parentElement": {
+          "id": "root",
+          "type": "case-management:root"
+        },
+        "isInvalidDropTarget": false,
+        "isPendingParent": false,
+        "tasks": [],
+        "description": "Capture and record the invoice",
+        "isRequired": true
+      }
+    },
+    {
+      "id": "trigger_1",
+      "type": "case-management:Trigger",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "Trigger 1"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_5HIXK7",
+      "source": "trigger_1",
+      "target": "Stage_edsQpk",
+      "sourceHandle": "trigger_1____source____right",
+      "targetHandle": "Stage_edsQpk____target____left",
+      "data": {},
+      "type": "case-management:TriggerEdge"
+    },
+    {
+      "id": "edge_Gd8qrg",
+      "source": "Stage_edsQpk",
+      "target": "Stage_ANKkiY",
+      "sourceHandle": "Stage_edsQpk____source____right",
+      "targetHandle": "Stage_ANKkiY____target____left",
+      "data": {
+        "label": "Recorded"
+      },
+      "type": "case-management:Edge"
+    },
+    {
+      "id": "edge_ElM3KE",
+      "source": "Stage_ANKkiY",
+      "target": "Stage_yJrD7O",
+      "sourceHandle": "Stage_ANKkiY____source____right",
+      "targetHandle": "Stage_yJrD7O____target____left",
+      "data": {
+        "label": "Reviewed"
+      },
+      "type": "case-management:Edge"
+    }
+  ]
+}

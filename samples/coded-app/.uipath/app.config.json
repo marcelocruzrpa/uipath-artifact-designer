@@ -1,0 +1,9 @@
+{
+  "appName": "invoice-review-app",
+  "appVersion": "1.0.0",
+  "systemName": "invoice-review-app_a1b2c3",
+  "appType": "Action",
+  "deploymentId": "d4e5f6a7-8901-2345-6789-abcdef012345",
+  "appUrl": "https://cloud.uipath.com/org/tenant/apps_/run/production/invoice-review-app",
+  "registeredAt": "2026-05-20T10:15:00.000Z"
+}

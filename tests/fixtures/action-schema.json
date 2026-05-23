@@ -1,0 +1,34 @@
+{
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "customerName": {
+        "type": "string",
+        "required": true,
+        "description": "The customer name.",
+        "x-uipath-widget": "text-input",
+        "default": "Unknown"
+      },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "result": { "type": "string" }
+    }
+  },
+  "inOuts": {
+    "type": "object",
+    "properties": {}
+  },
+  "outcomes": {
+    "type": "object",
+    "properties": {
+      "approved": { "type": "boolean" }
+    }
+  }
+}

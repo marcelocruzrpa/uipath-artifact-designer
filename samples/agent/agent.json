@@ -1,0 +1,85 @@
+{
+  "version": "1.1.0",
+  "settings": {
+    "model": "gpt-4o-2024-11-20",
+    "maxTokens": 16384,
+    "temperature": 0,
+    "engine": "basic-v2",
+    "maxIterations": 25,
+    "mode": "standard"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "employeeEmail": {
+        "type": "string",
+        "description": "The authenticated email address of the employee asking the question."
+      },
+      "question": {
+        "type": "string",
+        "description": "The HR question the employee is asking."
+      }
+    },
+    "required": [
+      "employeeEmail",
+      "question"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "answer": {
+        "type": "string",
+        "description": "The reply shown to the employee."
+      },
+      "escalated": {
+        "type": "boolean",
+        "description": "True when the request was escalated to a manager."
+      }
+    }
+  },
+  "metadata": {
+    "storageVersion": "50.0.0",
+    "isConversational": true,
+    "showProjectCreationExperience": false,
+    "targetRuntime": "pythonAgent",
+    "agentMemory": true
+  },
+  "type": "lowCode",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the HR Helpdesk Agent. Answer employee HR questions about leave, benefits, and policy.\n\n1. Call the GetEmployeeRecord tool to look the employee up by their email before answering.\n2. Retrieve relevant policy from the HRPolicyKnowledge context index and answer strictly from it.\n3. If the request needs sign-off beyond policy limits, hand off to a manager through the ManagerApproval escalation and set escalated to true.\n\nConversation memory is enabled, so refer back to earlier turns when relevant. Be concise, friendly, and professional.",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "You are the HR Helpdesk Agent. Answer employee HR questions about leave, benefits, and policy.\n\n1. Call the GetEmployeeRecord tool to look the employee up by their email before answering.\n2. Retrieve relevant policy from the HRPolicyKnowledge context index and answer strictly from it.\n3. If the request needs sign-off beyond policy limits, hand off to a manager through the ManagerApproval escalation and set escalated to true.\n\nConversation memory is enabled, so refer back to earlier turns when relevant. Be concise, friendly, and professional."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "Employee: {{input.employeeEmail}}\nQuestion: {{input.question}}",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "Employee: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.employeeEmail"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nQuestion: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.question"
+        }
+      ]
+    }
+  ],
+  "guardrails": [],
+  "projectId": "7ee2aa9a-a8e1-4a81-95f4-5d042cce08b0"
+}

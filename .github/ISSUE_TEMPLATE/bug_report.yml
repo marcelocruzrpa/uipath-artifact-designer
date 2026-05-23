@@ -1,0 +1,110 @@
+name: Bug report
+description: Report something that does not work as expected in a designer.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Before submitting, please
+        search [existing issues](https://github.com/marcelocruzrpa/uipath-artifact-designer/issues?q=is%3Aissue)
+        to avoid duplicates. A minimal sample file that reproduces the problem
+        helps a lot.
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I open a `*.flow` file, the canvas stays blank and...
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps that reliably reproduce the bug.
+      placeholder: |
+        1. Open the attached `sample.flow` in VS Code.
+        2. Click the "Fit" button in the toolbar.
+        3. Observe that the canvas does not change.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-vs-actual
+    attributes:
+      label: Expected vs. actual behavior
+      placeholder: |
+        Expected: the diagram fits to the viewport.
+        Actual: nothing happens; the console shows a TypeError.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: artifact-type
+    attributes:
+      label: Artifact file type
+      description: Which designer is affected?
+      options:
+        - "agent.json (low-code agent)"
+        - "*.flow (Maestro Flow)"
+        - "*.bpmn (Maestro BPMN)"
+        - "caseplan.json (Maestro Case)"
+        - "action-schema.json (Coded App)"
+        - "Other / not artifact-specific"
+    validations:
+      required: true
+
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      description: From `Help → About` (e.g. `1.95.0`). Requires 1.84 or newer.
+      placeholder: "1.95.0"
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: From the Extensions view (e.g. `1.0.0`).
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal sample file
+      description: Paste the smallest artifact file that reproduces the bug, or note that you have attached one.
+      render: text
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: 'Anything from the `Output` panel, or the Webview Developer Tools console (Command Palette → "Developer: Open Webview Developer Tools").'
+      render: shell

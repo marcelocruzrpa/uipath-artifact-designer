@@ -1,0 +1,25 @@
+{
+  "$resourceType": "context",
+  "id": "a1b2c3d4-0002-4a02-9c02-000000000002",
+  "referenceKey": null,
+  "name": "HRPolicyKnowledge",
+  "description": "Company HR policy knowledge base — leave entitlements, benefits, and code of conduct. Query this for every policy question.",
+  "contextType": "index",
+  "folderPath": "Shared/HR",
+  "indexName": "HR_Policy_Index",
+  "settings": {
+    "retrievalMode": "semantic",
+    "query": {
+      "variant": "dynamic",
+      "description": "Search query for company HR policy"
+    },
+    "folderPathPrefix": {
+      "variant": "static"
+    },
+    "fileExtension": {
+      "value": "All"
+    },
+    "threshold": 0.2,
+    "resultCount": 5
+  }
+}

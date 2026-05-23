@@ -1,0 +1,88 @@
+{
+  "$resourceType": "tool",
+  "id": "a1b2c3d4-0001-4a01-9c01-000000000001",
+  "type": "integration",
+  "location": "external",
+  "name": "GetEmployeeRecord",
+  "description": "Looks up an employee in the HR system by their email address and returns their profile (full name, department, country). Call this first, before answering.",
+  "isEnabled": true,
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "email": {
+        "type": "string",
+        "title": "Email",
+        "description": "The employee's work email address."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "email"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "fullName": {
+        "title": "Full name",
+        "type": "string",
+        "description": "The employee's full name."
+      },
+      "department": {
+        "title": "Department",
+        "type": "string",
+        "description": "The employee's department."
+      },
+      "country": {
+        "title": "Country",
+        "type": "string",
+        "description": "The country where the employee is based."
+      }
+    }
+  },
+  "settings": {},
+  "guardrail": {
+    "policies": []
+  },
+  "isPreview": false,
+  "properties": {
+    "toolPath": "/employees/{email}",
+    "objectName": "employees",
+    "toolDisplayName": "Get Employee Record",
+    "toolDescription": "Looks up an employee in the HR system by their email address.",
+    "method": "GETBYID",
+    "bodyStructure": {
+      "contentType": "json"
+    },
+    "connection": {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "name": "REPLACE-WITH-HR-SYSTEM-CONNECTION",
+      "elementInstanceId": 0,
+      "apiBaseUri": "",
+      "state": "enabled",
+      "isDefault": false,
+      "connector": {
+        "key": "uipath-hr-system",
+        "name": "HR System",
+        "enabled": true,
+        "isPreview": false
+      }
+    },
+    "parameters": [
+      {
+        "name": "email",
+        "displayName": "Email",
+        "type": "string",
+        "fieldLocation": "path",
+        "value": "{{prompt}}",
+        "description": "The employee's work email address.",
+        "position": "primary",
+        "sortOrder": 1,
+        "required": true,
+        "fieldVariant": "dynamic",
+        "dynamic": true
+      }
+    ]
+  }
+}

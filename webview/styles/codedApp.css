@@ -1,0 +1,96 @@
+/* Styles for the Coded App (action-schema.json) form renderer. */
+
+.coded-app {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 18px 24px;
+}
+
+.coded-app .field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-row input[type='text'],
+.field-row select {
+  height: 26px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.field-row input[type='text']:focus,
+.field-row select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.field-row .ca-name {
+  width: 170px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.field-row .ca-type,
+.field-row .ca-items {
+  width: 92px;
+}
+
+.field-row .ca-desc {
+  flex: 1;
+  min-width: 120px;
+}
+
+.field-row .ca-req {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+.field-row .ca-remove {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.field-row .ca-remove:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+
+.ca-add {
+  align-self: flex-start;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, transparent);
+  border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.ca-add:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+}

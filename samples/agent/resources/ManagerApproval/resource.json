@@ -1,0 +1,75 @@
+{
+  "$resourceType": "escalation",
+  "id": "a1b2c3d4-0003-4a03-9c03-000000000003",
+  "name": "ManagerApproval",
+  "description": "Hands off to a manager for approval when a request exceeds standard HR policy limits.",
+  "escalationType": 0,
+  "isAgentMemoryEnabled": false,
+  "ixpToolId": null,
+  "storageBucketName": null,
+  "properties": {},
+  "governanceProperties": {
+    "isEscalatedAtRuntime": false
+  },
+  "channels": [
+    {
+      "id": "a1b2c3d4-0003-4c03-9d03-00000000000a",
+      "name": "Action Center approval",
+      "description": "Routes the approval task to a manager in UiPath Action Center.",
+      "type": "actionCenter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "requestSummary": {
+            "type": "string",
+            "description": "A short summary of what the employee is requesting."
+          }
+        }
+      },
+      "inputSchemaDotnetTypeMapping": {
+        "requestSummary": "System.String"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "managerComment": {
+            "type": "string",
+            "description": "The manager's comment on the decision."
+          }
+        }
+      },
+      "outputSchemaDotnetTypeMapping": {
+        "managerComment": "System.String"
+      },
+      "outcomeMapping": {
+        "approve": "continue",
+        "reject": "end"
+      },
+      "properties": {
+        "resourceKey": "00000000-0000-0000-0000-000000000000",
+        "appName": "Manager Approval App",
+        "folderName": "Shared/Approvals",
+        "appVersion": 1,
+        "isActionableMessageEnabled": false,
+        "actionableMessageMetaData": null
+      },
+      "recipients": [
+        {
+          "type": 3,
+          "value": "manager@example.com"
+        }
+      ],
+      "taskTitle": "HR approval request",
+      "taskTitleV2": {
+        "type": "textBuilder",
+        "tokens": [
+          {
+            "type": "simpleText",
+            "rawString": "HR approval request"
+          }
+        ]
+      },
+      "labels": []
+    }
+  ]
+}

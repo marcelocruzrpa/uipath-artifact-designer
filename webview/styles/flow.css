@@ -1,0 +1,244 @@
+/* Styles for the Maestro Flow (.flow) graph designer. */
+
+:root {
+  --flow-trigger: #4f8cff;
+  --flow-action: #7c8cf0;
+  --flow-decision: #f29b4a;
+  --flow-switch: #e0a83d;
+  --flow-loop: #38b6cf;
+  --flow-merge: #2bb8a3;
+  --flow-end: #5ec27a;
+  --flow-terminate: #e0533d;
+  --flow-connector: #b07cf0;
+  --flow-agent: #9b7cf0;
+  --flow-subflow: #ef6fa6;
+  --flow-unknown: #9aa0aa;
+}
+
+body.vscode-light {
+  --flow-trigger: #2f6fed;
+  --flow-action: #5360c4;
+  --flow-decision: #cf7320;
+  --flow-switch: #b8851f;
+  --flow-loop: #0a86a8;
+  --flow-merge: #0f9384;
+  --flow-end: #2f9a4f;
+  --flow-terminate: #c8492f;
+  --flow-connector: #7d49c4;
+  --flow-agent: #6a44c4;
+  --flow-subflow: #c83f78;
+  --flow-unknown: #6b7180;
+}
+
+/* --- Per-kind accent assignment ---------------------------------------- */
+.flow-node[data-flow-kind='trigger'] { --flow-accent: var(--flow-trigger); }
+.flow-node[data-flow-kind='action'] { --flow-accent: var(--flow-action); }
+.flow-node[data-flow-kind='decision'] { --flow-accent: var(--flow-decision); }
+.flow-node[data-flow-kind='switch'] { --flow-accent: var(--flow-switch); }
+.flow-node[data-flow-kind='loop'] { --flow-accent: var(--flow-loop); }
+.flow-node[data-flow-kind='merge'] { --flow-accent: var(--flow-merge); }
+.flow-node[data-flow-kind='end'] { --flow-accent: var(--flow-end); }
+.flow-node[data-flow-kind='terminate'] { --flow-accent: var(--flow-terminate); }
+.flow-node[data-flow-kind='connector'] { --flow-accent: var(--flow-connector); }
+.flow-node[data-flow-kind='agent'] { --flow-accent: var(--flow-agent); }
+.flow-node[data-flow-kind='subflow'] { --flow-accent: var(--flow-subflow); }
+.flow-node[data-flow-kind='unknown'] { --flow-accent: var(--flow-unknown); }
+
+/* --- Stage / world ----------------------------------------------------- */
+.flow-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.flow-stage.is-panning {
+  cursor: grabbing;
+}
+
+.flow-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background-image: radial-gradient(circle, var(--dot, rgba(140, 140, 150, 0.16)) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+
+.flow-edge-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.flow-node-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* --- Edges ------------------------------------------------------------- */
+.flow-edge {
+  fill: none;
+  stroke: var(--vscode-descriptionForeground, #9aa0aa);
+  stroke-width: 1.8;
+  opacity: 0.85;
+}
+
+.flow-edge-arrow {
+  fill: var(--vscode-descriptionForeground, #9aa0aa);
+  opacity: 0.85;
+}
+
+/* --- Node cards -------------------------------------------------------- */
+.flow-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  box-sizing: border-box;
+  background: var(--card-bg, var(--vscode-editorWidget-background, #252526));
+  border: 1px solid var(--card-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+  border-left: 3px solid var(--flow-accent);
+  border-radius: 9px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  user-select: none;
+}
+
+.flow-node:hover {
+  border-color: var(--flow-accent);
+}
+
+.flow-node:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.flow-node--selected {
+  outline: 2px solid var(--flow-accent);
+  outline-offset: 1px;
+}
+
+.flow-node--dragging {
+  opacity: 0.85;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.flow-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flow-node-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  color: var(--flow-accent);
+}
+
+.flow-node-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--flow-accent);
+}
+
+.flow-node-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-node-type {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Inspector — variables overview ----------------------------------- */
+.flow-var-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.flow-var-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.flow-var-name {
+  flex: 1 1 auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-var-dir {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.flow-var-type {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- Inspector — node ports ------------------------------------------- */
+.flow-port-row {
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  margin: 2px 0;
+}
+
+.flow-port-label {
+  flex: 0 0 36px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.flow-port-values {
+  flex: 1 1 auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  word-break: break-word;
+}
+
+/* --- Inspector — delete-node button ----------------------------------- */
+.flow-remove-node {
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  color: var(--vscode-errorForeground, #e0533d);
+  background: transparent;
+  border: 1px solid var(--vscode-errorForeground, #e0533d);
+  border-radius: 4px;
+}
+
+.flow-remove-node:hover {
+  background: rgba(224, 83, 61, 0.12);
+}

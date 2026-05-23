@@ -1,0 +1,75 @@
+name: Release
+
+# First-time publish: invoke manually via workflow_dispatch after the
+# publisher / PAT / Open VSX namespace / icon are all in place. Once the
+# pipeline is proven on a real release, add a `push: tags: ['v*']` trigger
+# to make tagged releases auto-publish.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build the .vsix but skip publish steps"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # Scoped here, not workflow-global. `contents: write` is required by
+    # softprops/action-gh-release to create the GitHub Release.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build:prod
+
+      # `--no-install` forces use of the locally-installed @vscode/vsce
+      # devDependency (^2.24), not whatever `npx` would fetch.
+      - name: Package extension
+        run: npx --no-install vsce package
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ !inputs.dry_run }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --no-install vsce publish --packagePath *.vsix
+
+      # `ovsx` is not yet a devDependency. Pin an exact version so the
+      # release job is reproducible.
+      - name: Publish to Open VSX (Cursor's marketplace)
+        if: ${{ !inputs.dry_run }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx -y ovsx@0.10.5 publish *.vsix
+
+      # Full commit SHA pin (softprops/action-gh-release v2.2.1) — protects
+      # against tag mutation if the upstream tag is moved.
+      - name: Create GitHub Release with .vsix
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974
+        with:
+          files: "*.vsix"
+          generate_release_notes: true

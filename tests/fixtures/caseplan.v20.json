@@ -1,0 +1,43 @@
+{
+  "id": "case-1234567890",
+  "version": "20",
+  "name": "Onboarding Case",
+  "description": "A v20-wrapper case plan fixture.",
+  "metadata": {
+    "caseIdentifier": "ONB-001",
+    "caseIdentifierType": "constant",
+    "caseAppEnabled": false
+  },
+  "nodes": [
+    {
+      "id": "trigger_CCCCCC",
+      "type": "case-management:Trigger",
+      "data": {
+        "label": "Start",
+        "uipath": { "serviceType": "Intsvc.EventTrigger" }
+      }
+    },
+    {
+      "id": "Stage_CCCCCC",
+      "type": "case-management:Stage",
+      "data": {
+        "label": "Collect Documents",
+        "description": "Gather onboarding documents.",
+        "isRequired": true,
+        "tasks": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_CCCCCC",
+      "type": "case-management:TriggerEdge",
+      "source": "trigger_CCCCCC",
+      "target": "Stage_CCCCCC",
+      "sourceHandle": "trigger_CCCCCC____source____right",
+      "targetHandle": "Stage_CCCCCC____target____left",
+      "data": {}
+    }
+  ],
+  "layout": {}
+}

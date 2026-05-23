@@ -1,0 +1,49 @@
+name: Question
+description: Ask for help or clarification.
+title: "[Question] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a question, please skim the
+        [README](https://github.com/marcelocruzrpa/uipath-artifact-designer/blob/main/README.md)
+        and the
+        [contribution guide](https://github.com/marcelocruzrpa/uipath-artifact-designer/blob/main/CONTRIBUTING.md)
+        — many common questions are covered there.
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Preflight
+      options:
+        - label: I checked the README and CONTRIBUTING guide.
+          required: true
+        - label: I searched existing issues for the same question.
+          required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      placeholder: I want to edit `caseplan.json` using the v20 schema and...
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Commands, settings, sample files, links to docs you consulted.
+
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      placeholder: "1.95.0"
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      placeholder: "1.0.0"

@@ -1,0 +1,179 @@
+{
+  "name": "uipath-artifact-designer",
+  "displayName": "UiPath Artifact Designer",
+  "description": "Visual designers for UiPath artifacts — low-code agents, Maestro Flow/BPMN/Case, and Coded Apps — inside VS Code.",
+  "version": "1.0.0",
+  "publisher": "marcelocruzrpa",
+  "author": {
+    "name": "Marcelo Cruz",
+    "url": "https://github.com/marcelocruzrpa"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcelocruzrpa/uipath-artifact-designer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marcelocruzrpa/uipath-artifact-designer/issues"
+  },
+  "homepage": "https://github.com/marcelocruzrpa/uipath-artifact-designer#readme",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "galleryBanner": {
+    "color": "#1E1E1E",
+    "theme": "dark"
+  },
+  "qna": "https://github.com/marcelocruzrpa/uipath-artifact-designer/issues",
+  "keywords": [
+    "uipath",
+    "agent",
+    "maestro",
+    "bpmn",
+    "flow",
+    "case management",
+    "coded app",
+    "low-code",
+    "designer"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:uipathArtifactDesigner.openDesigner"
+  ],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "uipathArtifactDesigner.agentEditor",
+        "displayName": "UiPath Agent Designer",
+        "selector": [
+          {
+            "filenamePattern": "agent.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "uipathArtifactDesigner.maestroFlowEditor",
+        "displayName": "UiPath Maestro Flow Designer",
+        "selector": [
+          {
+            "filenamePattern": "*.flow"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "uipathArtifactDesigner.maestroBpmnEditor",
+        "displayName": "UiPath Maestro BPMN Designer",
+        "selector": [
+          {
+            "filenamePattern": "*.bpmn"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "uipathArtifactDesigner.maestroCaseEditor",
+        "displayName": "UiPath Maestro Case Designer",
+        "selector": [
+          {
+            "filenamePattern": "caseplan.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "uipathArtifactDesigner.codedAppEditor",
+        "displayName": "UiPath Coded App Designer",
+        "selector": [
+          {
+            "filenamePattern": "action-schema.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "uipathArtifactDesigner.openDesigner",
+        "title": "UiPath: Open Designer",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "uipathArtifactDesigner.reopenAsText",
+        "title": "UiPath: Reopen Artifact as Text",
+        "icon": "$(json)"
+      },
+      {
+        "command": "uipathArtifactDesigner.fitToView",
+        "title": "UiPath Artifact Designer: Fit to View",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "uipathArtifactDesigner.refresh",
+        "title": "UiPath Artifact Designer: Reload Artifact",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "uipathArtifactDesigner.fitToView",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "uipathArtifactDesigner.refresh",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "uipathArtifactDesigner.reopenAsText",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "uipathArtifactDesigner.fitToView",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes"
+        },
+        {
+          "command": "uipathArtifactDesigner.refresh",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes"
+        },
+        {
+          "command": "uipathArtifactDesigner.reopenAsText",
+          "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "build:prod": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.54",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.84.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.4.5",
+    "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "bpmn-js": "^18.16.1",
+    "dagre": "^0.8.5"
+  }
+}

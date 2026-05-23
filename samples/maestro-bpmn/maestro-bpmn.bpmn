@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:uipath="http://uipath.org/schema/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" exporter="UiPath Maestro (https://uipath.com)" exporterVersion="development">
+  <bpmn:process id="Process_1" name="Invoice Approval">
+    <bpmn:extensionElements>
+      <uipath:variables version="v1" />
+      <uipath:bindings version="v1" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="Event_start" name="core.trigger.manual">
+      <uipath:entryPointId value="909310b5-4955-4fdb-8337-6aec2737d3ce" />
+      <bpmn:outgoing>Flow_start_task</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_process" name="Process invoice">
+      <bpmn:incoming>Flow_start_task</bpmn:incoming>
+      <bpmn:outgoing>Flow_task_gw</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_approved" name="Approved?" default="Flow_gw_rejected">
+      <bpmn:incoming>Flow_task_gw</bpmn:incoming>
+      <bpmn:outgoing>Flow_gw_approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_gw_rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_approved" name="Approved">
+      <bpmn:incoming>Flow_gw_approved</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="Event_rejected" name="Rejected">
+      <bpmn:incoming>Flow_gw_rejected</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_start_task" sourceRef="Event_start" targetRef="Activity_process" />
+    <bpmn:sequenceFlow id="Flow_task_gw" sourceRef="Activity_process" targetRef="Gateway_approved" />
+    <bpmn:sequenceFlow id="Flow_gw_approved" name="Yes" sourceRef="Gateway_approved" targetRef="Event_approved" />
+    <bpmn:sequenceFlow id="Flow_gw_rejected" name="No" sourceRef="Gateway_approved" targetRef="Event_rejected" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_1">
+    <bpmndi:BPMNPlane id="Plane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="S_Event_start" bpmnElement="Event_start">
+        <dc:Bounds x="256" y="144" width="96" height="96" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="256" y="245" width="96" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Activity_process" bpmnElement="Activity_process">
+        <dc:Bounds x="420" y="144" width="220" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Gateway_approved" bpmnElement="Gateway_approved" isMarkerVisible="true">
+        <dc:Bounds x="720" y="144" width="96" height="96" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="720" y="245" width="96" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Event_approved" bpmnElement="Event_approved">
+        <dc:Bounds x="900" y="40" width="96" height="96" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="900" y="141" width="96" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Event_rejected" bpmnElement="Event_rejected">
+        <dc:Bounds x="900" y="280" width="96" height="96" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="900" y="381" width="96" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E_Flow_start_task" bpmnElement="Flow_start_task">
+        <di:waypoint x="352" y="192" />
+        <di:waypoint x="420" y="192" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Flow_task_gw" bpmnElement="Flow_task_gw">
+        <di:waypoint x="640" y="192" />
+        <di:waypoint x="720" y="192" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Flow_gw_approved" bpmnElement="Flow_gw_approved">
+        <di:waypoint x="768" y="144" />
+        <di:waypoint x="768" y="88" />
+        <di:waypoint x="900" y="88" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Flow_gw_rejected" bpmnElement="Flow_gw_rejected">
+        <di:waypoint x="768" y="240" />
+        <di:waypoint x="768" y="328" />
+        <di:waypoint x="900" y="328" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

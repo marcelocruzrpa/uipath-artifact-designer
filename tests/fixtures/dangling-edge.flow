@@ -1,0 +1,23 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "name": "Flow With Dangling Edge",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "core.trigger.manual",
+      "typeVersion": "1.0",
+      "display": { "label": "Start" },
+      "inputs": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "dangling-edge",
+      "sourceNodeId": "trigger-1",
+      "sourcePort": "output",
+      "targetNodeId": "missing-node",
+      "targetPort": "input"
+    }
+  ]
+}

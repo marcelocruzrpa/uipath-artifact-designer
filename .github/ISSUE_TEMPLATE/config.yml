@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contribution guide
+    url: https://github.com/marcelocruzrpa/uipath-artifact-designer/blob/main/CONTRIBUTING.md
+    about: Build, test, and submission instructions for contributors.
+  - name: UiPath official support
+    url: https://www.uipath.com/
+    about: This extension is a community project and is not affiliated with UiPath. For UiPath product support, please go through official UiPath channels.

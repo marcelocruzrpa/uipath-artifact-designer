@@ -1,0 +1,24 @@
+{
+  "type": "lowCode",
+  "version": "1.0",
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Process {{ input }}." }
+  ],
+  "settings": {
+    "model": "gpt-4o",
+    "temperature": 0.2
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "string",
+        "description": "The input to process.",
+        "default": "fallback-value",
+        "x-uipath-foo": "custom-keyword"
+      }
+    },
+    "required": ["input"]
+  }
+}

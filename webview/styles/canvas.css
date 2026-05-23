@@ -1,0 +1,487 @@
+:root {
+  --card-bg: var(--vscode-editorWidget-background, #252526);
+  --card-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  --dot: rgba(140, 140, 150, 0.16);
+
+  --k-agent: #4f8cff;
+  --k-tool-process: #7c8cf0;
+  --k-tool-integration: #2bb8a3;
+  --k-tool-builtin: #b07cf0;
+  --k-context-index: #9b7cf0;
+  --k-context-attachments: #ef6fa6;
+  --k-context-datafabric: #38b6cf;
+  --k-escalation: #f29b4a;
+  --k-memory: #57b86b;
+  --k-unknown: #9aa0aa;
+}
+
+body.vscode-light {
+  --dot: rgba(60, 60, 80, 0.12);
+  --k-agent: #2f6fed;
+  --k-tool-process: #5360c4;
+  --k-tool-integration: #0f9384;
+  --k-tool-builtin: #7d49c4;
+  --k-context-index: #6a44c4;
+  --k-context-attachments: #c83f78;
+  --k-context-datafabric: #0a86a8;
+  --k-escalation: #cf7320;
+  --k-memory: #3c8f4d;
+  --k-unknown: #6b7180;
+}
+
+/* --- Per-kind / per-lane accent assignment ----------------------------- */
+[data-kind='agent'] { --accent: var(--k-agent); }
+[data-kind='tool-process'] { --accent: var(--k-tool-process); }
+[data-kind='tool-integration'] { --accent: var(--k-tool-integration); }
+[data-kind='tool-builtin'] { --accent: var(--k-tool-builtin); }
+[data-kind='tool-unknown'] { --accent: var(--k-unknown); }
+[data-kind='context-index'] { --accent: var(--k-context-index); }
+[data-kind='context-attachments'] { --accent: var(--k-context-attachments); }
+[data-kind='context-datafabric'] { --accent: var(--k-context-datafabric); }
+[data-kind='context-unknown'] { --accent: var(--k-unknown); }
+[data-kind='escalation'] { --accent: var(--k-escalation); }
+[data-kind='memory'] { --accent: var(--k-memory); }
+[data-kind='unknown'] { --accent: var(--k-unknown); }
+
+[data-lane='tool'] { --accent: var(--k-tool-process); }
+[data-lane='context'] { --accent: var(--k-context-index); }
+[data-lane='escalation'] { --accent: var(--k-escalation); }
+[data-lane='memory'] { --accent: var(--k-memory); }
+[data-lane='other'] { --accent: var(--k-unknown); }
+
+/* --- Toolbar ----------------------------------------------------------- */
+.toolbar {
+  flex: 0 0 auto;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+}
+
+.toolbar-title {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tb-btn {
+  background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.18));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tb-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.3));
+}
+
+.tb-btn.primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: transparent;
+}
+
+.tb-btn.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.zoom-label {
+  font-size: 12px;
+  min-width: 44px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- Diagnostic / error strips ----------------------------------------- */
+.diag-strip,
+.error-strip {
+  flex: 0 0 auto;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.diag {
+  font-size: 11.5px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.diag--warning {
+  background: rgba(220, 160, 40, 0.14);
+}
+
+.diag--info {
+  background: rgba(120, 140, 200, 0.12);
+  color: var(--vscode-descriptionForeground);
+}
+
+.error-strip {
+  background: rgba(200, 70, 50, 0.16);
+  border-bottom: 1px solid #c8492f;
+}
+
+.error-text {
+  font-size: 12px;
+  padding: 6px 12px;
+  color: var(--vscode-errorForeground, #f0a0a0);
+}
+
+/* --- Main / canvas ----------------------------------------------------- */
+.main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.canvas-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.stage.is-panning {
+  cursor: grabbing;
+}
+
+.world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+
+.edge-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.node-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* --- Connectors -------------------------------------------------------- */
+.conn {
+  fill: none;
+  stroke-width: 1.7;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.conn--tool { stroke: var(--k-tool-process); }
+.conn--context { stroke: var(--k-context-index); }
+.conn--escalation { stroke: var(--k-escalation); }
+.conn--memory { stroke: var(--k-memory); }
+.conn--other { stroke: var(--k-unknown); }
+
+.conn-tip { stroke: none; }
+.conn-tip--tool { fill: var(--k-tool-process); }
+.conn-tip--context { fill: var(--k-context-index); }
+.conn-tip--escalation { fill: var(--k-escalation); }
+.conn-tip--memory { fill: var(--k-memory); }
+.conn-tip--other { fill: var(--k-unknown); }
+
+/* --- Generic node marker ---------------------------------------------- */
+.node {
+  position: absolute;
+}
+
+.node:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* --- Agent card -------------------------------------------------------- */
+.node--agent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 15px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.node--agent:hover {
+  border-color: var(--accent);
+}
+
+.node--agent.node--selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.node-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.node--agent .node-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(128, 128, 128, 0.16);
+  color: var(--accent);
+}
+
+.node--agent .node-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.node-headings {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.node-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-sub {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.node-tag {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.agent-model {
+  font-size: 11.5px;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-instr {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+}
+
+.agent-instr-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.agent-instr-text {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* --- Resource circle nodes -------------------------------------------- */
+.rnode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.rnode-circle {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.1s ease, transform 0.1s ease;
+}
+
+.rnode-circle svg {
+  width: 30px;
+  height: 30px;
+}
+
+.rnode-circle .node-icon-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.rnode:hover .rnode-circle {
+  box-shadow: 0 0 0 5px rgba(127, 127, 140, 0.16), 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+.rnode.node--selected .rnode-circle {
+  box-shadow: 0 0 0 4px var(--accent), 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+.rnode--disabled {
+  opacity: 0.5;
+}
+
+.rnode-warn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #e0533d;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--card-bg);
+}
+
+.rnode-label {
+  max-width: 100%;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+/* --- Lane junction puck ------------------------------------------------ */
+.junction {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 13px;
+  white-space: nowrap;
+}
+
+.junction-count {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.junction-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- Fallback screen --------------------------------------------------- */
+.fallback-screen {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+.fallback-card {
+  max-width: 460px;
+  text-align: center;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+  padding: 26px 28px;
+}
+
+.fallback-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.fallback-msg {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--vscode-descriptionForeground);
+  margin: 0 0 18px;
+}
+
+.fallback-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}

@@ -1,0 +1,7 @@
+/* Styles owned by the multi-artifact shell. */
+
+/*
+ * No shell-owned styles remain — every artifact kind now has a dedicated
+ * renderer with its own stylesheet. This file is kept as the home for any
+ * future shell-level styling.
+ */

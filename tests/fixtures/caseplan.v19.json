@@ -1,0 +1,66 @@
+{
+  "root": {
+    "id": "root",
+    "name": "Invoice Approval Case",
+    "description": "A v19-wrapper case plan fixture.",
+    "caseIdentifier": "INV-001",
+    "caseIdentifierType": "constant",
+    "caseAppEnabled": true,
+    "data": {}
+  },
+  "nodes": [
+    {
+      "id": "trigger_AAAAAA",
+      "type": "case-management:Trigger",
+      "position": { "x": 0, "y": 200 },
+      "data": {
+        "label": "Start",
+        "uipath": { "serviceType": "None" }
+      }
+    },
+    {
+      "id": "Stage_AAAAAA",
+      "type": "case-management:Stage",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "label": "Review",
+        "description": "Review the invoice.",
+        "isRequired": true,
+        "tasks": [],
+        "entryConditions": [],
+        "exitConditions": []
+      }
+    },
+    {
+      "id": "Stage_BBBBBB",
+      "type": "case-management:Stage",
+      "position": { "x": 600, "y": 200 },
+      "data": {
+        "label": "Approve",
+        "description": "Approve the invoice.",
+        "isRequired": false,
+        "tasks": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_AAAAAA",
+      "type": "case-management:TriggerEdge",
+      "source": "trigger_AAAAAA",
+      "target": "Stage_AAAAAA",
+      "sourceHandle": "trigger_AAAAAA____source____right",
+      "targetHandle": "Stage_AAAAAA____target____left",
+      "data": {}
+    },
+    {
+      "id": "edge_BBBBBB",
+      "type": "case-management:Edge",
+      "source": "Stage_AAAAAA",
+      "target": "Stage_BBBBBB",
+      "sourceHandle": "Stage_AAAAAA____source____right",
+      "targetHandle": "Stage_BBBBBB____target____left",
+      "data": { "label": "next" }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "10c1caad-7429-44ca-93f8-637ef6532a7f",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "employeeEmail": {
+            "type": "string",
+            "description": "The authenticated email address of the employee asking the question."
+          },
+          "question": {
+            "type": "string",
+            "description": "The HR question the employee is asking."
+          }
+        },
+        "required": [
+          "employeeEmail",
+          "question"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "The reply shown to the employee."
+          },
+          "escalated": {
+            "type": "boolean",
+            "description": "True when the request was escalated to a manager."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "11111111-2222-3333-4444-555555555555",
+  "name": "Sample Flow",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "core.trigger.manual",
+      "typeVersion": "1.0",
+      "display": { "label": "Start" },
+      "inputs": {}
+    },
+    {
+      "id": "action-1",
+      "type": "core.action.script",
+      "typeVersion": "1.0",
+      "display": { "label": "Run Script" },
+      "inputs": { "code": "return 1;" }
+    },
+    {
+      "id": "end-1",
+      "type": "core.control.end",
+      "typeVersion": "1.0",
+      "display": { "label": "End" },
+      "inputs": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "sourceNodeId": "trigger-1",
+      "sourcePort": "output",
+      "targetNodeId": "action-1",
+      "targetPort": "input"
+    },
+    {
+      "id": "edge-2",
+      "sourceNodeId": "action-1",
+      "sourcePort": "success",
+      "targetNodeId": "end-1",
+      "targetPort": "input"
+    }
+  ],
+  "layout": {
+    "nodes": {
+      "trigger-1": { "position": { "x": 100, "y": 100 } },
+      "action-1": { "position": { "x": 300, "y": 100 } },
+      "end-1": { "position": { "x": 500, "y": 100 } }
+    }
+  },
+  "variables": {
+    "globals": [
+      { "id": "var-1", "direction": "in", "type": "string", "defaultValue": "hello" }
+    ]
+  }
+}

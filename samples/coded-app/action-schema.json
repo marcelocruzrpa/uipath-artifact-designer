@@ -1,0 +1,70 @@
+{
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "applicantName": {
+        "type": "string",
+        "required": true,
+        "description": "Full name of the applicant"
+      },
+      "loanAmount": {
+        "type": "number",
+        "required": true,
+        "description": "Requested loan amount in USD"
+      },
+      "documentIds": {
+        "type": "array",
+        "required": false,
+        "description": "Ids of the attached supporting documents",
+        "items": { "type": "string" }
+      },
+      "employmentDetails": {
+        "type": "object",
+        "required": false,
+        "description": "Structured employment record for the applicant",
+        "properties": {
+          "employer": { "type": "string" },
+          "monthlyIncome": { "type": "number" },
+          "yearsEmployed": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "reviewerNotes": {
+        "type": "string",
+        "required": false,
+        "description": "Free-text notes from the reviewer"
+      },
+      "riskScore": {
+        "type": "integer",
+        "required": true,
+        "description": "Risk rating from 1 (low) to 10 (high)"
+      },
+      "approvedForFastTrack": {
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the application qualifies for fast-track processing"
+      }
+    }
+  },
+  "inOuts": {
+    "type": "object",
+    "properties": {
+      "priority": {
+        "type": "string",
+        "required": false,
+        "description": "Review priority — pre-filled, editable by the reviewer"
+      }
+    }
+  },
+  "outcomes": {
+    "type": "object",
+    "properties": {
+      "Approve": { "type": "string" },
+      "Reject": { "type": "string" }
+    }
+  }
+}

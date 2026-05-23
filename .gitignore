@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.vsix
+.omc/
+.omx/
+
+# Cross-OS / IDE noise
+.DS_Store
+*.log
+npm-debug.log*
+coverage/
+.vscode-test/
+.idea/
+*.swp
+.env*
