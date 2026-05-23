@@ -3,13 +3,11 @@
 *A community extension — not an official UiPath product. Adds visual editing
 for five UiPath artifact file types — `agent.json`, `*.flow`, `*.bpmn`,
 `caseplan.json`, and `action-schema.json` — directly inside VS Code, Cursor,
-and other VS Code-based IDEs, without switching to UiPath Studio Web.*
+and other VS Code-based IDEs, without needing to deploy and switch to UiPath Studio Web.*
 
-<!-- Badges (uncomment once the repo + Marketplace listing are live):
-[![CI](https://github.com/marcelocruzrpa/uipath-artifact-designer/actions/workflows/ci.yml/badge.svg)](https://github.com/marcelocruzrpa/uipath-artifact-designer/actions/workflows/ci.yml)
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/marcelocruzrpa.uipath-artifact-designer)](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-v1.0.0-blue)](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer)
+[![Open VSX](https://img.shields.io/open-vsx/v/marcelocruzrpa/uipath-artifact-designer?label=Open%20VSX)](https://open-vsx.org/extension/marcelocruzrpa/uipath-artifact-designer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
--->
 
 Open and edit UiPath artifacts as visual designers in VS Code — the way they
 look in UiPath Studio Web, without leaving your editor.
@@ -76,10 +74,18 @@ VS Code. Also compatible with Cursor and other VS Code based compatible editors 
 
 ## Installation
 
-The extension is not yet on the VS Code Marketplace.
+**VS Code** — install from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer),
+or run `ext install marcelocruzrpa.uipath-artifact-designer` from the Command
+Palette.
 
-To try it today, download a `.vsix` from the project's Releases page once
-available, then in VS Code open the Command Palette and run
+**Cursor, VSCodium, Windsurf, and other Open VSX-backed editors** — install
+from [Open VSX](https://open-vsx.org/extension/marcelocruzrpa/uipath-artifact-designer),
+the registry these editors use by default.
+
+**Manual `.vsix`** — download the latest `.vsix` from the
+[Releases page](https://github.com/marcelocruzrpa/uipath-artifact-designer/releases),
+then in your editor open the Command Palette and run
 **Extensions: Install from VSIX…** and pick the file.
 
 To build your own `.vsix` from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -114,8 +120,6 @@ unrecognized resources) in a strip at the top.
 - BPMN files larger than 2 MB are rejected by the validator before writing to
   disk — real-world BPMN files are typically well under 500 KB; the cap
   protects the extension host from pathological inputs.
-- The Marketplace listing does not yet include screenshots or an icon — these
-  are tracked for the first post-1.0 update.
 
 ## Changelog
 
