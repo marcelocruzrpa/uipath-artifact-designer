@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Opt all JS actions into Node 24 ahead of GitHub's 2026-06-02 force-flip.
+# Silences the Node 20 deprecation warning without bumping action pins.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: ${{ matrix.os }}
