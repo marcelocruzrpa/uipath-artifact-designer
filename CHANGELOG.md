@@ -3,6 +3,59 @@
 All notable changes to this extension are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.2] - 2026-05-24
+
+Bug-fix release. Restores rendering of every visual designer under the
+Marketplace and Open VSX install paths, where v1.0.0 / v1.0.1 opened to a
+blank canvas with the toolbar visible.
+
+### Fixed
+
+- **Blank-canvas regression in installed mode.** A defensive
+  `event.source` identity check in the webview's window-message listener
+  rejected legitimate host messages on VS Code and Cursor builds that
+  route the extension host's `postMessage` through a worker /
+  service-worker frame (where `event.source` is neither `window.parent`
+  nor `window`). Every `model` / `fallback` / `error` / `control`
+  message from the host was silently dropped, so `applyModel` never
+  ran and the canvas stayed blank across all five designer types. The
+  source-identity guard is replaced with a shape check on `message.type`
+  — the VS Code webview iframe is already sandboxed, and the host-side
+  `validateWebviewMessage` is the real trust boundary for anything that
+  writes to disk.
+
+### Added
+
+- **Post-install reload prompt.** The extension now watches its own
+  `dist/extension.js` and `dist/webview.js` for in-place updates and
+  shows "UiPath Artifact Designer was updated on disk. Reload the
+  window to apply." with a `Reload Window` action. Closes the gap
+  where VS Code's built-in reload notification does not fire after a
+  same-version VSIX reinstall.
+- **Startup watchdog in the webview.** If the extension host does not
+  respond within 1.2 s of the first `ready` post, the webview re-sends
+  `ready` once (handles activation races). At 5 s with still no
+  response, a visible red error strip appears so a future regression of
+  this silent-blank class is diagnosable from the UI itself, no
+  DevTools required.
+
+### Changed
+
+- **Renderer failures now surface as a red error strip.** A throw
+  inside `applyModel` (renderer mount or update) used to leave the
+  canvas silently blank. It is now caught, the renderer is disposed
+  cleanly, and the user sees `UiPath Designer: renderer failed — <msg>`.
+
+### Internal
+
+- **Eager activation.** Added `onStartupFinished` to `activationEvents`
+  so the bundle watcher installs at startup time rather than waiting
+  for a designer file to be opened.
+- **Packaging hygiene.** `.vscodeignore` now excludes `tmp-profile/`
+  directories, preventing stray test-profile contents created by
+  failed `code --install-extension` attempts from being silently
+  bundled into the VSIX.
+
 ## [1.0.1] - 2026-05-23
 
 Maintenance release. Refreshes the Marketplace and Open VSX listings with the
