@@ -4,6 +4,8 @@ webview/**
 .omc/**
 .omx/**
 .playwright-mcp/**
+tmp-profile/**
+**/tmp-profile/**
 node_modules/**
 esbuild.mjs
 tsconfig.json

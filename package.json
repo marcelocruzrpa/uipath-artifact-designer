@@ -42,6 +42,7 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:uipathArtifactDesigner.openDesigner"
   ],
   "contributes": {

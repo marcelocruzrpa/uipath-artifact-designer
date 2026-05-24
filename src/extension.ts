@@ -1,7 +1,10 @@
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
 import { artifactRegistry, descriptorForUri } from './model/registry';
-import { initLog, logError, logInfo } from './util/log';
+import { initLog, logError, logInfo, logWarn } from './util/log';
 
 /** Resolves the artifact URI to open a designer for, from a command argument. */
 function pickArtifactUri(argUri: vscode.Uri | undefined): vscode.Uri | undefined {
@@ -15,8 +18,91 @@ function pickArtifactUri(argUri: vscode.Uri | undefined): vscode.Uri | undefined
   return undefined;
 }
 
+/**
+ * Watches the extension's own bundles for in-place updates and prompts the
+ * user to reload the window. VS Code's built-in reload notification only
+ * fires when an extension's version changes; a same-version VSIX reinstall
+ * (or any out-of-band file replacement) leaves the stale code running with
+ * no signal to the user. This closes that gap.
+ *
+ * Uses Node's `fs.watch` rather than `vscode.workspace.createFileSystemWatcher`
+ * because the latter is workspace-scoped and won't see changes inside the
+ * extension install directory.
+ */
+function installReloadWatcher(context: vscode.ExtensionContext): void {
+  const distDir = path.join(context.extensionPath, 'dist');
+  const watchedFiles = ['extension.js', 'webview.js'];
+
+  const hashFile = (filePath: string): string | null => {
+    try {
+      return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+    } catch {
+      return null;
+    }
+  };
+
+  const initialHashes = new Map<string, string | null>();
+  for (const name of watchedFiles) {
+    initialHashes.set(name, hashFile(path.join(distDir, name)));
+  }
+
+  let prompted = false;
+  const checkChanged = (): void => {
+    if (prompted) {
+      return;
+    }
+    for (const name of watchedFiles) {
+      const current = hashFile(path.join(distDir, name));
+      if (current !== null && current !== initialHashes.get(name)) {
+        prompted = true;
+        void vscode.window
+          .showInformationMessage(
+            'UiPath Artifact Designer was updated on disk. Reload the window to apply.',
+            'Reload Window'
+          )
+          .then((choice) => {
+            if (choice === 'Reload Window') {
+              void vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+          });
+        return;
+      }
+    }
+  };
+
+  // fs.watchFile polls instead of relying on the OS watcher API — fs.watch
+  // is notoriously flaky on Windows (events occasionally never fire after a
+  // file replacement). For two small files polled every 2 s the overhead is
+  // negligible, and we get rock-solid cross-platform behavior.
+  const onChange = (curr: fs.Stats, prev: fs.Stats): void => {
+    if (curr.mtimeMs !== prev.mtimeMs) {
+      checkChanged();
+    }
+  };
+  const watchedPaths = watchedFiles.map((name) => path.join(distDir, name));
+  try {
+    for (const p of watchedPaths) {
+      fs.watchFile(p, { interval: 2000, persistent: false }, onChange);
+    }
+  } catch (e) {
+    logWarn(
+      `reload watcher could not be installed: ${e instanceof Error ? e.message : String(e)}`
+    );
+    return;
+  }
+
+  context.subscriptions.push({
+    dispose: () => {
+      for (const p of watchedPaths) {
+        fs.unwatchFile(p, onChange);
+      }
+    }
+  });
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
+  installReloadWatcher(context);
   const provider = new ArtifactEditorProvider(context);
 
   const viewTypes: string[] = [];

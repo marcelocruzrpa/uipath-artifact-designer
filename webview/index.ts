@@ -135,24 +135,46 @@ function applyModel(model: ArtifactModel): void {
   show(rendererHost);
   show(toolbar);
 
-  if (!renderer || rendererKind !== model.kind) {
-    if (renderer) {
-      renderer.dispose();
+  try {
+    if (!renderer || rendererKind !== model.kind) {
+      if (renderer) {
+        renderer.dispose();
+      }
+      clearChildren(rendererHost);
+      renderer = rendererRegistry[model.kind]();
+      rendererKind = model.kind;
+      // Read state lazily on every mount. A module-level snapshot taken at boot
+      // would go stale when the user does Reopen-as-Text → back-to-designer,
+      // remounting with state that no longer matches the document on disk.
+      renderer.mount(rendererHost, rendererHostApi, readSavedState());
     }
-    clearChildren(rendererHost);
-    renderer = rendererRegistry[model.kind]();
-    rendererKind = model.kind;
-    // Read state lazily on every mount. A module-level snapshot taken at boot
-    // would go stale when the user does Reopen-as-Text → back-to-designer,
-    // remounting with state that no longer matches the document on disk.
-    renderer.mount(rendererHost, rendererHostApi, readSavedState());
-  }
 
-  titleEl.textContent = `${model.title} — ${model.subtitle}`;
-  renderer.update(model);
-  renderDiagnostics(model);
-  updateZoomLabel();
-  persistState();
+    titleEl.textContent = `${model.title} — ${model.subtitle}`;
+    renderer.update(model);
+    renderDiagnostics(model);
+    updateZoomLabel();
+    persistState();
+  } catch (e) {
+    // A throw inside mount / update used to leave the canvas blank with no
+    // hint to the user. Surface the failure so the symptom is at least
+    // diagnosable from the designer itself, not just DevTools.
+    const message = e instanceof Error ? e.message : String(e);
+    // Dispose first so any listeners the renderer attached before the throw
+    // are released — otherwise a retry leaves orphaned handlers attached to
+    // window or to nodes inside rendererHost. Swallow dispose errors so a
+    // secondary throw does not mask the original one in the strip.
+    if (renderer) {
+      try {
+        renderer.dispose();
+      } catch {
+        /* intentional */
+      }
+    }
+    renderer = null;
+    rendererKind = null;
+    clearChildren(rendererHost);
+    showError(`UiPath Designer: renderer failed — ${message}`);
+  }
 }
 
 function fallbackTitle(kind: FallbackKind): string {
@@ -235,15 +257,42 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// --- Host-message watchdog ------------------------------------------------
+//
+// If the host never delivers `model` / `fallback` / `error`, the canvas
+// stays blank forever and the user has no signal as to why. Re-post `ready`
+// once after a short delay (handles activation races), then surface a
+// visible error if nothing has arrived by the deadline.
+let firstHostMessageReceived = false;
+let readyRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let readyDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearReadyTimers(): void {
+  if (readyRetryTimer) {
+    clearTimeout(readyRetryTimer);
+    readyRetryTimer = null;
+  }
+  if (readyDeadlineTimer) {
+    clearTimeout(readyDeadlineTimer);
+    readyDeadlineTimer = null;
+  }
+}
+
 window.addEventListener('message', (event: MessageEvent) => {
-  // Defense-in-depth: VS Code's webview channel is already sandboxed (the host
-  // is the only sender that can postMessage into this iframe), but rejecting
-  // events from any other source documents the trust boundary and protects
-  // against future host-side changes that broaden the channel.
-  if (event.source && event.source !== window.parent && event.source !== window) {
+  // VS Code sandboxes the webview iframe, so any postMessage that reaches
+  // here can only have been sent by the extension host. Validate by message
+  // shape (the discriminated `type` field) instead of `event.source`:
+  // different VS Code / Cursor builds proxy host messages through different
+  // intermediaries (window.parent, a service-worker frame, etc.), so an
+  // identity check on `event.source` silently drops legitimate messages.
+  const message = event.data as HostToWebview;
+  if (!message || typeof (message as { type?: unknown }).type !== 'string') {
     return;
   }
-  const message = event.data as HostToWebview;
+
+  firstHostMessageReceived = true;
+  clearReadyTimers();
+
   switch (message.type) {
     case 'model':
       applyModel(message.model);
@@ -263,3 +312,23 @@ window.addEventListener('message', (event: MessageEvent) => {
 });
 
 post({ type: 'ready' });
+
+readyRetryTimer = setTimeout(() => {
+  if (firstHostMessageReceived) {
+    return;
+  }
+  // Host activation can race the webview's first `ready` post. Re-send once
+  // so a slow activation still gets the trigger.
+  post({ type: 'ready' });
+}, 1200);
+
+readyDeadlineTimer = setTimeout(() => {
+  if (firstHostMessageReceived) {
+    return;
+  }
+  showError(
+    'UiPath Designer: the extension host did not respond. ' +
+      'Try reopening this file as text and back as the designer; ' +
+      'if the problem persists, check View → Output → "UiPath Designer".'
+  );
+}, 5000);
