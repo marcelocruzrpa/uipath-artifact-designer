@@ -169,7 +169,7 @@ describe('truncation pass — fold beyond MAX_RENDER_STATEMENTS', () => {
     const fold = entry.body[entry.body.length - 1] as CwRawChip;
     expect(fold.type).toBe('raw');
     expect(fold.statementCount).toBe(650 - MAX_RENDER_STATEMENTS);
-    expect(fold.id).toBe(`Execute/${MAX_RENDER_STATEMENTS}`);
+    expect(fold.id).toBe(`L#Execute/${MAX_RENDER_STATEMENTS}`);
 
     // Pre-truncation totals: the 650 Log calls were classified tier-1.
     expect(model.stats.totalStatements).toBe(650);

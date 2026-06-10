@@ -49,6 +49,19 @@ function collectChips(children: CwStatement[]): CwRawChip[] {
   return out;
 }
 
+/** Collect every node id in a statement tree, depth-first (incl. resource cards). */
+function collectIds(children: CwStatement[]): string[] {
+  const out: string[] = [];
+  for (const child of children) {
+    out.push(child.id);
+    if (child.type === 'container') {
+      if (child.resourceCard !== undefined) out.push(child.resourceCard.id);
+      for (const slot of child.slots) out.push(...collectIds(slot.children));
+    }
+  }
+  return out;
+}
+
 const MIXED_FILE = `namespace Acme.Flows
 {
     public class InvoiceFlow : CodedWorkflow
@@ -211,21 +224,110 @@ describe('buildModel — container-aware body', () => {
     expect((foreach.slots[0].children[0] as CwRawChip).code).toBe('count = count + 1;');
   });
 
-  it('assigns hierarchical stable ids <entryName>/<path>', async () => {
+  it('assigns hierarchical stable ids <className>#<methodName>/<path>', async () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
-    expect(execute.body.map((s) => s.id)).toEqual(['Execute/0', 'Execute/1', 'Execute/2']);
+    expect(execute.body.map((s) => s.id)).toEqual([
+      'InvoiceFlow#Execute/0',
+      'InvoiceFlow#Execute/1',
+      'InvoiceFlow#Execute/2'
+    ]);
 
     const ifC = execute.body[1] as CwContainer;
     expect(ifC.slots[0].children.map((s) => s.id)).toEqual([
-      'Execute/1.then.0',
-      'Execute/1.then.1'
+      'InvoiceFlow#Execute/1.then.0',
+      'InvoiceFlow#Execute/1.then.1'
     ]);
     const foreach = ifC.slots[0].children[1] as CwContainer;
-    expect(foreach.slots[0].children.map((s) => s.id)).toEqual(['Execute/1.then.1.body.0']);
+    expect(foreach.slots[0].children.map((s) => s.id)).toEqual([
+      'InvoiceFlow#Execute/1.then.1.body.0'
+    ]);
 
     const helper = model.classes[0].helperMethods[0];
-    expect(helper.body.map((s) => s.id)).toEqual(['LogTwice/0', 'LogTwice/1']);
+    expect(helper.body.map((s) => s.id)).toEqual([
+      'InvoiceFlow#LogTwice/0',
+      'InvoiceFlow#LogTwice/1'
+    ]);
+  });
+
+  it('keeps statement ids unique across classes sharing a method name', async () => {
+    const source = [
+      'namespace Acme',
+      '{',
+      '    public class FirstFlow : CodedWorkflow',
+      '    {',
+      '        [Workflow]',
+      '        public void Execute()',
+      '        {',
+      '            var a = 1;',
+      '            if (a > 0)',
+      '            {',
+      '                Log("first");',
+      '            }',
+      '        }',
+      '    }',
+      '',
+      '    public class SecondFlow : CodedWorkflow',
+      '    {',
+      '        [Workflow]',
+      '        public void Execute()',
+      '        {',
+      '            var b = 2;',
+      '            if (b > 0)',
+      '            {',
+      '                Log("second");',
+      '            }',
+      '        }',
+      '    }',
+      '}',
+      ''
+    ].join('\n');
+    const model = await build(source);
+    expect(model.classes.map((c) => c.className)).toEqual(['FirstFlow', 'SecondFlow']);
+
+    expect(model.classes[0].entryPoints[0].body.map((s) => s.id)).toEqual([
+      'FirstFlow#Execute/0',
+      'FirstFlow#Execute/1'
+    ]);
+    expect(model.classes[1].entryPoints[0].body.map((s) => s.id)).toEqual([
+      'SecondFlow#Execute/0',
+      'SecondFlow#Execute/1'
+    ]);
+
+    const allIds = model.classes.flatMap((cls) =>
+      [...cls.entryPoints, ...cls.helperMethods].flatMap((m) => collectIds(m.body))
+    );
+    expect(allIds.length).toBeGreaterThan(0);
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+
+  it('disambiguates method overloads with an ordinal on the 2nd+ occurrence', async () => {
+    const source = [
+      'public class Invoices : CodedWorkflow',
+      '{',
+      '    [Workflow]',
+      '    public void Run()',
+      '    {',
+      '        Log("no args");',
+      '    }',
+      '',
+      '    public void Run(int count)',
+      '    {',
+      '        Log("with count");',
+      '    }',
+      '}',
+      ''
+    ].join('\n');
+    const model = await build(source);
+    const cls = model.classes[0];
+
+    expect(cls.entryPoints[0].body.map((s) => s.id)).toEqual(['Invoices#Run/0']);
+    expect(cls.helperMethods[0].body.map((s) => s.id)).toEqual(['Invoices#Run@2/0']);
+
+    const allIds = [...cls.entryPoints, ...cls.helperMethods].flatMap((m) =>
+      collectIds(m.body)
+    );
+    expect(new Set(allIds).size).toBe(allIds.length);
   });
 
   it('produces exact 0-based spans that slice back to the chip code', async () => {

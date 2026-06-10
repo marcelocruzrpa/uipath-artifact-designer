@@ -31,11 +31,18 @@
  *   tier-1 leaf) and its handle still tracks.
  *
  * IDS
- *   Hierarchical and stable: `<methodName>/<path>` where the path joins child
- *   indices and slot roles with '.', e.g. `Execute/3.then.0`,
- *   `Execute/3.elseif1.2`, `Execute/2.case0.1`.  Repeatable roles (`elseif`,
- *   `catch`, `case`) carry a 0-based occurrence index; singleton roles
- *   (`then`, `else`, `try`, `finally`, `body`, `default`) do not.
+ *   Hierarchical and stable: `<className>#<methodName>/<path>` where the path
+ *   joins child indices and slot roles with '.', e.g.
+ *   `InvoiceFlow#Execute/3.then.0`, `InvoiceFlow#Execute/3.elseif1.2`,
+ *   `InvoiceFlow#Execute/2.case0.1`.  Class-qualifying the method segment
+ *   keeps statement ids unique when several classes in one file declare the
+ *   same method name.  Method OVERLOADS within a class disambiguate with a
+ *   1-based ordinal on the method segment for the 2nd+ occurrence
+ *   (`Invoices#Run/0`, `Invoices#Run@2/0`); the first occurrence stays
+ *   unsuffixed so ids are stable in the common no-overload case.  Repeatable
+ *   roles (`elseif`, `catch`, `case`) carry a 0-based occurrence index;
+ *   singleton roles (`then`, `else`, `try`, `finally`, `body`, `default`) do
+ *   not.
  *
  * WORKFLOW-CLASS RULE (same as the corpus spike)
  *   A class is a workflow class when its base list names `CodedWorkflow` as
@@ -150,8 +157,14 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
 
     const entryPoints: CwEntryPoint[] = [];
     const helperMethods: CwHelperMethod[] = [];
+    const methodOccurrences = new Map<string, number>();
     for (const method of methods) {
       const name = method.childForFieldName('name')?.text ?? '(unnamed)';
+      // Class-qualified id prefix; overloads get @2, @3, … on the 2nd+
+      // occurrence of a method name (see IDS in the module header).
+      const occurrence = (methodOccurrences.get(name) ?? 0) + 1;
+      methodOccurrences.set(name, occurrence);
+      const methodSegment = occurrence === 1 ? name : `${name}@${occurrence}`;
       const ctx: ClassifyContext = {
         source,
         handles: createHandleMap(),
@@ -165,7 +178,7 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       totals.tier3 += tierCounts.tier3;
       const { body, didTruncate } = truncateStatements(classified, source);
       truncated = truncated || didTruncate;
-      assignIds(body, `${name}/`);
+      assignIds(body, `${className}#${methodSegment}/`);
       const attribute = entryPointAttribute(method);
       if (attribute !== null) {
         entryPoints.push({

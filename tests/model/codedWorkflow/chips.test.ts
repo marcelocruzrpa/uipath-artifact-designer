@@ -71,11 +71,11 @@ describe('mergeAdjacentChips — runs, breaks, invariants', () => {
       'raw' // f alone
     ]);
     expect(body.map((s) => s.id)).toEqual([
-      'Execute/0',
-      'Execute/1',
-      'Execute/2',
-      'Execute/3',
-      'Execute/4'
+      'ChipsFlow#Execute/0',
+      'ChipsFlow#Execute/1',
+      'ChipsFlow#Execute/2',
+      'ChipsFlow#Execute/3',
+      'ChipsFlow#Execute/4'
     ]);
     expect(asChip(body[0]).statementCount).toBe(3);
     expect(asChip(body[2]).statementCount).toBe(2);

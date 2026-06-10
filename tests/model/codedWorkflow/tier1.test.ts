@@ -118,7 +118,7 @@ describe('tier-1 cards — straight-line sequence', () => {
 
   it('classifies a returned service call as a card without a binding', () => {
     const card = asCard(sequence.classes[0].entryPoints[0].body[7]);
-    expect(card.id).toBe('Execute/7');
+    expect(card.id).toBe('SequenceFlow#Execute/7');
     expect(card.method).toBe('GetAsset');
     expect(card.resultBinding).toBeUndefined();
   });
@@ -130,7 +130,7 @@ describe('tier-1 cards — excel handles', () => {
     expect(usingC.kind).toBe('using');
     const resource = usingC.resourceCard;
     expect(resource).toBeDefined();
-    expect(resource!.id).toBe('Execute/0.resource');
+    expect(resource!.id).toBe('ExcelFlow#Execute/0.resource');
     expect(resource!.service).toBe('excel');
     expect(resource!.catalogId).toBe('excel.UseExcelFile');
     expect(resource!.title).toBe('Use Excel File');

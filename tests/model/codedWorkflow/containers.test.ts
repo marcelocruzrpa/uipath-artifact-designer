@@ -91,18 +91,18 @@ describe('containers — top-level structure', () => {
     ]);
   });
 
-  it('assigns hierarchical top-level ids <entryName>/<index>', () => {
+  it('assigns hierarchical top-level ids <className>#<methodName>/<index>', () => {
     expect(executeBody().map((s) => s.id)).toEqual([
-      'Execute/0',
-      'Execute/1',
-      'Execute/2',
-      'Execute/3',
-      'Execute/4',
-      'Execute/5',
-      'Execute/6',
-      'Execute/7',
-      'Execute/8',
-      'Execute/9'
+      'ContainerFlow#Execute/0',
+      'ContainerFlow#Execute/1',
+      'ContainerFlow#Execute/2',
+      'ContainerFlow#Execute/3',
+      'ContainerFlow#Execute/4',
+      'ContainerFlow#Execute/5',
+      'ContainerFlow#Execute/6',
+      'ContainerFlow#Execute/7',
+      'ContainerFlow#Execute/8',
+      'ContainerFlow#Execute/9'
     ]);
   });
 });
@@ -123,17 +123,17 @@ describe('containers — if / else-if / else flattening', () => {
 
   it('numbers repeated slot roles in child ids (elseif0, elseif1)', () => {
     const ifC = asContainer(executeBody()[1]);
-    expect(ifC.slots[1].children.map((s) => s.id)).toEqual(['Execute/1.elseif0.0']);
-    expect(ifC.slots[2].children.map((s) => s.id)).toEqual(['Execute/1.elseif1.0']);
-    expect(ifC.slots[3].children.map((s) => s.id)).toEqual(['Execute/1.else.0']);
+    expect(ifC.slots[1].children.map((s) => s.id)).toEqual(['ContainerFlow#Execute/1.elseif0.0']);
+    expect(ifC.slots[2].children.map((s) => s.id)).toEqual(['ContainerFlow#Execute/1.elseif1.0']);
+    expect(ifC.slots[3].children.map((s) => s.id)).toEqual(['ContainerFlow#Execute/1.else.0']);
   });
 
   it('classifies >=4-level nesting with stable ids and exact spans', () => {
     const ifC = asContainer(executeBody()[1]);
     const then = ifC.slots[0];
     expect(then.children.map((s) => s.id)).toEqual([
-      'Execute/1.then.0',
-      'Execute/1.then.1'
+      'ContainerFlow#Execute/1.then.0',
+      'ContainerFlow#Execute/1.then.1'
     ]);
 
     const foreach = asContainer(then.children[1]);
@@ -143,20 +143,20 @@ describe('containers — if / else-if / else flattening', () => {
     const whileC = asContainer(foreach.slots[0].children[0]);
     expect(whileC.kind).toBe('while');
     expect(whileC.header).toBe('While mode > 0');
-    expect(whileC.id).toBe('Execute/1.then.1.body.0');
+    expect(whileC.id).toBe('ContainerFlow#Execute/1.then.1.body.0');
 
     const innerIf = asContainer(whileC.slots[0].children[0]);
     expect(innerIf.kind).toBe('if');
     expect(innerIf.header).toBe("If c == 'x'");
-    expect(innerIf.id).toBe('Execute/1.then.1.body.0.body.0');
+    expect(innerIf.id).toBe('ContainerFlow#Execute/1.then.1.body.0.body.0');
 
     const deepChip = asChip(innerIf.slots[0].children[0]);
-    expect(deepChip.id).toBe('Execute/1.then.1.body.0.body.0.then.0');
+    expect(deepChip.id).toBe('ContainerFlow#Execute/1.then.1.body.0.body.0.then.0');
     expect(deepChip.code).toBe('deep = deep + 1;');
     expect(sliceBySpan(SOURCE, deepChip.span)).toBe(deepChip.code);
 
     const afterIf = asChip(whileC.slots[0].children[1]);
-    expect(afterIf.id).toBe('Execute/1.then.1.body.0.body.1');
+    expect(afterIf.id).toBe('ContainerFlow#Execute/1.then.1.body.0.body.1');
     expect(afterIf.code).toBe('mode = mode - 1;');
   });
 });
@@ -187,8 +187,8 @@ describe('containers — try / catch / finally', () => {
       'Catch',
       'Finally'
     ]);
-    expect(tryC.slots[1].children.map((s) => s.id)).toEqual(['Execute/4.catch0.0']);
-    expect(tryC.slots[2].children.map((s) => s.id)).toEqual(['Execute/4.catch1.0']);
+    expect(tryC.slots[1].children.map((s) => s.id)).toEqual(['ContainerFlow#Execute/4.catch0.0']);
+    expect(tryC.slots[2].children.map((s) => s.id)).toEqual(['ContainerFlow#Execute/4.catch1.0']);
   });
 });
 
@@ -208,8 +208,8 @@ describe('containers — switch', () => {
     // first one is honestly empty.
     expect(switchC.slots[1].children).toEqual([]);
     expect(asChip(switchC.slots[2].children[0]).code).toBe('throw new Exception("boom");');
-    expect(switchC.slots[2].children[0].id).toBe('Execute/5.case2.0');
-    expect(switchC.slots[3].children[0].id).toBe('Execute/5.default.0');
+    expect(switchC.slots[2].children[0].id).toBe('ContainerFlow#Execute/5.case2.0');
+    expect(switchC.slots[3].children[0].id).toBe('ContainerFlow#Execute/5.default.0');
   });
 });
 
