@@ -1,0 +1,240 @@
+{
+  "kind": "coded-workflow",
+  "title": "generic-known-service.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "generic-known-service.cs",
+  "fileUri": "file:///fixtures/skeleton/generic-known-service.cs",
+  "classes": [
+    {
+      "className": "GenericFlow",
+      "namespace": "Acme.Generic",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 8,
+        "startCol": 4,
+        "endLine": 23,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 10,
+            "startCol": 8,
+            "endLine": 22,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "Execute/0",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 16,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "using",
+              "header": "Use var pow = powerpoint.UsePowerPointPresentation(\"deck.pptx\")",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "Execute/0.body.0",
+                      "span": {
+                        "startLine": 15,
+                        "startCol": 16,
+                        "endLine": 15,
+                        "endCol": 35
+                      },
+                      "type": "activity",
+                      "tier": 1,
+                      "service": "powerpoint",
+                      "serviceDisplayName": "PowerPoint",
+                      "method": "AddNewSlide",
+                      "title": "Add New Slide",
+                      "args": [
+                        {
+                          "label": "arg1",
+                          "value": "1",
+                          "kind": "literal"
+                        }
+                      ],
+                      "icon": "file-media"
+                    }
+                  ],
+                  "span": {
+                    "startLine": 14,
+                    "startCol": 12,
+                    "endLine": 16,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false,
+              "resourceCard": {
+                "id": "Execute/0.resource",
+                "span": {
+                  "startLine": 13,
+                  "startCol": 23,
+                  "endLine": 13,
+                  "endCol": 78
+                },
+                "type": "activity",
+                "tier": 1,
+                "service": "powerpoint",
+                "serviceDisplayName": "PowerPoint",
+                "method": "UsePowerPointPresentation",
+                "title": "Use Power Point Presentation",
+                "args": [
+                  {
+                    "label": "arg1",
+                    "value": "deck.pptx",
+                    "kind": "literal"
+                  }
+                ],
+                "resultBinding": "pow",
+                "icon": "file-media"
+              }
+            },
+            {
+              "id": "Execute/1",
+              "span": {
+                "startLine": 17,
+                "startCol": 12,
+                "endLine": 17,
+                "endCol": 88
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "java",
+              "serviceDisplayName": "Java",
+              "method": "UseJavaScope",
+              "catalogId": "java.UseJavaScope",
+              "title": "Use Java Scope",
+              "args": [
+                {
+                  "label": "Options",
+                  "value": "JavaPath: C:\\jdk",
+                  "kind": "expression"
+                }
+              ],
+              "resultBinding": "js",
+              "icon": "coffee"
+            },
+            {
+              "id": "Execute/2",
+              "span": {
+                "startLine": 18,
+                "startCol": 12,
+                "endLine": 18,
+                "endCol": 89
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "python",
+              "serviceDisplayName": "Python",
+              "method": "UsePythonScope",
+              "catalogId": "python.UsePythonScope",
+              "title": "Use Python Scope",
+              "args": [
+                {
+                  "label": "Options",
+                  "value": "Path: C:\\py",
+                  "kind": "expression"
+                }
+              ],
+              "resultBinding": "py",
+              "icon": "code"
+            },
+            {
+              "id": "Execute/3",
+              "span": {
+                "startLine": 19,
+                "startCol": 12,
+                "endLine": 19,
+                "endCol": 62
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "testing",
+              "serviceDisplayName": "Testing",
+              "method": "GetTestDataRow",
+              "title": "Get Test Data Row",
+              "args": [
+                {
+                  "label": "arg1",
+                  "value": "Addresses",
+                  "kind": "literal"
+                }
+              ],
+              "resultBinding": "address",
+              "icon": "beaker"
+            },
+            {
+              "id": "Execute/4",
+              "span": {
+                "startLine": 20,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 48
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "testing",
+              "serviceDisplayName": "Testing",
+              "method": "[indexer]",
+              "title": "Get Item",
+              "args": [
+                {
+                  "label": "Key",
+                  "value": "Country",
+                  "kind": "literal"
+                }
+              ],
+              "resultBinding": "country",
+              "icon": "beaker"
+            },
+            {
+              "id": "Execute/5",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 21,
+                "endCol": 50
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "var compact = string.Join(\",\", parts);",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 6,
+            "tier2": 0,
+            "tier3": 1
+          }
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 26,
+  "stats": {
+    "totalStatements": 7,
+    "tier1": 6,
+    "tier2": 0,
+    "tier3": 1
+  }
+}

@@ -8,6 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { isCodedWorkflowSource } from '../../../src/model/codedWorkflow/detectSource';
+import { loadFixture } from './helpers';
 
 describe('isCodedWorkflowSource — accepts', () => {
   it('accepts a class with CodedWorkflow in its base list', () => {
@@ -88,5 +89,18 @@ describe('isCodedWorkflowSource — rejects', () => {
   it('ignores markers beyond the 2 MB scan window', () => {
     const text = ' '.repeat(2_000_001) + 'class X : CodedWorkflow { }';
     expect(isCodedWorkflowSource(text)).toBe(false);
+  });
+});
+
+describe('isCodedWorkflowSource — detection fixtures', () => {
+  it('accepts the workflow fixtures', () => {
+    expect(isCodedWorkflowSource(loadFixture('detection/workflow-basic.cs'))).toBe(true);
+    expect(isCodedWorkflowSource(loadFixture('detection/workflow-attribute-only.cs'))).toBe(true);
+  });
+
+  it('rejects the helper / comment-only / empty fixtures', () => {
+    expect(isCodedWorkflowSource(loadFixture('detection/helper-class.cs'))).toBe(false);
+    expect(isCodedWorkflowSource(loadFixture('detection/comment-mention-only.cs'))).toBe(false);
+    expect(isCodedWorkflowSource(loadFixture('detection/empty.cs'))).toBe(false);
   });
 });

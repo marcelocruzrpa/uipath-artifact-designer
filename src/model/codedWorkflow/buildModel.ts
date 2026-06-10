@@ -76,7 +76,6 @@ import type {
   CwWorkflowClass,
   SourceSpan
 } from './cwTypes';
-import { HEADER_MAX_CHARS } from './limits';
 import {
   matchTier1,
   matchTier1Expression,
@@ -89,7 +88,15 @@ import {
 } from './classify/handleTracking';
 import { extractArgs, extractIndexerKey } from './classify/argExtract';
 import { applyTier2, TIER2_RULES, type Tier2Rule } from './classify/tier2Rules';
-import { mergeAdjacentChips } from './chips';
+import { mergeAdjacentChips, chipFromSpan } from './chips';
+import {
+  COLLAPSE_ALL_STATEMENTS,
+  COLLAPSE_CONTAINER_LINES,
+  COLLAPSE_STATEMENT_THRESHOLD,
+  COLLAPSE_TOTAL_LINES,
+  HEADER_MAX_CHARS,
+  MAX_RENDER_STATEMENTS
+} from './limits';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -128,6 +135,7 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
   const classes: CwWorkflowClass[] = [];
   const otherClassNames: string[] = [];
   const totals: CwTierCounts = { tier1: 0, tier2: 0, tier3: 0 };
+  let truncated = false;
 
   for (const found of collectClasses(tree.rootNode, undefined)) {
     const { classDecl, namespace } = found;
@@ -149,11 +157,14 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
         handles: createHandleMap(),
         tier2Rules: input.tier2Rules ?? TIER2_RULES
       };
-      const body = classifyMethodBody(method, ctx);
-      const tierCounts = countTiers(body);
+      const classified = classifyMethodBody(method, ctx);
+      // tierCounts/stats keep PRE-truncation totals (see limits.ts).
+      const tierCounts = countTiers(classified);
       totals.tier1 += tierCounts.tier1;
       totals.tier2 += tierCounts.tier2;
       totals.tier3 += tierCounts.tier3;
+      const { body, didTruncate } = truncateStatements(classified, source);
+      truncated = truncated || didTruncate;
       assignIds(body, `${name}/`);
       const attribute = entryPointAttribute(method);
       if (attribute !== null) {
@@ -192,6 +203,10 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
         ]
       : [];
 
+  const totalStatements = totals.tier1 + totals.tier2 + totals.tier3;
+  const totalLines = countLines(source);
+  applyCollapsePass(classes, totalStatements, totalLines);
+
   return {
     kind: 'coded-workflow',
     title: input.fileName,
@@ -203,10 +218,10 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     otherClassNames,
     parseHealth,
     parseErrorCount,
-    truncated: false,
-    totalLines: countLines(source),
+    truncated,
+    totalLines,
     stats: {
-      totalStatements: totals.tier1 + totals.tier2 + totals.tier3,
+      totalStatements,
       tier1: totals.tier1,
       tier2: totals.tier2,
       tier3: totals.tier3,
@@ -836,6 +851,92 @@ function addTiers(children: CwStatement[], counts: CwTierCounts): void {
         if (child.resourceCard !== undefined) counts.tier1 += 1;
         for (const slot of child.slots) addTiers(slot.children, counts);
         break;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scale guardrails — truncation fold + collapsedByDefault pass
+// ---------------------------------------------------------------------------
+
+/** Leaf-statement count of one statement node (containers count their leaves). */
+function leafCount(stmt: CwStatement): number {
+  const counts = countTiers([stmt]);
+  return counts.tier1 + counts.tier2 + counts.tier3;
+}
+
+/**
+ * Fold everything beyond MAX_RENDER_STATEMENTS leaves into one terminal raw
+ * chip spanning the remainder (see TRUNCATION RULE in limits.ts).  The child
+ * that crosses the budget is kept whole; only whole top-level children fold.
+ */
+function truncateStatements(
+  children: CwStatement[],
+  source: string
+): { body: CwStatement[]; didTruncate: boolean } {
+  let running = 0;
+  let cut = children.length;
+  for (let i = 0; i < children.length; i += 1) {
+    running += leafCount(children[i]);
+    if (running >= MAX_RENDER_STATEMENTS) {
+      cut = i + 1;
+      break;
+    }
+  }
+  if (cut >= children.length) return { body: children, didTruncate: false };
+
+  const kept = children.slice(0, cut);
+  const folded = children.slice(cut);
+  const foldedCount = folded.reduce((sum, child) => sum + leafCount(child), 0);
+  kept.push(
+    chipFromSpan(
+      {
+        startLine: folded[0].span.startLine,
+        startCol: folded[0].span.startCol,
+        endLine: folded[folded.length - 1].span.endLine,
+        endCol: folded[folded.length - 1].span.endCol
+      },
+      source,
+      foldedCount
+    )
+  );
+  return { body: kept, didTruncate: true };
+}
+
+/** Set `collapsedByDefault` per the COLLAPSE RULES in limits.ts. */
+function applyCollapsePass(
+  classes: CwWorkflowClass[],
+  totalStatements: number,
+  totalLines: number
+): void {
+  let minCollapseDepth = Number.POSITIVE_INFINITY;
+  if (totalStatements > COLLAPSE_ALL_STATEMENTS) {
+    minCollapseDepth = 1;
+  } else if (
+    totalStatements > COLLAPSE_STATEMENT_THRESHOLD ||
+    totalLines > COLLAPSE_TOTAL_LINES
+  ) {
+    minCollapseDepth = 2;
+  }
+  for (const cls of classes) {
+    for (const method of [...cls.entryPoints, ...cls.helperMethods]) {
+      collapseContainers(method.body, 1, minCollapseDepth);
+    }
+  }
+}
+
+function collapseContainers(
+  children: CwStatement[],
+  depth: number,
+  minCollapseDepth: number
+): void {
+  for (const child of children) {
+    if (child.type !== 'container') continue;
+    const spanLines = child.span.endLine - child.span.startLine + 1;
+    child.collapsedByDefault =
+      depth >= minCollapseDepth || spanLines > COLLAPSE_CONTAINER_LINES;
+    for (const slot of child.slots) {
+      collapseContainers(slot.children, depth + 1, minCollapseDepth);
     }
   }
 }

@@ -1,0 +1,820 @@
+{
+  "kind": "coded-workflow",
+  "title": "containers-nesting.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "containers-nesting.cs",
+  "fileUri": "file:///fixtures/skeleton/containers-nesting.cs",
+  "classes": [
+    {
+      "className": "ContainerFlow",
+      "namespace": "Acme.Containers",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 10,
+        "startCol": 4,
+        "endLine": 101,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 12,
+            "startCol": 8,
+            "endLine": 90,
+            "endCol": 9
+          },
+          "signatureSummary": "int mode, string name",
+          "body": [
+            {
+              "id": "Execute/0",
+              "span": {
+                "startLine": 15,
+                "startCol": 12,
+                "endLine": 15,
+                "endCol": 25
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "var seed = 0;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            },
+            {
+              "id": "Execute/1",
+              "span": {
+                "startLine": 16,
+                "startCol": 12,
+                "endLine": 42,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If name.Length > 0",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "Execute/1.then.0",
+                      "span": {
+                        "startLine": 18,
+                        "startCol": 16,
+                        "endLine": 18,
+                        "endCol": 32
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = seed + 1;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    },
+                    {
+                      "id": "Execute/1.then.1",
+                      "span": {
+                        "startLine": 19,
+                        "startCol": 16,
+                        "endLine": 29,
+                        "endCol": 17
+                      },
+                      "type": "container",
+                      "kind": "foreach",
+                      "header": "For Each c in name",
+                      "slots": [
+                        {
+                          "role": "body",
+                          "label": "Body",
+                          "children": [
+                            {
+                              "id": "Execute/1.then.1.body.0",
+                              "span": {
+                                "startLine": 21,
+                                "startCol": 20,
+                                "endLine": 28,
+                                "endCol": 21
+                              },
+                              "type": "container",
+                              "kind": "while",
+                              "header": "While mode > 0",
+                              "slots": [
+                                {
+                                  "role": "body",
+                                  "label": "Body",
+                                  "children": [
+                                    {
+                                      "id": "Execute/1.then.1.body.0.body.0",
+                                      "span": {
+                                        "startLine": 23,
+                                        "startCol": 24,
+                                        "endLine": 26,
+                                        "endCol": 25
+                                      },
+                                      "type": "container",
+                                      "kind": "if",
+                                      "header": "If c == 'x'",
+                                      "slots": [
+                                        {
+                                          "role": "then",
+                                          "label": "Then",
+                                          "children": [
+                                            {
+                                              "id": "Execute/1.then.1.body.0.body.0.then.0",
+                                              "span": {
+                                                "startLine": 25,
+                                                "startCol": 28,
+                                                "endLine": 25,
+                                                "endCol": 44
+                                              },
+                                              "type": "raw",
+                                              "tier": 3,
+                                              "code": "deep = deep + 1;",
+                                              "lineCount": 1,
+                                              "statementCount": 1,
+                                              "codeTruncated": false
+                                            }
+                                          ],
+                                          "span": {
+                                            "startLine": 24,
+                                            "startCol": 24,
+                                            "endLine": 26,
+                                            "endCol": 25
+                                          }
+                                        }
+                                      ],
+                                      "collapsedByDefault": false
+                                    },
+                                    {
+                                      "id": "Execute/1.then.1.body.0.body.1",
+                                      "span": {
+                                        "startLine": 27,
+                                        "startCol": 24,
+                                        "endLine": 27,
+                                        "endCol": 40
+                                      },
+                                      "type": "raw",
+                                      "tier": 3,
+                                      "code": "mode = mode - 1;",
+                                      "lineCount": 1,
+                                      "statementCount": 1,
+                                      "codeTruncated": false
+                                    }
+                                  ],
+                                  "span": {
+                                    "startLine": 22,
+                                    "startCol": 20,
+                                    "endLine": 28,
+                                    "endCol": 21
+                                  }
+                                }
+                              ],
+                              "collapsedByDefault": false
+                            }
+                          ],
+                          "span": {
+                            "startLine": 20,
+                            "startCol": 16,
+                            "endLine": 29,
+                            "endCol": 17
+                          }
+                        }
+                      ],
+                      "collapsedByDefault": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 17,
+                    "startCol": 12,
+                    "endLine": 30,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "elseif",
+                  "label": "Else If mode == 1",
+                  "children": [
+                    {
+                      "id": "Execute/1.elseif0.0",
+                      "span": {
+                        "startLine": 33,
+                        "startCol": 16,
+                        "endLine": 33,
+                        "endCol": 26
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = 10;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 32,
+                    "startCol": 12,
+                    "endLine": 34,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "elseif",
+                  "label": "Else If mode == 2",
+                  "children": [
+                    {
+                      "id": "Execute/1.elseif1.0",
+                      "span": {
+                        "startLine": 37,
+                        "startCol": 16,
+                        "endLine": 37,
+                        "endCol": 26
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = 20;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 36,
+                    "startCol": 12,
+                    "endLine": 38,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "else",
+                  "label": "Else",
+                  "children": [
+                    {
+                      "id": "Execute/1.else.0",
+                      "span": {
+                        "startLine": 41,
+                        "startCol": 16,
+                        "endLine": 41,
+                        "endCol": 26
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = 30;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 40,
+                    "startCol": 12,
+                    "endLine": 42,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/2",
+              "span": {
+                "startLine": 43,
+                "startCol": 12,
+                "endLine": 46,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "for",
+              "header": "For var i = 0; i < mode; i++",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "Execute/2.body.0",
+                      "span": {
+                        "startLine": 45,
+                        "startCol": 16,
+                        "endLine": 45,
+                        "endCol": 32
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = seed + i;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 44,
+                    "startCol": 12,
+                    "endLine": 46,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/3",
+              "span": {
+                "startLine": 47,
+                "startCol": 12,
+                "endLine": 50,
+                "endCol": 31
+              },
+              "type": "container",
+              "kind": "do",
+              "header": "Do … While mode < 0",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "Execute/3.body.0",
+                      "span": {
+                        "startLine": 49,
+                        "startCol": 16,
+                        "endLine": 49,
+                        "endCol": 32
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "mode = mode + 1;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 48,
+                    "startCol": 12,
+                    "endLine": 50,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/4",
+              "span": {
+                "startLine": 51,
+                "startCol": 12,
+                "endLine": 66,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "try",
+              "header": "Try / Catch",
+              "slots": [
+                {
+                  "role": "try",
+                  "label": "Try",
+                  "children": [
+                    {
+                      "id": "Execute/4.try.0",
+                      "span": {
+                        "startLine": 53,
+                        "startCol": 16,
+                        "endLine": 53,
+                        "endCol": 26
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Process();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 52,
+                    "startCol": 12,
+                    "endLine": 54,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "catch",
+                  "label": "Catch IOException ex",
+                  "children": [
+                    {
+                      "id": "Execute/4.catch0.0",
+                      "span": {
+                        "startLine": 57,
+                        "startCol": 16,
+                        "endLine": 57,
+                        "endCol": 40
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "failures = failures + 1;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 56,
+                    "startCol": 12,
+                    "endLine": 58,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "catch",
+                  "label": "Catch",
+                  "children": [
+                    {
+                      "id": "Execute/4.catch1.0",
+                      "span": {
+                        "startLine": 61,
+                        "startCol": 16,
+                        "endLine": 61,
+                        "endCol": 40
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "failures = failures + 2;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 60,
+                    "startCol": 12,
+                    "endLine": 62,
+                    "endCol": 13
+                  }
+                },
+                {
+                  "role": "finally",
+                  "label": "Finally",
+                  "children": [
+                    {
+                      "id": "Execute/4.finally.0",
+                      "span": {
+                        "startLine": 65,
+                        "startCol": 16,
+                        "endLine": 65,
+                        "endCol": 29
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "failures = 0;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 64,
+                    "startCol": 12,
+                    "endLine": 66,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/5",
+              "span": {
+                "startLine": 67,
+                "startCol": 12,
+                "endLine": 76,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "switch",
+              "header": "Switch mode",
+              "slots": [
+                {
+                  "role": "case",
+                  "label": "Case 1",
+                  "children": [
+                    {
+                      "id": "Execute/5.case0.0",
+                      "span": {
+                        "startLine": 70,
+                        "startCol": 20,
+                        "endLine": 70,
+                        "endCol": 27
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "return;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 69,
+                    "startCol": 16,
+                    "endLine": 70,
+                    "endCol": 27
+                  }
+                },
+                {
+                  "role": "case",
+                  "label": "Case 2",
+                  "children": [],
+                  "span": {
+                    "startLine": 71,
+                    "startCol": 16,
+                    "endLine": 71,
+                    "endCol": 23
+                  }
+                },
+                {
+                  "role": "case",
+                  "label": "Case 3",
+                  "children": [
+                    {
+                      "id": "Execute/5.case2.0",
+                      "span": {
+                        "startLine": 73,
+                        "startCol": 20,
+                        "endLine": 73,
+                        "endCol": 48
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "throw new Exception(\"boom\");",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 72,
+                    "startCol": 16,
+                    "endLine": 73,
+                    "endCol": 48
+                  }
+                },
+                {
+                  "role": "default",
+                  "label": "Default",
+                  "children": [
+                    {
+                      "id": "Execute/5.default.0",
+                      "span": {
+                        "startLine": 75,
+                        "startCol": 20,
+                        "endLine": 75,
+                        "endCol": 27
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "return;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 74,
+                    "startCol": 16,
+                    "endLine": 75,
+                    "endCol": 27
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/6",
+              "span": {
+                "startLine": 77,
+                "startCol": 12,
+                "endLine": 80,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "using",
+              "header": "Use var file = OpenFile(name)",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "Execute/6.body.0",
+                      "span": {
+                        "startLine": 79,
+                        "startCol": 16,
+                        "endLine": 79,
+                        "endCol": 38
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "touched = touched + 1;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 78,
+                    "startCol": 12,
+                    "endLine": 80,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/7",
+              "span": {
+                "startLine": 81,
+                "startCol": 12,
+                "endLine": 81,
+                "endCol": 36
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If mode > 9",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "Execute/7.then.0",
+                      "span": {
+                        "startLine": 81,
+                        "startCol": 26,
+                        "endLine": 81,
+                        "endCol": 36
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = 99;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 81,
+                    "startCol": 26,
+                    "endLine": 81,
+                    "endCol": 36
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/8",
+              "span": {
+                "startLine": 82,
+                "startCol": 12,
+                "endLine": 85,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If name.Contains(\"alpha\") && name.Contains(\"bravo\") && name.Contains(\"charlie\") …",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "Execute/8.then.0",
+                      "span": {
+                        "startLine": 84,
+                        "startCol": 16,
+                        "endLine": 84,
+                        "endCol": 25
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "seed = 2;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 83,
+                    "startCol": 12,
+                    "endLine": 85,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/9",
+              "span": {
+                "startLine": 86,
+                "startCol": 12,
+                "endLine": 89,
+                "endCol": 13
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "int Local(int v)\n            {\n                return v + 1;\n            }",
+              "lineCount": 4,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 20
+          }
+        }
+      ],
+      "helperMethods": [
+        {
+          "name": "Process",
+          "span": {
+            "startLine": 92,
+            "startCol": 8,
+            "endLine": 95,
+            "endCol": 9
+          },
+          "body": [
+            {
+              "id": "Process/0",
+              "span": {
+                "startLine": 94,
+                "startCol": 12,
+                "endLine": 94,
+                "endCol": 30
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "count = count + 1;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 1
+          }
+        },
+        {
+          "name": "OpenFile",
+          "span": {
+            "startLine": 97,
+            "startCol": 8,
+            "endLine": 100,
+            "endCol": 9
+          },
+          "body": [
+            {
+              "id": "OpenFile/0",
+              "span": {
+                "startLine": 99,
+                "startCol": 12,
+                "endLine": 99,
+                "endCol": 24
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "return null;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 1
+          }
+        }
+      ]
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 104,
+  "stats": {
+    "totalStatements": 22,
+    "tier1": 0,
+    "tier2": 0,
+    "tier3": 22
+  }
+}

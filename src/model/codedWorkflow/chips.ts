@@ -46,14 +46,27 @@ export function mergeAdjacentChips(children: CwStatement[], source: string): CwS
 
 /** Merge a run of >=2 chips into one re-sliced chip. */
 function mergeRun(run: CwRawChip[], source: string): CwRawChip {
-  const first = run[0];
-  const last = run[run.length - 1];
-  const span: SourceSpan = {
-    startLine: first.span.startLine,
-    startCol: first.span.startCol,
-    endLine: last.span.endLine,
-    endCol: last.span.endCol
-  };
+  return chipFromSpan(
+    {
+      startLine: run[0].span.startLine,
+      startCol: run[0].span.startCol,
+      endLine: run[run.length - 1].span.endLine,
+      endCol: run[run.length - 1].span.endCol
+    },
+    source,
+    run.reduce((sum, chip) => sum + chip.statementCount, 0)
+  );
+}
+
+/**
+ * Build a capped raw chip covering `span` with the given statement count —
+ * used for merged runs and for the truncation pass's terminal fold chip.
+ */
+export function chipFromSpan(
+  span: SourceSpan,
+  source: string,
+  statementCount: number
+): CwRawChip {
   return capChip({
     id: '',
     span,
@@ -61,7 +74,7 @@ function mergeRun(run: CwRawChip[], source: string): CwRawChip {
     tier: 3,
     code: sliceSpan(source, span),
     lineCount: span.endLine - span.startLine + 1,
-    statementCount: run.reduce((sum, chip) => sum + chip.statementCount, 0),
+    statementCount,
     codeTruncated: false
   });
 }

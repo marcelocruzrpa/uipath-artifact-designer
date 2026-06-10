@@ -1,0 +1,222 @@
+{
+  "kind": "coded-workflow",
+  "title": "excel-handles.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "excel-handles.cs",
+  "fileUri": "file:///fixtures/skeleton/excel-handles.cs",
+  "classes": [
+    {
+      "className": "ExcelFlow",
+      "namespace": "Acme.Excel",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 8,
+        "startCol": 4,
+        "endLine": 22,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 10,
+            "startCol": 8,
+            "endLine": 21,
+            "endCol": 9
+          },
+          "signatureSummary": "string sheet",
+          "body": [
+            {
+              "id": "Execute/0",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 18,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "using",
+              "header": "Use var wb = excel.UseExcelFile(\"invoices.xlsx\", new ExcelFileOptions() { SaveCh…",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "Execute/0.body.0",
+                      "span": {
+                        "startLine": 15,
+                        "startCol": 16,
+                        "endLine": 15,
+                        "endCol": 57
+                      },
+                      "type": "activity",
+                      "tier": 1,
+                      "service": "excel",
+                      "serviceDisplayName": "Excel",
+                      "method": "ReadRange",
+                      "title": "Read Range",
+                      "args": [],
+                      "resultBinding": "range",
+                      "icon": "table"
+                    },
+                    {
+                      "id": "Execute/0.body.1",
+                      "span": {
+                        "startLine": 16,
+                        "startCol": 16,
+                        "endLine": 16,
+                        "endCol": 73
+                      },
+                      "type": "activity",
+                      "tier": 1,
+                      "service": "excel",
+                      "serviceDisplayName": "Excel",
+                      "method": "ReadCell",
+                      "title": "Read Cell",
+                      "args": [
+                        {
+                          "label": "arg1",
+                          "value": "sheet",
+                          "kind": "identifier"
+                        },
+                        {
+                          "label": "arg2",
+                          "value": "B7",
+                          "kind": "literal"
+                        }
+                      ],
+                      "resultBinding": "cellValue",
+                      "icon": "table"
+                    },
+                    {
+                      "id": "Execute/0.body.2",
+                      "span": {
+                        "startLine": 17,
+                        "startCol": 16,
+                        "endLine": 17,
+                        "endCol": 26
+                      },
+                      "type": "activity",
+                      "tier": 1,
+                      "service": "excel",
+                      "serviceDisplayName": "Excel",
+                      "method": "Save",
+                      "title": "Save",
+                      "args": [],
+                      "icon": "table"
+                    }
+                  ],
+                  "span": {
+                    "startLine": 14,
+                    "startCol": 12,
+                    "endLine": 18,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false,
+              "resourceCard": {
+                "id": "Execute/0.resource",
+                "span": {
+                  "startLine": 13,
+                  "startCol": 23,
+                  "endLine": 13,
+                  "endCol": 128
+                },
+                "type": "activity",
+                "tier": 1,
+                "service": "excel",
+                "serviceDisplayName": "Excel",
+                "method": "UseExcelFile",
+                "catalogId": "excel.UseExcelFile",
+                "title": "Use Excel File",
+                "args": [
+                  {
+                    "label": "File",
+                    "value": "invoices.xlsx",
+                    "kind": "literal"
+                  },
+                  {
+                    "label": "Options",
+                    "value": "SaveChanges: true, ReadOnly: false",
+                    "kind": "expression"
+                  }
+                ],
+                "resultBinding": "wb",
+                "icon": "table"
+              }
+            },
+            {
+              "id": "Execute/1",
+              "span": {
+                "startLine": 19,
+                "startCol": 12,
+                "endLine": 19,
+                "endCol": 59
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "excel",
+              "serviceDisplayName": "Excel",
+              "method": "UseExcelFile",
+              "catalogId": "excel.UseExcelFile",
+              "title": "Use Excel File",
+              "args": [
+                {
+                  "label": "File",
+                  "value": "report.xlsx",
+                  "kind": "literal"
+                }
+              ],
+              "resultBinding": "report",
+              "icon": "table"
+            },
+            {
+              "id": "Execute/2",
+              "span": {
+                "startLine": 20,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 38
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "excel",
+              "serviceDisplayName": "Excel",
+              "method": "AppendRange",
+              "title": "Append Range",
+              "args": [
+                {
+                  "label": "arg1",
+                  "value": "range",
+                  "kind": "identifier"
+                }
+              ],
+              "icon": "table"
+            }
+          ],
+          "tierCounts": {
+            "tier1": 6,
+            "tier2": 0,
+            "tier3": 0
+          }
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 25,
+  "stats": {
+    "totalStatements": 6,
+    "tier1": 6,
+    "tier2": 0,
+    "tier3": 0
+  }
+}

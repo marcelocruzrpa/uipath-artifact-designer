@@ -5,7 +5,12 @@
  * checks cover the structural contract on a small realistic file.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { configureCSharpParserFromNodeModules, sliceBySpan, lineOf } from './helpers';
+import {
+  configureCSharpParserFromNodeModules,
+  loadFixture,
+  sliceBySpan,
+  lineOf
+} from './helpers';
 import { getCSharpParser } from '../../../src/model/codedWorkflow/parser';
 import { buildModel } from '../../../src/model/codedWorkflow/buildModel';
 import type {
@@ -138,6 +143,31 @@ describe('buildModel — structure', () => {
     const model = await build(source);
     expect(model.classes).toHaveLength(1);
     expect(model.classes[0].namespace).toBe('Scoped.Flows');
+  });
+
+  it('returns the empty state for helper-only files (classes [], names listed)', async () => {
+    const model = await build(loadFixture('detection/helper-class.cs'), 'helper-class.cs');
+    expect(model.classes).toEqual([]);
+    expect(model.otherClassNames).toEqual(['StringHelpers']);
+    expect(model.parseHealth).toBe('ok');
+    expect(model.stats.totalStatements).toBe(0);
+  });
+
+  it('returns the empty state for an empty file', async () => {
+    const model = await build(loadFixture('detection/empty.cs'), 'empty.cs');
+    expect(model.classes).toEqual([]);
+    expect(model.otherClassNames).toEqual([]);
+    expect(model.parseHealth).toBe('ok');
+  });
+
+  it('builds the attribute-only partial fixture as a workflow class', async () => {
+    const model = await build(
+      loadFixture('detection/workflow-attribute-only.cs'),
+      'workflow-attribute-only.cs'
+    );
+    expect(model.classes.map((c) => c.className)).toEqual(['PartialFlow']);
+    expect(model.classes[0].baseType).toBe('CodedWorkflow');
+    expect(model.otherClassNames).toEqual([]);
   });
 
   it('treats an attribute-only class (no base list) as a workflow class', async () => {

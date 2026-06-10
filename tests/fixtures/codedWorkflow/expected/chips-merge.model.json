@@ -1,0 +1,197 @@
+{
+  "kind": "coded-workflow",
+  "title": "chips-merge.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "chips-merge.cs",
+  "fileUri": "file:///fixtures/skeleton/chips-merge.cs",
+  "classes": [
+    {
+      "className": "ChipsFlow",
+      "namespace": "Acme.Chips",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 8,
+        "startCol": 4,
+        "endLine": 82,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 10,
+            "startCol": 8,
+            "endLine": 26,
+            "endCol": 9
+          },
+          "signatureSummary": "int total",
+          "body": [
+            {
+              "id": "Execute/0",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 17,
+                "endCol": 26
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "var a = 1;\n            var b = 2; // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            var c = a + b;",
+              "lineCount": 5,
+              "statementCount": 3,
+              "codeTruncated": false
+            },
+            {
+              "id": "Execute/1",
+              "span": {
+                "startLine": 18,
+                "startCol": 12,
+                "endLine": 18,
+                "endCol": 28
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "midpoint",
+                  "kind": "literal"
+                }
+              ],
+              "icon": "play-circle"
+            },
+            {
+              "id": "Execute/2",
+              "span": {
+                "startLine": 19,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 26
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "var d = c * 2;\n            var e = d - 1;",
+              "lineCount": 2,
+              "statementCount": 2,
+              "codeTruncated": false
+            },
+            {
+              "id": "Execute/3",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 24,
+                "endCol": 13
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If total > 0",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "Execute/3.then.0",
+                      "span": {
+                        "startLine": 23,
+                        "startCol": 16,
+                        "endLine": 23,
+                        "endCol": 34
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "total = total - 1;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 22,
+                    "startCol": 12,
+                    "endLine": 24,
+                    "endCol": 13
+                  }
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "Execute/4",
+              "span": {
+                "startLine": 25,
+                "startCol": 12,
+                "endLine": 25,
+                "endCol": 30
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "var f = e + total;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 1,
+            "tier2": 0,
+            "tier3": 7
+          }
+        },
+        {
+          "name": "Big",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 28,
+            "startCol": 8,
+            "endLine": 81,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "Big/0",
+              "span": {
+                "startLine": 31,
+                "startCol": 12,
+                "endLine": 80,
+                "endCol": 27
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "big = big + 1;\n            big = big + 2;\n            big = big + 3;\n            big = big + 4;\n            big = big + 5;\n            big = big + 6;\n            big = big + 7;\n            big = big + 8;\n            big = big + 9;\n            big = big + 10;\n            big = big + 11;\n            big = big + 12;\n            big = big + 13;\n            big = big + 14;\n            big = big + 15;\n            big = big + 16;\n            big = big + 17;\n            big = big + 18;\n            big = big + 19;\n            big = big + 20;\n            big = big + 21;\n            big = big + 22;\n            big = big + 23;\n            big = big + 24;\n            big = big + 25;\n            big = big + 26;\n            big = big + 27;\n            big = big + 28;\n            big = big + 29;\n            big = big + 30;\n            big = big + 31;\n            big = big + 32;\n            big = big + 33;\n            big = big + 34;\n            big = big + 35;\n            big = big + 36;\n            big = big + 37;\n            big = big + 38;\n            big = big + 39;\n            big = big + 40;",
+              "lineCount": 50,
+              "statementCount": 50,
+              "codeTruncated": true
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 50
+          }
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 85,
+  "stats": {
+    "totalStatements": 58,
+    "tier1": 1,
+    "tier2": 0,
+    "tier3": 57
+  }
+}

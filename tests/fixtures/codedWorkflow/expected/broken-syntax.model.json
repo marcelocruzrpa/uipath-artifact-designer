@@ -1,0 +1,164 @@
+{
+  "kind": "coded-workflow",
+  "title": "broken-syntax.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Some statements could not be parsed and are shown as raw code."
+    }
+  ],
+  "fileName": "broken-syntax.cs",
+  "fileUri": "file:///fixtures/skeleton/broken-syntax.cs",
+  "classes": [
+    {
+      "className": "BrokenFlow",
+      "namespace": "Acme.Broken",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 7,
+        "startCol": 4,
+        "endLine": 23,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 9,
+            "startCol": 8,
+            "endLine": 16,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "Execute/0",
+              "span": {
+                "startLine": 12,
+                "startCol": 12,
+                "endLine": 12,
+                "endCol": 37
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "before the damage",
+                  "kind": "literal"
+                }
+              ],
+              "icon": "play-circle"
+            },
+            {
+              "id": "Execute/1",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 13,
+                "endCol": 47
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "GetAsset",
+              "catalogId": "system.GetAsset",
+              "title": "Get Asset",
+              "args": [
+                {
+                  "label": "Name",
+                  "value": "Key",
+                  "kind": "literal"
+                }
+              ],
+              "resultBinding": "asset",
+              "icon": "gear"
+            },
+            {
+              "id": "Execute/2",
+              "span": {
+                "startLine": 14,
+                "startCol": 12,
+                "endLine": 15,
+                "endCol": 30
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "count = = 1;\n            count = count + 1;",
+              "lineCount": 2,
+              "statementCount": 2,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 2,
+            "tier2": 0,
+            "tier3": 2
+          }
+        },
+        {
+          "name": "Healthy",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 18,
+            "startCol": 8,
+            "endLine": 22,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "Healthy/0",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 21,
+                "endCol": 43
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "untouched by the damage",
+                  "kind": "literal"
+                }
+              ],
+              "icon": "play-circle"
+            }
+          ],
+          "tierCounts": {
+            "tier1": 1,
+            "tier2": 0,
+            "tier3": 0
+          }
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "partial",
+  "parseErrorCount": 1,
+  "truncated": false,
+  "totalLines": 26,
+  "stats": {
+    "totalStatements": 5,
+    "tier1": 3,
+    "tier2": 0,
+    "tier3": 2
+  }
+}
