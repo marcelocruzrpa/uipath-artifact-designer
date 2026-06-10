@@ -1,0 +1,315 @@
+/**
+ * Tier-1 matcher: decides whether a single statement is a recognized UiPath
+ * service call (tier-1) and, if so, which family/member it belongs to.
+ *
+ * Matching algorithm (per spec):
+ *  1. Unwrap `expression_statement` / `local_declaration_statement` /
+ *     `return_statement` to the candidate expression; unwrap
+ *     `await_expression`, parens, and casts; capture `resultBinding` when the
+ *     call sits behind `var x = ...` or `x = ...`.
+ *  2. The candidate must be an `invocation_expression`.
+ *  3. Walk the `member_access_expression` / `element_access_expression`
+ *     chain (element access is walked THROUGH — `wb.Sheet["S1"].ReadRange()`
+ *     passes through the indexer) down to the ROOT identifier, skipping a
+ *     leading `this.`. Simple `?.` chains (`x?.Foo()`) are walked like `.`.
+ *  4. Resolve the root: catalog family id → that family; tracked handle →
+ *     its family; bare invocation (function is a plain identifier) whose
+ *     name is a `_base` entry method → `_base`; otherwise no match.
+ *  5. `method` is the last name segment; `catalogEntry` is the exact member
+ *     match when the family lists it. An unknown member of a known family is
+ *     STILL a tier-1 match (entry simply absent → generic card).
+ *
+ * PURITY RULE: no `vscode`, `fs`, `path`, or `node:*` imports.
+ */
+import type { Node } from 'web-tree-sitter';
+import {
+  TIER1_CATALOG,
+  BASE_FAMILY_ID,
+  type CatalogEntry,
+  type ServiceFamily
+} from './tier1Catalog';
+import type { HandleMap } from './handleTracking';
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface Tier1Match {
+  familyId: string;
+  familyDisplayName: string;
+  method: string;
+  /** Present only when the family explicitly catalogs this member. */
+  catalogEntry?: CatalogEntry;
+  /** Variable receiving the result (`var x = ...` or `x = ...`). */
+  resultBinding?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Catalog index (consumers index the data-only catalog themselves)
+// ---------------------------------------------------------------------------
+
+const FAMILY_BY_ID: ReadonlyMap<string, ServiceFamily> = new Map(
+  TIER1_CATALOG.map((f) => [f.id, f])
+);
+
+// ---------------------------------------------------------------------------
+// Expression helpers (shared with handleTracking / normalizeStatement)
+// ---------------------------------------------------------------------------
+
+/** First named child that is not a comment. */
+function firstExpressionChild(node: Node): Node | null {
+  return node.namedChildren.find((c) => c.type !== 'comment') ?? null;
+}
+
+/**
+ * Strip `await`, parentheses, and casts off an expression.
+ * `await (T)(x.Foo())` → the inner `invocation_expression`.
+ */
+export function unwrapExpression(node: Node): Node {
+  let cur = node;
+  for (;;) {
+    if (
+      cur.type === 'await_expression' ||
+      cur.type === 'parenthesized_expression'
+    ) {
+      const inner = firstExpressionChild(cur);
+      if (inner === null) return cur;
+      cur = inner;
+    } else if (cur.type === 'cast_expression') {
+      const value = cur.childForFieldName('value');
+      if (value === null) return cur;
+      cur = value;
+    } else {
+      return cur;
+    }
+  }
+}
+
+/** Method name text, stripping type arguments off `generic_name` nodes. */
+function methodNameText(nameNode: Node): string {
+  if (nameNode.type === 'generic_name') {
+    const id = nameNode.namedChildren.find((c) => c.type === 'identifier');
+    return id !== undefined ? id.text : nameNode.text;
+  }
+  return nameNode.text;
+}
+
+/** Result of walking an invocation's receiver chain down to its root. */
+type ChainWalk =
+  | { kind: 'bare'; method: string }
+  | { kind: 'rooted'; rootText: string; method: string };
+
+/**
+ * Walk from an `invocation_expression` down to the root of its receiver
+ * chain. Element access and chained invocations are transparent; a leading
+ * `this.` is skipped (so `this.Log(...)` is a bare call and
+ * `this.system.GetAsset(...)` roots at `system`).
+ * Returns null when the chain has an unresolvable shape.
+ */
+function walkInvocationChain(invocation: Node): ChainWalk | null {
+  /** name segments, outermost (the called method) first */
+  const segments: string[] = [];
+  let cur: Node | null = invocation;
+
+  while (cur !== null) {
+    switch (cur.type) {
+      case 'invocation_expression':
+        cur = cur.childForFieldName('function');
+        break;
+      case 'member_access_expression': {
+        const name = cur.childForFieldName('name');
+        if (name === null) return null;
+        segments.push(methodNameText(name));
+        cur = cur.childForFieldName('expression');
+        break;
+      }
+      case 'element_access_expression':
+        // Indexers are transparent: wb.Sheet["S1"].ReadRange() walks through.
+        cur = cur.childForFieldName('expression');
+        break;
+      case 'conditional_access_expression': {
+        // Simple `x?.Foo()` form: member binding gives the name, condition
+        // is the receiver. Other binding shapes are unresolvable.
+        const binding = cur.namedChildren.find(
+          (c) => c.type === 'member_binding_expression'
+        );
+        if (binding === undefined) return null;
+        const name = binding.childForFieldName('name');
+        if (name === null) return null;
+        segments.push(methodNameText(name));
+        cur = cur.childForFieldName('condition');
+        break;
+      }
+      case 'identifier': {
+        if (segments.length === 0) {
+          // Bare invocation: `Log("x")`.
+          return { kind: 'bare', method: cur.text };
+        }
+        return {
+          kind: 'rooted',
+          rootText: cur.text,
+          method: segments[0]
+        };
+      }
+      case 'generic_name': {
+        if (segments.length === 0) {
+          // Bare generic invocation: `Foo<T>("x")`.
+          return { kind: 'bare', method: methodNameText(cur) };
+        }
+        return null;
+      }
+      case 'this': {
+        // Skip the leading `this.`: the innermost collected segment becomes
+        // the root identifier; with a single segment it is a bare call.
+        if (segments.length === 0) return null;
+        if (segments.length === 1) {
+          return { kind: 'bare', method: segments[0] };
+        }
+        const rootText = segments[segments.length - 1];
+        return { kind: 'rooted', rootText, method: segments[0] };
+      }
+      default:
+        // predefined_type (string.Join), qualified names, expressions, ...
+        return null;
+    }
+  }
+  return null;
+}
+
+/** Resolve a root identifier to a family id via the catalog or handle map. */
+function resolveReceiver(rootText: string, handles: HandleMap): string | null {
+  if (rootText !== BASE_FAMILY_ID && FAMILY_BY_ID.has(rootText)) {
+    return rootText;
+  }
+  const viaHandle = handles[rootText];
+  if (viaHandle !== undefined && FAMILY_BY_ID.has(viaHandle)) {
+    return viaHandle;
+  }
+  return null;
+}
+
+/**
+ * Resolve the family of a receiver-rooted invocation expression (after
+ * unwrapping await/parens/casts). Bare base-class calls do NOT resolve here —
+ * they produce no service handle. Used by handle tracking.
+ */
+export function resolveInvocationFamily(
+  expr: Node,
+  handles: HandleMap
+): string | null {
+  const inv = unwrapExpression(expr);
+  if (inv.type !== 'invocation_expression') return null;
+  const walk = walkInvocationChain(inv);
+  if (walk === null || walk.kind !== 'rooted') return null;
+  return resolveReceiver(walk.rootText, handles);
+}
+
+// ---------------------------------------------------------------------------
+// Statement unwrapping
+// ---------------------------------------------------------------------------
+
+interface UnwrappedStatement {
+  expression: Node | null;
+  resultBinding?: string;
+}
+
+/** Initializer expression of a `variable_declarator`, or null. */
+function declaratorInitializer(declarator: Node): Node | null {
+  const name = declarator.childForFieldName('name');
+  const candidates = declarator.namedChildren.filter(
+    (c) =>
+      (name === null || c.id !== name.id) &&
+      c.type !== 'bracketed_argument_list' &&
+      c.type !== 'tuple_pattern' &&
+      c.type !== 'comment'
+  );
+  return candidates.length > 0 ? candidates[candidates.length - 1] : null;
+}
+
+function unwrapStatement(stmt: Node): UnwrappedStatement {
+  switch (stmt.type) {
+    case 'expression_statement': {
+      const inner = firstExpressionChild(stmt);
+      if (inner === null) return { expression: null };
+      if (inner.type === 'assignment_expression') {
+        const op = inner.childForFieldName('operator');
+        if (op === null || op.text !== '=') {
+          // Compound assignments are not call statements.
+          return { expression: null };
+        }
+        const left = inner.childForFieldName('left');
+        const right = inner.childForFieldName('right');
+        return {
+          expression: right,
+          resultBinding:
+            left !== null && left.type === 'identifier' ? left.text : undefined
+        };
+      }
+      return { expression: inner };
+    }
+    case 'local_declaration_statement': {
+      const declaration = stmt.namedChildren.find(
+        (c) => c.type === 'variable_declaration'
+      );
+      const declarator = declaration?.namedChildren.find(
+        (c) => c.type === 'variable_declarator'
+      );
+      if (declarator === undefined) return { expression: null };
+      const name = declarator.childForFieldName('name');
+      return {
+        expression: declaratorInitializer(declarator),
+        resultBinding: name !== null ? name.text : undefined
+      };
+    }
+    case 'return_statement':
+      return { expression: firstExpressionChild(stmt) };
+    default:
+      return { expression: null };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public matcher
+// ---------------------------------------------------------------------------
+
+/**
+ * Match one statement against the tier-1 catalog.
+ * Returns null when the statement is not a recognized service call.
+ */
+export function matchTier1(stmt: Node, handles: HandleMap): Tier1Match | null {
+  const { expression, resultBinding } = unwrapStatement(stmt);
+  if (expression === null) return null;
+
+  const inv = unwrapExpression(expression);
+  if (inv.type !== 'invocation_expression') return null;
+
+  const walk = walkInvocationChain(inv);
+  if (walk === null) return null;
+
+  if (walk.kind === 'bare') {
+    const baseFamily = FAMILY_BY_ID.get(BASE_FAMILY_ID);
+    if (baseFamily === undefined) return null;
+    const entry = baseFamily.entries.find((e) => e.method === walk.method);
+    if (entry === undefined) return null; // bare helper call, not a base API
+    return {
+      familyId: BASE_FAMILY_ID,
+      familyDisplayName: baseFamily.displayName,
+      method: walk.method,
+      catalogEntry: entry,
+      resultBinding
+    };
+  }
+
+  const familyId = resolveReceiver(walk.rootText, handles);
+  if (familyId === null) return null;
+  const family = FAMILY_BY_ID.get(familyId);
+  if (family === undefined) return null;
+
+  return {
+    familyId,
+    familyDisplayName: family.displayName,
+    method: walk.method,
+    catalogEntry: family.entries.find((e) => e.method === walk.method),
+    resultBinding
+  };
+}
