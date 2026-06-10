@@ -1,0 +1,709 @@
+/* Styles for the Coded Workflow (C# source) tiered block-stack canvas.
+   All selectors are namespaced .cw-*. */
+
+:root {
+  /* Tier accents */
+  --cw-t1: var(--vscode-charts-blue, #4f8cff);
+  --cw-t2: var(--vscode-charts-purple, #b07cf0);
+  --cw-t3: var(--vscode-descriptionForeground);
+  --cw-warn: var(--vscode-editorWarning-foreground, #f29b4a);
+
+  /* Per-family accents (tier-1 service families) */
+  --cw-f-system: #7c8cf0;
+  --cw-f-uiautomation: #2bb8a3;
+  --cw-f-workflows: #4f8cff;
+  --cw-f-connections: #9b7cf0;
+  --cw-f-excel: #57b86b;
+  --cw-f-word: #4f8cff;
+  --cw-f-powerpoint: #ef6fa6;
+  --cw-f-ftp: #38b6cf;
+  --cw-f-database: #38b6cf;
+  --cw-f-credentials: #f29b4a;
+  --cw-f-testing: #b07cf0;
+  --cw-f-java: #cf7320;
+  --cw-f-python: #57b86b;
+  --cw-f-base: #9aa0aa;
+
+  /* Alternating container depth backgrounds (±3% off the widget background).
+     The color-mix pair is applied below when supported; this is the fallback. */
+  --cw-bg-a: var(--vscode-editorWidget-background, #252526);
+  --cw-bg-b: var(--vscode-editorWidget-background, #252526);
+}
+
+@supports (background: color-mix(in srgb, red 50%, white)) {
+  :root {
+    --cw-bg-b: color-mix(in srgb, var(--vscode-editorWidget-background, #252526) 97%, #ffffff);
+  }
+
+  body.vscode-light {
+    --cw-bg-b: color-mix(in srgb, var(--vscode-editorWidget-background, #f3f3f3) 97%, #000000);
+  }
+}
+
+body.vscode-light {
+  --cw-f-system: #5360c4;
+  --cw-f-uiautomation: #0f9384;
+  --cw-f-workflows: #2f6fed;
+  --cw-f-connections: #6a44c4;
+  --cw-f-excel: #3c8f4d;
+  --cw-f-word: #2f6fed;
+  --cw-f-powerpoint: #c83f78;
+  --cw-f-ftp: #0a86a8;
+  --cw-f-database: #0a86a8;
+  --cw-f-credentials: #cf7320;
+  --cw-f-testing: #7d49c4;
+  --cw-f-java: #a85a14;
+  --cw-f-python: #3c8f4d;
+  --cw-f-base: #6b7180;
+}
+
+/* --- Accent assignment -------------------------------------------------- */
+.cw-root [data-tier='1'] { --accent: var(--cw-t1); }
+.cw-root [data-tier='2'] { --accent: var(--cw-t2); }
+.cw-root [data-tier='3'] { --accent: var(--cw-t3); }
+
+.cw-root [data-service='system'] { --accent: var(--cw-f-system); }
+.cw-root [data-service='uiAutomation'] { --accent: var(--cw-f-uiautomation); }
+.cw-root [data-service='workflows'] { --accent: var(--cw-f-workflows); }
+.cw-root [data-service='connections'] { --accent: var(--cw-f-connections); }
+.cw-root [data-service='excel'] { --accent: var(--cw-f-excel); }
+.cw-root [data-service='word'] { --accent: var(--cw-f-word); }
+.cw-root [data-service='powerpoint'] { --accent: var(--cw-f-powerpoint); }
+.cw-root [data-service='ftp'] { --accent: var(--cw-f-ftp); }
+.cw-root [data-service='database'] { --accent: var(--cw-f-database); }
+.cw-root [data-service='credentials'] { --accent: var(--cw-f-credentials); }
+.cw-root [data-service='testing'] { --accent: var(--cw-f-testing); }
+.cw-root [data-service='java'] { --accent: var(--cw-f-java); }
+.cw-root [data-service='python'] { --accent: var(--cw-f-python); }
+.cw-root [data-service='_base'] { --accent: var(--cw-f-base); }
+
+/* --- Root / header -------------------------------------------------------- */
+.cw-root {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto; /* both axes */
+  padding: 14px 18px 28px;
+}
+
+.cw-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.cw-header-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.14);
+  color: var(--cw-t1);
+}
+
+.cw-header-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.cw-header-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cw-header-titlerow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cw-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cw-header-ns {
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-header-stats {
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- Health pills ----------------------------------------------------------- */
+.cw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.cw-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cw-warn);
+}
+
+.cw-pill--stale {
+  border-color: var(--cw-warn);
+  color: var(--cw-warn);
+}
+
+/* --- Class sections / entry tabs ------------------------------------------- */
+.cw-class {
+  margin-bottom: 22px;
+}
+
+.cw-class-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.cw-class-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cw-tabs {
+  display: inline-flex;
+  margin: 4px 0 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cw-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  border-right: 1px solid var(--card-border);
+}
+
+.cw-tab:last-child {
+  border-right: none;
+}
+
+.cw-tab:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.16));
+}
+
+.cw-tab--active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.cw-tab--active:hover {
+  background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+/* --- Entry head / signature strip -------------------------------------------- */
+.cw-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 8px;
+}
+
+.cw-entry-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.cw-entry-attr {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cw-t1);
+  border: 1px solid var(--cw-t1);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.cw-args-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.cw-sig-chip {
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-descriptionForeground);
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.cw-sig-chip--ret {
+  color: var(--cw-t1);
+}
+
+/* --- Statement column / connector ticks --------------------------------------- */
+.cw-seq {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.cw-tick {
+  width: 2px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-left: 26px;
+  background: var(--card-border);
+}
+
+/* --- Cards (tier 1 + tier 2) ---------------------------------------------------- */
+.cw-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 720px;
+  padding: 8px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--accent, var(--cw-t1));
+  border-radius: 6px;
+}
+
+.cw-card-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--accent, var(--cw-t1));
+}
+
+.cw-card-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.cw-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cw-card-titlerow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.cw-card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cw-card-service {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.cw-card-args {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 2px;
+  font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cw-arg {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cw-arg-label {
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-arg-value {
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.cw-arg-result {
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--cw-t1);
+}
+
+/* Keep the title clear of the fx corner glyph. */
+.cw-card--pseudo .cw-card-titlerow {
+  padding-right: 16px;
+}
+
+.cw-card--pseudo .cw-card-text {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cw-fx {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 13px;
+  height: 13px;
+  color: var(--cw-t2);
+  opacity: 0.85;
+}
+
+.cw-fx svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* --- Raw-code chips (tier 3) --------------------------------------------------------- */
+.cw-chip {
+  max-width: 720px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--vscode-descriptionForeground);
+  font-size: 11.5px;
+}
+
+.cw-chip--collapsed {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  min-width: 0;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cw-chip--collapsed:hover {
+  background: rgba(128, 128, 128, 0.18);
+}
+
+.cw-chip-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+}
+
+.cw-chip-header:hover {
+  background: rgba(128, 128, 128, 0.16);
+}
+
+.cw-chip-chevron {
+  display: flex;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+.cw-chip-chevron svg {
+  width: 13px;
+  height: 13px;
+}
+
+.cw-chip-braces {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 700;
+}
+
+.cw-chip-count {
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+}
+
+.cw-chip-code {
+  margin: 0;
+  padding: 8px 12px;
+  max-height: 320px;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.45;
+  color: var(--vscode-foreground);
+  border-top: 1px solid var(--card-border);
+  white-space: pre;
+}
+
+.cw-chip-trunc {
+  padding: 4px 12px 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--vscode-descriptionForeground);
+  border-top: 1px dashed var(--card-border);
+}
+
+/* --- Containers ----------------------------------------------------------------------- */
+.cw-container {
+  max-width: 100%;
+  min-width: 280px;
+  width: fit-content;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--cw-bg-a);
+}
+
+.cw-container[data-depth='1'],
+.cw-container[data-depth='3'],
+.cw-container[data-depth='5'],
+.cw-container[data-depth='7'] {
+  background: var(--cw-bg-b);
+}
+
+/* Sticky headers — opaque, matching the frame background; outer frames win
+   the overlap so the outermost context stays readable. */
+.cw-ct-head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: inherit;
+  border-radius: 6px 6px 0 0;
+}
+
+.cw-container[data-depth='0'] > .cw-ct-head { z-index: 8; }
+.cw-container[data-depth='1'] > .cw-ct-head { z-index: 7; }
+.cw-container[data-depth='2'] > .cw-ct-head { z-index: 6; }
+.cw-container[data-depth='3'] > .cw-ct-head { z-index: 5; }
+
+.cw-ct-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.cw-container--collapsed .cw-ct-header {
+  border-bottom: none;
+}
+
+.cw-container--collapsed > .cw-ct-head {
+  border-radius: 6px;
+}
+
+.cw-ct-header:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.cw-ct-glyph {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-ct-glyph svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cw-ct-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cw-ct-lines {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.cw-ct-chevron {
+  display: flex;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-ct-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cw-ct-resource {
+  padding: 8px 10px;
+}
+
+/* Indentation comes from nested padding — 10px per level, not multiplied margins. */
+.cw-ct-body,
+.cw-branches,
+.cw-section {
+  padding: 10px;
+}
+
+.cw-branches {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.cw-branch {
+  flex: 1 1 0;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-branch-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-section {
+  border-top: 1px dashed var(--card-border);
+}
+
+/* The header row already draws a bottom border — no doubled rule under it.
+   (`:first-of-type` would not work here: .cw-ct-head is also a div sibling.) */
+.cw-ct-head + .cw-section {
+  border-top: none;
+}
+
+.cw-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 6px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.cw-section--catch .cw-section-label {
+  color: var(--cw-warn);
+}
+
+.cw-section--finally .cw-section-label {
+  opacity: 0.75;
+}
+
+/* --- Helper methods ------------------------------------------------------------------------ */
+.cw-helper {
+  max-width: 720px;
+  margin-top: 12px;
+  border: 1px dashed var(--card-border);
+  border-radius: 6px;
+}
+
+.cw-helper-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.cw-helper-header:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.cw-helper-title {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-helper-body {
+  padding: 10px;
+  border-top: 1px dashed var(--card-border);
+}
+
+/* --- Empty states ----------------------------------------------------------------------------- */
+.cw-empty {
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--vscode-descriptionForeground);
+  padding: 4px 2px;
+}
+
+.cw-empty-state {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.cw-empty-card {
+  max-width: 460px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--vscode-descriptionForeground);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 22px 26px;
+}
+
+/* --- Focus ----------------------------------------------------------------------------------------- */
+.cw-root [role='button']:focus-visible,
+.cw-tab:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}

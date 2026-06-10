@@ -7,6 +7,7 @@ import './styles/codedApp.css';
 import './styles/flow.css';
 import './styles/case.css';
 import './styles/bpmn.css';
+import './styles/codedWorkflow.css';
 import type { ArtifactModel } from '../src/model/types';
 import type {
   FallbackKind,
