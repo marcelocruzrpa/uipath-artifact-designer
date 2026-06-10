@@ -1,19 +1,37 @@
 /**
- * v0 model builder for the Coded Workflow canvas — the "walking skeleton"
- * stub classifier that turns a parsed C# tree into a `CodedWorkflowModel`.
+ * Model builder for the Coded Workflow canvas — turns a parsed C# tree into a
+ * classified `CodedWorkflowModel`.
  *
- * V0 BODY RULE (replaced by full tier classification in T1.4)
- *   Each method body is walked with the container/leaf rule shared with the
- *   M0 corpus spike: control-flow statements (`if` / `for` / `foreach` /
- *   `while` / `do` / `try` / `switch` / `using`-with-block / `block` /
- *   `local_function_statement`) are CONTAINERS — we recurse into their
- *   bodies/clauses without emitting the container itself.  Every other
- *   statement-level node is a LEAF and emits exactly ONE tier-3 `CwRawChip`,
- *   FLAT (no `CwContainer` nodes, no merging of adjacent leaves yet), whose
- *   `code` is the exact source slice of the statement.  Statements inside
- *   broken regions (tree-sitter `ERROR` nodes) still emit a chip carrying the
- *   exact broken source.  Chip ids are `<methodName>/<index>` in walk order,
- *   so an unchanged structure keeps identical ids across rebuilds.
+ * BODY WALK (T1.4)
+ *   Control-flow statements become `CwContainer` nodes with child slots that
+ *   are classified recursively:
+ *     - `if_statement` → 'if' with a `then` slot, zero+ `elseif` slots
+ *       (else-if chains are FLATTENED into sibling slots), and a final `else`
+ *       slot when present.
+ *     - `for`/`foreach`/`while`/`do`/`using` → a single `body` slot.
+ *     - `try_statement` → a `try` slot, one `catch` slot per clause, and an
+ *       optional `finally` slot.
+ *     - `switch_statement` → one `case` slot per grammar `switch_section`
+ *       (stacked labels are separate sections — the first is honestly empty),
+ *       the label-less section becoming role 'default'.
+ *   Headers and slot labels are EXACT source slices capped at
+ *   `HEADER_MAX_CHARS` + '…'.  Block-less bodies (`if (x) Foo();`) become a
+ *   slot whose span is the single statement's span; block bodies use the
+ *   block's span.
+ *
+ *   `local_function_statement` is deliberately classified as ONE raw chip
+ *   without recursing — helpers get no canvas, and a statement-level local
+ *   function is a helper in spirit.  Bare `block` statements (`{ ... }`) are
+ *   spliced into their parent slot.  Every other statement-level node —
+ *   including `ERROR` nodes carrying broken source — is a LEAF and currently
+ *   emits one tier-3 `CwRawChip` (tier-1/tier-2 dispatch lands in stages B/C).
+ *
+ * IDS
+ *   Hierarchical and stable: `<methodName>/<path>` where the path joins child
+ *   indices and slot roles with '.', e.g. `Execute/3.then.0`,
+ *   `Execute/3.elseif1.2`, `Execute/2.case0.1`.  Repeatable roles (`elseif`,
+ *   `catch`, `case`) carry a 0-based occurrence index; singleton roles
+ *   (`then`, `else`, `try`, `finally`, `body`, `default`) do not.
  *
  * WORKFLOW-CLASS RULE (same as the corpus spike)
  *   A class is a workflow class when its base list names `CodedWorkflow` as
@@ -28,6 +46,10 @@
  *   otherwise (attribute-only class with no base list) the literal
  *   `'CodedWorkflow'`, since such classes inherit it via another partial.
  *
+ * STATS RULE
+ *   `tierCounts`/`stats` count LEAVES, not containers: tier-1 cards and
+ *   tier-2 steps count 1 each, raw chips count their `statementCount`.
+ *
  * PURITY RULE: this module may import only types from `web-tree-sitter` and
  * the local model types.  No `vscode`, `fs`, `path`, or `node:*` imports —
  * it runs in the extension host and in plain-Node tests alike.  Timing uses
@@ -38,14 +60,18 @@ import type { Node, Tree } from 'web-tree-sitter';
 import type { Diagnostic } from '../types';
 import type {
   CodedWorkflowModel,
+  CwContainer,
   CwEntryPoint,
   CwHelperMethod,
   CwRawChip,
+  CwSlot,
+  CwSlotRole,
   CwStatement,
   CwTierCounts,
   CwWorkflowClass,
   SourceSpan
 } from './cwTypes';
+import { HEADER_MAX_CHARS } from './limits';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -68,7 +94,7 @@ export function nowMs(): number {
 }
 
 /**
- * Build the v0 `CodedWorkflowModel` from a parsed tree.  Never throws on
+ * Build the `CodedWorkflowModel` from a parsed tree.  Never throws on
  * malformed source — broken regions degrade to raw chips and `parseHealth`
  * becomes `'partial'` (R8 error tolerance).  Does NOT take ownership of
  * `tree`; the caller remains responsible for `tree.delete()`.
@@ -78,7 +104,7 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
 
   const classes: CwWorkflowClass[] = [];
   const otherClassNames: string[] = [];
-  let totalLeaves = 0;
+  const totals: CwTierCounts = { tier1: 0, tier2: 0, tier3: 0 };
 
   for (const found of collectClasses(tree.rootNode, undefined)) {
     const { classDecl, namespace } = found;
@@ -95,9 +121,13 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     const helperMethods: CwHelperMethod[] = [];
     for (const method of methods) {
       const name = method.childForFieldName('name')?.text ?? '(unnamed)';
-      const body = collectLeafChips(method, name, source);
-      totalLeaves += body.length;
-      const tierCounts: CwTierCounts = { tier1: 0, tier2: 0, tier3: body.length };
+      const ctx: ClassifyContext = { source };
+      const body = classifyMethodBody(method, ctx);
+      const tierCounts = countTiers(body);
+      totals.tier1 += tierCounts.tier1;
+      totals.tier2 += tierCounts.tier2;
+      totals.tier3 += tierCounts.tier3;
+      assignIds(body, `${name}/`);
       const attribute = entryPointAttribute(method);
       if (attribute !== null) {
         entryPoints.push({
@@ -149,10 +179,10 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     truncated: false,
     totalLines: countLines(source),
     stats: {
-      totalStatements: totalLeaves,
-      tier1: 0,
-      tier2: 0,
-      tier3: totalLeaves,
+      totalStatements: totals.tier1 + totals.tier2 + totals.tier3,
+      tier1: totals.tier1,
+      tier2: totals.tier2,
+      tier3: totals.tier3,
       parseMs: input.parseMs ?? 0,
       classifyMs: nowMs() - classifyStart
     }
@@ -172,7 +202,7 @@ interface FoundClass {
 /**
  * Collect every `class_declaration` in source order, tracking the enclosing
  * (possibly nested) namespace.  Classes nested inside other classes keep the
- * enclosing namespace only — outer class names are not appended in v0.
+ * enclosing namespace only — outer class names are not appended.
  *
  * Note: in this grammar version a `file_scoped_namespace_declaration` spans
  * only the `namespace X;` line and the declarations follow as SIBLINGS, so it
@@ -318,7 +348,7 @@ function signatureSummary(method: Node): string {
 }
 
 // ---------------------------------------------------------------------------
-// v0 body walk — flat leaf chips
+// Body classification — containers + leaves
 // ---------------------------------------------------------------------------
 
 /** Statement node types per the grammar's `statement` supertype. */
@@ -350,99 +380,342 @@ const STATEMENT_TYPES: ReadonlySet<string> = new Set([
   'yield_statement'
 ]);
 
-/** Walk a method body and return one flat `CwRawChip` per leaf statement. */
-function collectLeafChips(method: Node, methodName: string, source: string): CwRawChip[] {
-  const chips: CwStatement[] = [];
-  const ctx: WalkContext = { source, methodName, chips };
-  visitMethodBody(method.childForFieldName('body'), ctx);
-  return chips as CwRawChip[];
-}
-
-interface WalkContext {
+interface ClassifyContext {
   source: string;
-  methodName: string;
-  chips: CwStatement[];
 }
 
-function emitLeaf(stmt: Node, ctx: WalkContext): void {
-  const span = toSpan(stmt);
-  ctx.chips.push({
-    id: `${ctx.methodName}/${ctx.chips.length}`,
-    span,
-    type: 'raw',
-    tier: 3,
-    code: ctx.source.slice(stmt.startIndex, stmt.endIndex),
-    lineCount: span.endLine - span.startLine + 1,
-    statementCount: 1,
-    codeTruncated: false
-  });
+/** Exact source slice of a node. */
+function slice(node: Node, ctx: ClassifyContext): string {
+  return ctx.source.slice(node.startIndex, node.endIndex);
 }
 
-function visitOptional(node: Node | null, ctx: WalkContext): void {
-  if (node !== null) visitStatement(node, ctx);
-}
-
-/** Visit one statement node: recurse through containers, emit leaves. */
-function visitStatement(stmt: Node, ctx: WalkContext): void {
-  switch (stmt.type) {
-    case 'comment':
-      return;
-    case 'block':
-      for (const child of stmt.namedChildren) visitStatement(child, ctx);
-      return;
-    case 'if_statement':
-      visitOptional(stmt.childForFieldName('consequence'), ctx);
-      visitOptional(stmt.childForFieldName('alternative'), ctx);
-      return;
-    case 'for_statement':
-    case 'foreach_statement':
-    case 'while_statement':
-    case 'do_statement':
-    case 'using_statement':
-      visitOptional(stmt.childForFieldName('body'), ctx);
-      return;
-    case 'try_statement': {
-      visitOptional(stmt.childForFieldName('body'), ctx);
-      for (const clause of stmt.namedChildren) {
-        if (clause.type === 'catch_clause') {
-          visitOptional(clause.childForFieldName('body'), ctx);
-        } else if (clause.type === 'finally_clause') {
-          const block = clause.namedChildren.find((c) => c.type === 'block');
-          if (block !== undefined) visitStatement(block, ctx);
-        }
-      }
-      return;
-    }
-    case 'switch_statement': {
-      const body = stmt.childForFieldName('body');
-      if (body === null) return;
-      for (const section of body.namedChildren) {
-        if (section.type !== 'switch_section') continue;
-        for (const child of section.namedChildren) {
-          if (STATEMENT_TYPES.has(child.type) || child.type === 'ERROR') {
-            visitStatement(child, ctx);
-          }
-        }
-      }
-      return;
-    }
-    case 'local_function_statement':
-      visitMethodBody(stmt.childForFieldName('body'), ctx);
-      return;
-    default:
-      // Leaves — including `ERROR` nodes, which carry the exact broken source.
-      emitLeaf(stmt, ctx);
-  }
+/** Cap an exact-source header/label at HEADER_MAX_CHARS + '…'. */
+function capHeader(text: string): string {
+  return text.length > HEADER_MAX_CHARS ? `${text.slice(0, HEADER_MAX_CHARS)}…` : text;
 }
 
 /** Walk a method (or local function) body: block or `=> expr` clause. */
-function visitMethodBody(body: Node | null, ctx: WalkContext): void {
-  if (body === null) return;
+function classifyMethodBody(method: Node, ctx: ClassifyContext): CwStatement[] {
+  const body = method.childForFieldName('body');
+  if (body === null) return [];
   if (body.type === 'block') {
-    visitStatement(body, ctx);
-  } else if (body.type === 'arrow_expression_clause') {
-    // Expression-bodied member: counted as one leaf (see header).
-    emitLeaf(body, ctx);
+    return classifyStatements(blockStatements(body), ctx);
+  }
+  if (body.type === 'arrow_expression_clause') {
+    // Expression-bodied member: counted as one leaf.
+    return [makeChip(body, ctx)];
+  }
+  return [];
+}
+
+/** Named, non-comment children of a block. */
+function blockStatements(block: Node): Node[] {
+  return block.namedChildren.filter((c) => c.type !== 'comment');
+}
+
+/**
+ * Classify a statement list into model nodes.  Bare `block` statements are
+ * spliced into the parent list.
+ */
+function classifyStatements(stmts: Node[], ctx: ClassifyContext): CwStatement[] {
+  const out: CwStatement[] = [];
+  for (const stmt of stmts) {
+    if (stmt.type === 'comment') continue;
+    if (stmt.type === 'block') {
+      out.push(...classifyStatements(blockStatements(stmt), ctx));
+      continue;
+    }
+    out.push(classifyStatement(stmt, ctx));
+  }
+  return out;
+}
+
+/** Classify one (non-block, non-comment) statement node. */
+function classifyStatement(stmt: Node, ctx: ClassifyContext): CwStatement {
+  switch (stmt.type) {
+    case 'if_statement':
+      return buildIf(stmt, ctx);
+    case 'foreach_statement': {
+      const left = stmt.childForFieldName('left');
+      const right = stmt.childForFieldName('right');
+      const header = `For Each ${left !== null ? slice(left, ctx) : '?'} in ${right !== null ? slice(right, ctx) : '?'}`;
+      return buildLoop(stmt, 'foreach', header, ctx);
+    }
+    case 'for_statement':
+      return buildLoop(stmt, 'for', `For ${parenContent(stmt, ctx)}`, ctx);
+    case 'while_statement': {
+      const cond = stmt.childForFieldName('condition');
+      return buildLoop(stmt, 'while', `While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx);
+    }
+    case 'do_statement': {
+      const cond = stmt.childForFieldName('condition');
+      return buildLoop(stmt, 'do', `Do … While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx);
+    }
+    case 'try_statement':
+      return buildTry(stmt, ctx);
+    case 'switch_statement':
+      return buildSwitch(stmt, ctx);
+    case 'using_statement':
+      return buildUsing(stmt, ctx);
+    case 'local_function_statement':
+      // ONE chip, no recursion — helpers get no canvas (see module header).
+      return makeChip(stmt, ctx);
+    default:
+      // Leaves — including `ERROR` nodes, which carry the exact broken source.
+      return makeChip(stmt, ctx);
+  }
+}
+
+/**
+ * Build a slot from a body statement: block bodies contribute their children
+ * and span; a block-less body (`if (x) Foo();`) contributes one classified
+ * child with the statement's own span.  A missing body yields an empty slot
+ * spanning the fallback node.
+ */
+function slotFrom(
+  role: CwSlotRole,
+  label: string,
+  body: Node | null,
+  fallbackSpanNode: Node,
+  ctx: ClassifyContext
+): CwSlot {
+  if (body === null) {
+    return { role, label: capHeader(label), children: [], span: toSpan(fallbackSpanNode) };
+  }
+  const children =
+    body.type === 'block'
+      ? classifyStatements(blockStatements(body), ctx)
+      : classifyStatements([body], ctx);
+  return { role, label: capHeader(label), children, span: toSpan(body) };
+}
+
+function makeContainer(
+  stmt: Node,
+  kind: CwContainer['kind'],
+  header: string,
+  slots: CwSlot[]
+): CwContainer {
+  return {
+    id: '',
+    span: toSpan(stmt),
+    type: 'container',
+    kind,
+    header: capHeader(header),
+    slots,
+    collapsedByDefault: false
+  };
+}
+
+/** `if` / `else if` / `else` — chains flattened into sibling slots. */
+function buildIf(stmt: Node, ctx: ClassifyContext): CwContainer {
+  const condition = stmt.childForFieldName('condition');
+  const slots: CwSlot[] = [
+    slotFrom('then', 'Then', stmt.childForFieldName('consequence'), stmt, ctx)
+  ];
+
+  let alternative = stmt.childForFieldName('alternative');
+  while (alternative !== null && alternative.type === 'if_statement') {
+    const cond = alternative.childForFieldName('condition');
+    slots.push(
+      slotFrom(
+        'elseif',
+        `Else If ${cond !== null ? slice(cond, ctx) : '?'}`,
+        alternative.childForFieldName('consequence'),
+        alternative,
+        ctx
+      )
+    );
+    alternative = alternative.childForFieldName('alternative');
+  }
+  if (alternative !== null) {
+    slots.push(slotFrom('else', 'Else', alternative, stmt, ctx));
+  }
+
+  return makeContainer(
+    stmt,
+    'if',
+    `If ${condition !== null ? slice(condition, ctx) : '?'}`,
+    slots
+  );
+}
+
+/** for/foreach/while/do/using share the single-`body`-slot shape. */
+function buildLoop(
+  stmt: Node,
+  kind: 'for' | 'foreach' | 'while' | 'do',
+  header: string,
+  ctx: ClassifyContext
+): CwContainer {
+  return makeContainer(stmt, kind, header, [
+    slotFrom('body', 'Body', stmt.childForFieldName('body'), stmt, ctx)
+  ]);
+}
+
+/**
+ * Exact source between a statement's first '(' and its matching ')' — used
+ * for `for (<init>; <cond>; <update>)` headers, which have no single field.
+ */
+function parenContent(stmt: Node, ctx: ClassifyContext): string {
+  let open: Node | null = null;
+  let close: Node | null = null;
+  for (let i = 0; i < stmt.childCount; i += 1) {
+    const child = stmt.child(i);
+    if (child === null) continue;
+    if (child.type === '(' && open === null) open = child;
+    if (child.type === ')') close = child;
+  }
+  if (open === null || close === null) return '?';
+  return ctx.source.slice(open.endIndex, close.startIndex).trim();
+}
+
+function buildTry(stmt: Node, ctx: ClassifyContext): CwContainer {
+  const slots: CwSlot[] = [
+    slotFrom('try', 'Try', stmt.childForFieldName('body'), stmt, ctx)
+  ];
+  for (const clause of stmt.namedChildren) {
+    if (clause.type === 'catch_clause') {
+      slots.push(
+        slotFrom('catch', catchLabel(clause), clause.childForFieldName('body'), clause, ctx)
+      );
+    } else if (clause.type === 'finally_clause') {
+      const block = clause.namedChildren.find((c) => c.type === 'block') ?? null;
+      slots.push(slotFrom('finally', 'Finally', block, clause, ctx));
+    }
+  }
+  return makeContainer(stmt, 'try', 'Try / Catch', slots);
+}
+
+/** `Catch` / `Catch IOException` / `Catch IOException ex` from the declaration. */
+function catchLabel(clause: Node): string {
+  const decl = clause.namedChildren.find((c) => c.type === 'catch_declaration');
+  if (decl === undefined) return 'Catch';
+  const type = decl.childForFieldName('type');
+  const name = decl.childForFieldName('name');
+  let label = 'Catch';
+  if (type !== null) label += ` ${type.text}`;
+  if (name !== null) label += ` ${name.text}`;
+  return label;
+}
+
+function buildSwitch(stmt: Node, ctx: ClassifyContext): CwContainer {
+  const value = stmt.childForFieldName('value');
+  const slots: CwSlot[] = [];
+  const body = stmt.childForFieldName('body');
+  for (const section of body?.namedChildren ?? []) {
+    if (section.type !== 'switch_section') continue;
+    const stmts: Node[] = [];
+    const labelParts: string[] = [];
+    let whenClause: Node | null = null;
+    for (const child of section.namedChildren) {
+      if (child.type === 'comment') continue;
+      if (STATEMENT_TYPES.has(child.type) || child.type === 'ERROR') {
+        stmts.push(child);
+      } else if (child.type === 'when_clause') {
+        whenClause = child;
+      } else {
+        labelParts.push(slice(child, ctx));
+      }
+    }
+    const isDefault = labelParts.length === 0;
+    let label = isDefault ? 'Default' : `Case ${labelParts.join(', ')}`;
+    if (whenClause !== null) label += ` ${slice(whenClause, ctx)}`;
+    slots.push({
+      role: isDefault ? 'default' : 'case',
+      label: capHeader(label),
+      children: classifyStatements(stmts, ctx),
+      span: toSpan(section)
+    });
+  }
+  return makeContainer(
+    stmt,
+    'switch',
+    `Switch ${value !== null ? slice(value, ctx) : '?'}`,
+    slots
+  );
+}
+
+function buildUsing(stmt: Node, ctx: ClassifyContext): CwContainer {
+  const body = stmt.childForFieldName('body');
+  const resource =
+    stmt.namedChildren.find(
+      (c) => c.type !== 'comment' && (body === null || c.id !== body.id)
+    ) ?? null;
+  const header = `Use ${resource !== null ? slice(resource, ctx) : '?'}`;
+  return makeContainer(stmt, 'using', header, [
+    slotFrom('body', 'Body', body, stmt, ctx)
+  ]);
+}
+
+/** One tier-3 raw chip for a leaf statement (id assigned later). */
+function makeChip(stmt: Node, ctx: ClassifyContext): CwRawChip {
+  const span = toSpan(stmt);
+  return {
+    id: '',
+    span,
+    type: 'raw',
+    tier: 3,
+    code: slice(stmt, ctx),
+    lineCount: span.endLine - span.startLine + 1,
+    statementCount: 1,
+    codeTruncated: false
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Id assignment + tier counting
+// ---------------------------------------------------------------------------
+
+/** Slot roles that may repeat within one container and get a 0-based index. */
+const REPEATABLE_ROLES: ReadonlySet<CwSlotRole> = new Set(['elseif', 'catch', 'case']);
+
+/**
+ * Assign hierarchical ids (see IDS in the module header).  `prefix` already
+ * ends with '/' at the top level or '.' inside a slot.
+ */
+function assignIds(children: CwStatement[], prefix: string): void {
+  children.forEach((child, index) => {
+    child.id = `${prefix}${index}`;
+    if (child.type !== 'container') return;
+    if (child.resourceCard !== undefined) {
+      child.resourceCard.id = `${child.id}.resource`;
+    }
+    const roleCounts: Partial<Record<CwSlotRole, number>> = {};
+    for (const slot of child.slots) {
+      let segment: string = slot.role;
+      if (REPEATABLE_ROLES.has(slot.role)) {
+        const n = roleCounts[slot.role] ?? 0;
+        roleCounts[slot.role] = n + 1;
+        segment = `${slot.role}${n}`;
+      }
+      assignIds(slot.children, `${child.id}.${segment}.`);
+    }
+  });
+}
+
+/** Count leaves per tier (see STATS RULE in the module header). */
+function countTiers(children: CwStatement[]): CwTierCounts {
+  const counts: CwTierCounts = { tier1: 0, tier2: 0, tier3: 0 };
+  addTiers(children, counts);
+  return counts;
+}
+
+function addTiers(children: CwStatement[], counts: CwTierCounts): void {
+  for (const child of children) {
+    switch (child.type) {
+      case 'activity':
+        counts.tier1 += 1;
+        break;
+      case 'pseudo':
+        counts.tier2 += 1;
+        break;
+      case 'raw':
+        counts.tier3 += child.statementCount;
+        break;
+      case 'container':
+        if (child.resourceCard !== undefined) counts.tier1 += 1;
+        for (const slot of child.slots) addTiers(slot.children, counts);
+        break;
+    }
   }
 }
 

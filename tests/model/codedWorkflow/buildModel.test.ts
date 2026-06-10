@@ -1,16 +1,18 @@
 /**
- * Tests for the v0 model builder (`buildModel.ts`) — the walking-skeleton
- * stub classifier that turns a parsed C# tree into a `CodedWorkflowModel`
- * with one flat tier-3 raw chip per leaf statement.
+ * Tests for the model builder (`buildModel.ts`) — class/entry discovery,
+ * container-aware body classification, stats, and health.  Container shapes
+ * have their own deep suite in `containers.test.ts`; here the MIXED_FILE
+ * checks cover the structural contract on a small realistic file.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { configureCSharpParserFromNodeModules } from './helpers';
+import { configureCSharpParserFromNodeModules, sliceBySpan, lineOf } from './helpers';
 import { getCSharpParser } from '../../../src/model/codedWorkflow/parser';
 import { buildModel } from '../../../src/model/codedWorkflow/buildModel';
 import type {
   CodedWorkflowModel,
+  CwContainer,
   CwRawChip,
-  SourceSpan
+  CwStatement
 } from '../../../src/model/codedWorkflow/cwTypes';
 
 beforeAll(() => {
@@ -30,25 +32,16 @@ async function build(source: string, fileName = 'Flow.cs'): Promise<CodedWorkflo
   }
 }
 
-/** Re-slice `source` by a 0-based span — verifies span↔code agreement. */
-function sliceBySpan(source: string, span: SourceSpan): string {
-  const lines = source.split('\n');
-  if (span.startLine === span.endLine) {
-    return lines[span.startLine].slice(span.startCol, span.endCol);
+/** Collect every raw chip in a statement tree, depth-first. */
+function collectChips(children: CwStatement[]): CwRawChip[] {
+  const out: CwRawChip[] = [];
+  for (const child of children) {
+    if (child.type === 'raw') out.push(child);
+    if (child.type === 'container') {
+      for (const slot of child.slots) out.push(...collectChips(slot.children));
+    }
   }
-  const parts = [lines[span.startLine].slice(span.startCol)];
-  for (let i = span.startLine + 1; i < span.endLine; i += 1) {
-    parts.push(lines[i]);
-  }
-  parts.push(lines[span.endLine].slice(0, span.endCol));
-  return parts.join('\n');
-}
-
-/** 0-based line of the first source line containing `needle`. */
-function lineOf(source: string, needle: string): number {
-  const index = source.split('\n').findIndex((line) => line.includes(needle));
-  if (index < 0) throw new Error(`fixture is missing: ${needle}`);
-  return index;
+  return out;
 }
 
 const MIXED_FILE = `namespace Acme.Flows
@@ -165,31 +158,42 @@ describe('buildModel — structure', () => {
   });
 });
 
-describe('buildModel — v0 flat body chips', () => {
-  it('emits one flat raw chip per leaf, recursing through containers', async () => {
+describe('buildModel — container-aware body', () => {
+  it('emits chips for leaves and containers for control flow', async () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
 
-    // Containers (if/foreach) are recursed into but NOT emitted in v0.
-    expect(execute.body.every((s) => s.type === 'raw')).toBe(true);
-    const chips = execute.body as CwRawChip[];
-    expect(chips.map((c) => c.code)).toEqual([
-      'count = 0;',
-      'Log("has name");',
-      'count = count + 1;',
-      'return name;'
-    ]);
+    expect(execute.body.map((s) => s.type)).toEqual(['raw', 'container', 'raw']);
+    expect((execute.body[0] as CwRawChip).code).toBe('count = 0;');
+    expect((execute.body[2] as CwRawChip).code).toBe('return name;');
+
+    const ifC = execute.body[1] as CwContainer;
+    expect(ifC.kind).toBe('if');
+    expect(ifC.header).toBe('If name.Length > 0');
+    expect(ifC.slots.map((s) => s.role)).toEqual(['then']);
+
+    const then = ifC.slots[0];
+    expect(then.children.map((s) => s.type)).toEqual(['raw', 'container']);
+    expect((then.children[0] as CwRawChip).code).toBe('Log("has name");');
+    const foreach = then.children[1] as CwContainer;
+    expect(foreach.kind).toBe('foreach');
+    expect(foreach.header).toBe('For Each c in name');
+    expect((foreach.slots[0].children[0] as CwRawChip).code).toBe('count = count + 1;');
   });
 
-  it('assigns stable walk-order ids <entryName>/<index>', async () => {
+  it('assigns hierarchical stable ids <entryName>/<path>', async () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
-    expect(execute.body.map((s) => s.id)).toEqual([
-      'Execute/0',
-      'Execute/1',
-      'Execute/2',
-      'Execute/3'
+    expect(execute.body.map((s) => s.id)).toEqual(['Execute/0', 'Execute/1', 'Execute/2']);
+
+    const ifC = execute.body[1] as CwContainer;
+    expect(ifC.slots[0].children.map((s) => s.id)).toEqual([
+      'Execute/1.then.0',
+      'Execute/1.then.1'
     ]);
+    const foreach = ifC.slots[0].children[1] as CwContainer;
+    expect(foreach.slots[0].children.map((s) => s.id)).toEqual(['Execute/1.then.1.body.0']);
+
     const helper = model.classes[0].helperMethods[0];
     expect(helper.body.map((s) => s.id)).toEqual(['LogTwice/0', 'LogTwice/1']);
   });
@@ -197,14 +201,15 @@ describe('buildModel — v0 flat body chips', () => {
   it('produces exact 0-based spans that slice back to the chip code', async () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
-    for (const stmt of execute.body) {
-      const chip = stmt as CwRawChip;
+    const chips = collectChips(execute.body);
+    expect(chips.length).toBe(4);
+    for (const chip of chips) {
       expect(sliceBySpan(MIXED_FILE, chip.span)).toBe(chip.code);
       expect(chip.lineCount).toBe(chip.span.endLine - chip.span.startLine + 1);
       expect(chip.statementCount).toBe(1);
       expect(chip.codeTruncated).toBe(false);
     }
-    const logChip = execute.body[1] as CwRawChip;
+    const logChip = chips[1];
     expect(logChip.span.startLine).toBe(lineOf(MIXED_FILE, 'Log("has name");'));
     expect(logChip.span.startCol).toBe(MIXED_FILE.split('\n')[logChip.span.startLine].indexOf('Log'));
   });
@@ -224,7 +229,8 @@ describe('buildModel — stats and health', () => {
     const perMethod = [...cls.entryPoints, ...cls.helperMethods];
     const summed = perMethod.reduce((sum, m) => sum + m.tierCounts.tier3, 0);
     expect(summed).toBe(model.stats.totalStatements);
-    // Execute: 4 leaves, Verify: 2, LogTwice: 2 — Helper class is excluded.
+    // Execute: 4 leaves, Verify: 2, LogTwice: 2 — Helper class is excluded;
+    // containers do not count, only the leaves inside them.
     expect(model.stats.totalStatements).toBe(8);
     expect(model.stats.tier1).toBe(0);
     expect(model.stats.tier2).toBe(0);
@@ -232,7 +238,8 @@ describe('buildModel — stats and health', () => {
     for (const m of perMethod) {
       expect(m.tierCounts.tier1).toBe(0);
       expect(m.tierCounts.tier2).toBe(0);
-      expect(m.tierCounts.tier3).toBe(m.body.length);
+      const chipStatements = collectChips(m.body).reduce((s, c) => s + c.statementCount, 0);
+      expect(m.tierCounts.tier3).toBe(chipStatements);
     }
     expect(model.stats.parseMs).toBeGreaterThanOrEqual(0);
     expect(model.stats.classifyMs).toBeGreaterThanOrEqual(0);
