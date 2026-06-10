@@ -16,10 +16,13 @@ import { VIEW_TYPES } from '../constants';
 import type { ArtifactDescriptor, DetectResult } from '../model/artifactDescriptor';
 import { buildModel, nowMs } from '../model/codedWorkflow/buildModel';
 import { isCodedWorkflowSource } from '../model/codedWorkflow/detectSource';
+import { extractFileFacts, type FileFacts } from '../model/codedWorkflow/graph/graphFacts';
 import { getCSharpParser } from '../model/codedWorkflow/parser';
 import { resolveRenderable } from '../model/codedWorkflow/stale';
 import type { ArtifactModel, CodedWorkflowModel } from '../model/types';
 import { uriBasename } from '../util/fsHelpers';
+import { findProjectRoot, relPathInProject } from './codedProject';
+import { CodedProjectIndex } from './codedProjectIndex';
 
 function detectCodedWorkflow(document: vscode.TextDocument): DetectResult {
   if (isCodedWorkflowSource(document.getText())) {
@@ -72,20 +75,45 @@ async function loadCodedWorkflowModel(document: vscode.TextDocument): Promise<Ar
   const lastGood = lastGoodModels.get(key);
 
   try {
+    // Resolve the UiPath project root first: the active file's graph facts
+    // need a project-relative path, extracted from the SAME tree as the
+    // model (the dirty buffer is the truth for the file being edited).
+    const projectRoot = await findProjectRoot(document.uri);
     const handle = await getCSharpParser();
     const text = document.getText();
     const parseStart = nowMs();
     const tree = handle.parse(text);
     let fresh: CodedWorkflowModel;
+    let activeFacts: FileFacts | undefined;
     try {
       fresh = buildModel(tree, text, {
         fileName: uriBasename(document.uri),
         fileUri: key,
         parseMs: nowMs() - parseStart
       });
+      if (projectRoot !== undefined) {
+        activeFacts = extractFileFacts(relPathInProject(projectRoot, document.uri), text, tree);
+      }
     } finally {
       tree.delete();
     }
+
+    // T2.2: project call graph. Never fail the canvas because the graph
+    // broke — degrade to `graph: null` plus a warning diagnostic.
+    if (projectRoot !== undefined) {
+      try {
+        fresh.graph = await CodedProjectIndex.for(projectRoot).getGraph(document, activeFacts);
+      } catch (err) {
+        fresh.graph = null;
+        fresh.diagnostics.push({
+          severity: 'warning',
+          message: `Call graph unavailable: ${err instanceof Error ? err.message : String(err)}`
+        });
+      }
+    } else {
+      fresh.graph = null;
+    }
+
     if (fresh.parseErrorCount === 0) {
       rememberLastGood(key, fresh);
     }
@@ -111,7 +139,14 @@ async function applyCodedWorkflowEdit(): Promise<void> {
 export const codedWorkflowDescriptor: ArtifactDescriptor = {
   kind: 'coded-workflow',
   viewType: VIEW_TYPES['coded-workflow'],
-  watchGlobs: '**/*.cs',
+  // Watch every .cs sibling (graph edges can change from any file) plus the
+  // project manifest (entry points / project name). The watcher is rooted at
+  // the project root via watchBase, not the document's own directory.
+  watchGlobs: '{**/*.cs,project.json}',
+  watchBase: (document) => findProjectRoot(document.uri),
+  // Graph node clicks may open any file in the project, so the openResource
+  // guard widens from the document's directory to the project root.
+  resourceRoot: (document) => findProjectRoot(document.uri),
   detect: detectCodedWorkflow,
   loadModel: loadCodedWorkflowModel,
   applyEdit: applyCodedWorkflowEdit

@@ -8,6 +8,7 @@
  * interfaces only (a type-only import from `../types` is allowed).
  */
 import type { ArtifactModelBase } from '../types';
+import type { CodedProjectGraph } from './graph/graphTypes';
 
 /** 0-based lines+cols — matches tree-sitter Point and vscode.Position; UI adds 1 for display. */
 export interface SourceSpan {
@@ -130,6 +131,12 @@ export interface CodedWorkflowModel extends ArtifactModelBase {
   otherClassNames: string[];
   parseHealth: 'ok' | 'partial' | 'stale';
   staleReason?: string;
+  /**
+   * Project call graph (T2.2). `null` when unavailable — no project root
+   * found, or the build failed (a warning diagnostic explains why).
+   * Absent on models built before the graph feature existed (lastGood cache).
+   */
+  graph?: CodedProjectGraph | null;
   parseErrorCount: number;
   truncated: boolean;
   totalLines: number;
