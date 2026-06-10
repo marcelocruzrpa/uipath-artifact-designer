@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
 import { artifactRegistry, descriptorForUri } from './model/registry';
+import { configureCSharpParser, disposeCSharpParser } from './model/codedWorkflow/parser';
 import { initLog, logError, logInfo, logWarn } from './util/log';
 
 /** Resolves the artifact URI to open a designer for, from a command argument. */
@@ -103,6 +104,16 @@ function installReloadWatcher(context: vscode.ExtensionContext): void {
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
   installReloadWatcher(context);
+
+  // Store wasm paths for the C# parser — pure storage, no I/O.  The wasm
+  // files are loaded lazily on the first getCSharpParser() call, so
+  // activation cost is zero.
+  configureCSharpParser({
+    runtimeWasmPath: vscode.Uri.joinPath(context.extensionUri, 'dist', 'web-tree-sitter.wasm').fsPath,
+    grammarWasmPath: vscode.Uri.joinPath(context.extensionUri, 'dist', 'tree-sitter-c_sharp.wasm').fsPath
+  });
+  context.subscriptions.push({ dispose: disposeCSharpParser });
+
   const provider = new ArtifactEditorProvider(context);
 
   const viewTypes: string[] = [];
