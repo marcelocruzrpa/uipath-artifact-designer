@@ -21,6 +21,7 @@
     "src/model/flow/flowTypes.ts",
     "src/model/case/caseTypes.ts",
     "src/model/codedWorkflow/cwTypes.ts",
+    "src/model/codedWorkflow/graph/graphTypes.ts",
     "src/util/messages.ts",
     "src/util/jsonShape.ts",
     "src/util/objects.ts"

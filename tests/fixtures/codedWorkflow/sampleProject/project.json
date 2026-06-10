@@ -1,0 +1,12 @@
+{
+  "name": "SampleProject",
+  "projectVersion": "1.0.0",
+  "expressionLanguage": "CSharp",
+  "targetFramework": "Portable",
+  "entryPoints": [
+    {
+      "filePath": "Workflows/Main.cs",
+      "uniqueId": "00000000-0000-0000-0000-0000000000aa"
+    }
+  ]
+}
