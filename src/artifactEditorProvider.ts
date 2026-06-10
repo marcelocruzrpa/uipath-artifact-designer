@@ -31,6 +31,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
    * document in O(1) instead of scanning {@link panels}.
    */
   private activePanelKey: string | undefined;
+  /** Keys of panels that have received at least one `model` message. */
+  private readonly renderedKeys = new Set<string>();
+  /**
+   * Control messages queued for panels that have not rendered a model yet.
+   * `showCallGraph` on a not-yet-open document does `vscode.openWith` and then
+   * queues the control here; {@link resolveCustomTextEditor}'s render flushes
+   * the queue right after posting the model, so the webview receives the
+   * control strictly after the model that mounts its renderer (postMessage
+   * order is preserved). Entries for documents that never render a model
+   * (fallback / error) are discarded on panel dispose.
+   */
+  private readonly pendingControls = new Map<string, HostToWebview[]>();
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -124,6 +136,14 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         const model = await descriptor.loadModel(document);
         post({ type: 'model', model });
         firstRenderDone = true;
+        this.renderedKeys.add(key);
+        const pending = this.pendingControls.get(key);
+        if (pending) {
+          this.pendingControls.delete(key);
+          for (const queued of pending) {
+            post(queued);
+          }
+        }
       } catch (e) {
         post({ type: 'error', message: e instanceof Error ? e.message : String(e) });
       }
@@ -184,13 +204,38 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     );
 
     if (descriptor) {
-      const watcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(uriDirname(document.uri), descriptor.watchGlobs)
-      );
-      watcher.onDidChange(scheduleWatcherRender);
-      watcher.onDidCreate(scheduleWatcherRender);
-      watcher.onDidDelete(scheduleWatcherRender);
-      subscriptions.push(watcher);
+      const attachWatcher = (base: vscode.Uri): void => {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(base, descriptor.watchGlobs)
+        );
+        watcher.onDidChange(scheduleWatcherRender);
+        watcher.onDidCreate(scheduleWatcherRender);
+        watcher.onDidDelete(scheduleWatcherRender);
+        subscriptions.push(watcher);
+      };
+      if (descriptor.watchBase === undefined) {
+        // No hook — keep the original, fully synchronous path so descriptors
+        // without watchBase behave exactly as before.
+        attachWatcher(uriDirname(document.uri));
+      } else {
+        // watchBase may be async (e.g. walking up to a project root). Attach
+        // once it resolves; if the panel was disposed meanwhile, attaching
+        // would leak the watcher (the dispose loop already ran), so skip.
+        void Promise.resolve(descriptor.watchBase(document))
+          .catch((e: unknown) => {
+            logWarn(
+              `watchBase failed; falling back to the document directory: ${
+                e instanceof Error ? e.message : String(e)
+              }`
+            );
+            return undefined;
+          })
+          .then((base) => {
+            if (!disposed) {
+              attachWatcher(base ?? uriDirname(document.uri));
+            }
+          });
+      }
     }
 
     // Messages are processed strictly in order through a per-document queue.
@@ -252,6 +297,8 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       this.panels.delete(key);
       this.updaters.delete(key);
       this.lastWrittenText.delete(key);
+      this.renderedKeys.delete(key);
+      this.pendingControls.delete(key);
       if (this.activePanelKey === key) {
         this.activePanelKey = undefined;
       }
@@ -272,9 +319,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         try {
           // Strict parse: reject a schemeless URI instead of defaulting to file:.
           const target = vscode.Uri.parse(message.uri, true);
+          // The guard root defaults to the document's directory; a descriptor
+          // can widen it (e.g. to the project root) via resourceRoot. The
+          // isInside containment check itself is unchanged.
+          let root: vscode.Uri | undefined;
+          try {
+            root = await descriptor?.resourceRoot?.(document);
+          } catch {
+            root = undefined;
+          }
           if (
             target.scheme !== document.uri.scheme ||
-            !isInside(uriDirname(document.uri), target)
+            !isInside(root ?? uriDirname(document.uri), target)
           ) {
             void vscode.window.showWarningMessage(
               'UiPath Designer: refused to open a file outside the project.'
@@ -378,6 +434,42 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const panel = this.panels.get(this.activePanelKey);
     if (panel) {
       void panel.webview.postMessage({ type: 'control', action: 'fitToView' } as HostToWebview);
+    }
+  }
+
+  /** Asks the active designer webview to switch to the call-graph view. */
+  public showGraphActive(): void {
+    if (this.activePanelKey === undefined) {
+      return;
+    }
+    this.showGraphFor(vscode.Uri.parse(this.activePanelKey));
+  }
+
+  /**
+   * Asks the designer panel for `uri` to switch to the call-graph view.
+   * Posts immediately when the panel has already rendered a model; otherwise
+   * queues the control to be flushed right after the first model post, so a
+   * freshly `vscode.openWith`-opened panel receives it once its renderer is
+   * mounted (see {@link pendingControls}).
+   */
+  public showGraphFor(uri: vscode.Uri): void {
+    const key = this.documentKey(uri);
+    const message: HostToWebview = { type: 'control', action: 'showGraph' };
+    const panel = this.panels.get(key);
+    if (panel === undefined) {
+      // No panel for this document (open failed or it was closed) — dropping
+      // beats queueing into a map entry that nothing would ever clean up.
+      return;
+    }
+    if (this.renderedKeys.has(key)) {
+      void panel.webview.postMessage(message);
+      return;
+    }
+    const pending = this.pendingControls.get(key);
+    if (pending) {
+      pending.push(message);
+    } else {
+      this.pendingControls.set(key, [message]);
     }
   }
 

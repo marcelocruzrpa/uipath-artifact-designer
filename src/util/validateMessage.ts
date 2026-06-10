@@ -142,7 +142,8 @@ function isViewState(v: unknown): v is WebviewViewState {
     isFiniteNumber(v.panX) &&
     isFiniteNumber(v.panY) &&
     (v.selectedId === null || isString(v.selectedId, MAX_ID)) &&
-    isOptionalIdArray(v.collapsedIds)
+    isOptionalIdArray(v.collapsedIds) &&
+    (v.mode === undefined || v.mode === 'canvas' || v.mode === 'graph')
   );
 }
 

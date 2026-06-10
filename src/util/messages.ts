@@ -30,7 +30,7 @@ export type HostToWebview =
   | { type: 'model'; model: ArtifactModel }
   | { type: 'fallback'; kind: FallbackKind; message: string }
   | { type: 'error'; message: string }
-  | { type: 'control'; action: 'fitToView' | 'refresh' };
+  | { type: 'control'; action: 'fitToView' | 'refresh' | 'showGraph' };
 
 /** Messages sent from the webview to the extension host. */
 export type WebviewToHost =
@@ -116,4 +116,6 @@ export interface WebviewViewState {
   selectedId: string | null;
   /** Ids of collapsed containers (coded-workflow canvas); absent for other kinds. */
   collapsedIds?: string[];
+  /** Active coded-workflow view — file canvas or project call graph; absent for other kinds. */
+  mode?: 'canvas' | 'graph';
 }

@@ -40,6 +40,11 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
     type: 'persistViewState',
     minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['c1'] } }
   },
+  {
+    // And with the optional mode field (coded-workflow canvas/graph toggle).
+    type: 'persistViewState',
+    minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 'graph' } }
+  },
   { type: 'log', minValid: { level: 'info', message: 'hi' } },
   { type: 'editAgentField', minValid: { path: ['a'], value: 'v' } },
   { type: 'editAgentPrompt', minValid: { role: 'system', content: 'c' } },

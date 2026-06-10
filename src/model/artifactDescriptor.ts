@@ -36,6 +36,18 @@ export interface ArtifactDescriptor {
   readonly viewType: string;
   /** Sibling-file glob (RelativePattern) whose change should re-render. */
   readonly watchGlobs: string;
+  /**
+   * Base directory for the sibling-file watcher. Default (member absent or
+   * resolves to `undefined`): `uriDirname(document.uri)`.
+   */
+  watchBase?(document: vscode.TextDocument): Promise<vscode.Uri | undefined> | vscode.Uri | undefined;
+  /**
+   * Root inside which `openResource` targets are permitted. Default (member
+   * absent or resolves to `undefined`): `uriDirname(document.uri)`.
+   */
+  resourceRoot?(
+    document: vscode.TextDocument
+  ): Promise<vscode.Uri | undefined> | vscode.Uri | undefined;
   /** Cheap content gate: is this document actually our artifact? */
   detect(document: vscode.TextDocument): DetectResult;
   /** Parse the document (and any sibling files) into the normalized model. */

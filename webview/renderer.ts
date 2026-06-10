@@ -24,6 +24,11 @@ export interface Renderer {
   zoomOut(): void;
   /** Current zoom (1 = 100%), or null when this renderer has no zoom. */
   getZoom(): number | null;
+  /**
+   * Optional handler for host `control` actions beyond fitToView (e.g.
+   * 'showGraph'). Renderers that don't implement it silently ignore them.
+   */
+  handleControl?(action: string): void;
   /** The view state to persist for this document. */
   getViewState(): WebviewViewState;
   /** Releases any listeners. */

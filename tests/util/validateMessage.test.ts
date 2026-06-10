@@ -110,6 +110,14 @@ describe('validateWebviewMessage — valid messages', () => {
     };
     expect(validateWebviewMessage(msg)).toEqual(msg);
   });
+
+  it.each(['canvas', 'graph'])('accepts a persistViewState with mode %s', (mode) => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
 });
 
 describe('validateWebviewMessage — malformed shapes return null', () => {
@@ -158,6 +166,21 @@ describe('validateWebviewMessage — malformed shapes return null', () => {
       validateWebviewMessage({
         type: 'persistViewState',
         state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: 'c1' }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a persistViewState whose mode is not canvas/graph', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 'sideways' }
+      })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 42 }
       })
     ).toBeNull();
   });

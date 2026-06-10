@@ -309,6 +309,10 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'control':
       if (message.action === 'fitToView') {
         renderer?.fit();
+      } else if (message.action === 'showGraph') {
+        // No-op for renderers without handleControl; the coded-workflow
+        // renderer implements the graph view in T2.3.
+        renderer?.handleControl?.('showGraph');
       }
       break;
   }
