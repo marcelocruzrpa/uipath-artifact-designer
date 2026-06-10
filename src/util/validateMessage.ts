@@ -127,13 +127,22 @@ function isPlainObjectArray(v: unknown): v is Record<string, unknown>[] {
   return Array.isArray(v) && v.length <= MAX_ARRAY && v.every((entry) => isRecord(entry));
 }
 
+/** An optional id array: absent, or a bounded array of bounded strings. */
+function isOptionalIdArray(v: unknown): v is string[] | undefined {
+  return (
+    v === undefined ||
+    (Array.isArray(v) && v.length <= MAX_ARRAY && v.every((s) => isString(s, MAX_ID)))
+  );
+}
+
 function isViewState(v: unknown): v is WebviewViewState {
   return (
     isRecord(v) &&
     isFiniteNumber(v.zoom) &&
     isFiniteNumber(v.panX) &&
     isFiniteNumber(v.panY) &&
-    (v.selectedId === null || isString(v.selectedId, MAX_ID))
+    (v.selectedId === null || isString(v.selectedId, MAX_ID)) &&
+    isOptionalIdArray(v.collapsedIds)
   );
 }
 

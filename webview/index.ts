@@ -191,6 +191,8 @@ function fallbackTitle(kind: FallbackKind): string {
       return 'Not a UiPath Maestro BPMN process';
     case 'not-case':
       return 'Not a UiPath Maestro Case';
+    case 'not-coded-workflow':
+      return 'Not a coded workflow';
     default:
       return 'Not a UiPath low-code agent';
   }

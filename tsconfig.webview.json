@@ -20,6 +20,7 @@
     "src/model/layout.ts",
     "src/model/flow/flowTypes.ts",
     "src/model/case/caseTypes.ts",
+    "src/model/codedWorkflow/cwTypes.ts",
     "src/util/messages.ts",
     "src/util/jsonShape.ts",
     "src/util/objects.ts"

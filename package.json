@@ -37,6 +37,9 @@
     "flow",
     "case management",
     "coded app",
+    "coded workflow",
+    "coded automation",
+    "csharp",
     "low-code",
     "designer"
   ],
@@ -96,6 +99,16 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "uipathArtifactDesigner.codedWorkflowEditor",
+        "displayName": "UiPath Coded Workflow Canvas",
+        "selector": [
+          {
+            "filenamePattern": "*.cs"
+          }
+        ],
+        "priority": "option"
       }
     ],
     "commands": [
@@ -122,6 +135,11 @@
     ],
     "menus": {
       "editor/title": [
+        {
+          "command": "uipathArtifactDesigner.openDesigner",
+          "when": "resourceExtname == .cs && uipathArtifactDesigner.activeCsIsWorkflow && activeCustomEditorId not in uipathArtifactDesigner.viewTypes",
+          "group": "navigation@1"
+        },
         {
           "command": "uipathArtifactDesigner.fitToView",
           "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes",

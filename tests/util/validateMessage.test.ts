@@ -94,6 +94,22 @@ describe('validateWebviewMessage — valid messages', () => {
     };
     expect(validateWebviewMessage(msg)).toEqual(msg);
   });
+
+  it('accepts a persistViewState with string[] collapsedIds', () => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['c1', 'c2'] }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
+
+  it('accepts a persistViewState with an empty collapsedIds array', () => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: [] }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
 });
 
 describe('validateWebviewMessage — malformed shapes return null', () => {
@@ -126,6 +142,24 @@ describe('validateWebviewMessage — malformed shapes return null', () => {
 
   it('rejects flowMoveNode with a missing coordinate', () => {
     expect(validateWebviewMessage({ type: 'flowMoveNode', nodeId: 'n1', x: 10 })).toBeNull();
+  });
+
+  it('rejects a persistViewState whose collapsedIds has non-string entries', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['ok', 42] }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a persistViewState whose collapsedIds is not an array', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: 'c1' }
+      })
+    ).toBeNull();
   });
 });
 
@@ -198,6 +232,25 @@ describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
     }));
     expect(
       validateWebviewMessage({ type: 'setActionSchemaSection', section: 'inputs', fields })
+    ).toBeNull();
+  });
+
+  it('rejects an over-cap collapsedIds array', () => {
+    const collapsedIds = Array.from({ length: 10_001 }, (_v, i) => `c${i}`);
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a collapsedIds entry over the identifier cap', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['a'.repeat(4_097)] }
+      })
     ).toBeNull();
   });
 

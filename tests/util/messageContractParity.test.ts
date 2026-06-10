@@ -33,6 +33,13 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
     type: 'persistViewState',
     minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null } }
   },
+  {
+    // Same variant with the optional collapsedIds field (coded-workflow
+    // collapse state) — duplicates are fine, the declared-vs-fixtured
+    // comparison below is set-based.
+    type: 'persistViewState',
+    minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['c1'] } }
+  },
   { type: 'log', minValid: { level: 'info', message: 'hi' } },
   { type: 'editAgentField', minValid: { path: ['a'], value: 'v' } },
   { type: 'editAgentPrompt', minValid: { role: 'system', content: 'c' } },

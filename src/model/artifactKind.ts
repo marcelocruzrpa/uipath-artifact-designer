@@ -9,4 +9,5 @@ export type ArtifactKind =
   | 'maestro-flow'
   | 'maestro-bpmn'
   | 'maestro-case'
-  | 'coded-app';
+  | 'coded-app'
+  | 'coded-workflow';

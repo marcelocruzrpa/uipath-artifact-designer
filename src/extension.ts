@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
 import { artifactRegistry, descriptorForUri } from './model/registry';
+import { isCodedWorkflowSource } from './model/codedWorkflow/detectSource';
 import { configureCSharpParser, disposeCSharpParser } from './model/codedWorkflow/parser';
 import { initLog, logError, logInfo, logWarn } from './util/log';
 
@@ -101,9 +102,46 @@ function installReloadWatcher(context: vscode.ExtensionContext): void {
   });
 }
 
+/**
+ * Keeps the `uipathArtifactDesigner.activeCsIsWorkflow` context key in sync
+ * with the active editor. It drives the editor-title "Open Designer" button
+ * on `.cs` files: shown only when the file actually looks like a coded
+ * workflow, so plain C# files never grow a designer affordance.
+ */
+function installCsWorkflowContextKey(context: vscode.ExtensionContext): void {
+  const CONTEXT_KEY = 'uipathArtifactDesigner.activeCsIsWorkflow';
+
+  const setKey = (value: boolean): void => {
+    vscode.commands
+      .executeCommand('setContext', CONTEXT_KEY, value)
+      .then(undefined, (e: unknown) => logError('setContext failed', e));
+  };
+
+  const evaluate = (document: vscode.TextDocument | undefined): void => {
+    const isWorkflow =
+      document !== undefined &&
+      document.uri.path.toLowerCase().endsWith('.cs') &&
+      isCodedWorkflowSource(document.getText());
+    setKey(isWorkflow);
+  };
+
+  evaluate(vscode.window.activeTextEditor?.document);
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => evaluate(editor?.document)),
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      // Only a save of the document the user is looking at can change the key.
+      if (vscode.window.activeTextEditor?.document === document) {
+        evaluate(document);
+      }
+    })
+  );
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
   installReloadWatcher(context);
+  installCsWorkflowContextKey(context);
 
   // Store wasm paths for the C# parser — pure storage, no I/O.  The wasm
   // files are loaded lazily on the first getCSharpParser() call, so
@@ -144,7 +182,8 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!target) {
           void vscode.window.showInformationMessage(
             'UiPath Artifact Designer: open a UiPath artifact first ' +
-              '(agent.json, *.flow, *.bpmn, caseplan.json, or action-schema.json).'
+              '(agent.json, *.flow, *.bpmn, caseplan.json, action-schema.json, ' +
+              'or .cs coded workflows).'
           );
           return;
         }

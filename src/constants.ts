@@ -9,5 +9,6 @@ export const VIEW_TYPES: Record<ArtifactKind, string> = {
   'maestro-flow': 'uipathArtifactDesigner.maestroFlowEditor',
   'maestro-bpmn': 'uipathArtifactDesigner.maestroBpmnEditor',
   'maestro-case': 'uipathArtifactDesigner.maestroCaseEditor',
-  'coded-app': 'uipathArtifactDesigner.codedAppEditor'
+  'coded-app': 'uipathArtifactDesigner.codedAppEditor',
+  'coded-workflow': 'uipathArtifactDesigner.codedWorkflowEditor'
 };

@@ -11,7 +11,8 @@ export type FallbackKind =
   | 'not-coded-app'
   | 'not-flow'
   | 'not-bpmn'
-  | 'not-case';
+  | 'not-case'
+  | 'not-coded-workflow';
 
 /** A single input/output argument as edited in the webview. */
 export interface ArgProperty {
@@ -107,10 +108,12 @@ export type WebviewToHost =
       slaRules: unknown[];
     };
 
-/** Persisted (per-document) view state — zoom, pan and selection. */
+/** Persisted (per-document) view state — zoom, pan, selection and collapse. */
 export interface WebviewViewState {
   zoom: number;
   panX: number;
   panY: number;
   selectedId: string | null;
+  /** Ids of collapsed containers (coded-workflow canvas); absent for other kinds. */
+  collapsedIds?: string[];
 }
