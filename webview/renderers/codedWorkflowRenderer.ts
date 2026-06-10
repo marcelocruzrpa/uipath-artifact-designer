@@ -5,8 +5,13 @@
  * frames; collapse state is kept as a user-toggle DELTA over host-computed
  * defaults (see collapsePolicy.ts) and persisted via the view state.
  *
- * The renderer posts no edit messages — only `persistViewState`, wired by the
- * shell through `host.notifyViewChanged()` + `getViewState()`.
+ * The renderer posts no edit messages — only `persistViewState` (wired by the
+ * shell through `host.notifyViewChanged()` + `getViewState()`) and, from the
+ * call-graph view (T2.3), `openResource` when a graph node is activated.
+ *
+ * Two modes share this renderer: the file canvas above and the project
+ * call-graph view (`codedWorkflow/graphView.ts`), toggled by a segmented
+ * control in the header (shown only when `model.graph` is an object).
  */
 import type {
   CodedWorkflowModel,
@@ -16,11 +21,13 @@ import type {
 } from '../../src/model/codedWorkflow/cwTypes';
 import type { ArtifactModel } from '../../src/model/types';
 import type { WebviewViewState } from '../../src/util/messages';
+import type { Transform } from '../interaction';
 import type { Renderer, RendererHost } from '../renderer';
-import { clearChildren, deepEqual, el } from '../util';
+import { clearChildren, deepEqual, el, note } from '../util';
 import { effectiveCollapsed, toggleId } from './codedWorkflow/collapsePolicy';
 import { renderStatements, type RenderCtx } from './codedWorkflow/containers';
 import { cwIcon } from './codedWorkflow/cwIcons';
+import { createGraphView, type GraphView } from './codedWorkflow/graphView';
 
 const SCROLL_PERSIST_DELAY_MS = 300;
 
@@ -92,14 +99,36 @@ class CodedWorkflowRenderer implements Renderer {
   /** Saved scroll to restore after the FIRST render only. */
   private pendingScroll: { x: number; y: number } | null = null;
   private scrollTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Requested view mode; the EFFECTIVE mode falls back to canvas without a graph. */
+  private mode: 'canvas' | 'graph' = 'canvas';
+  private graphView: GraphView | null = null;
+  /** In-session stash of the canvas scroll while the graph view is showing. */
+  private canvasScrollStash: { x: number; y: number } | null = null;
+  /** In-session stash of the graph transform while the canvas is showing. */
+  private graphTransformStash: Transform | null = null;
+  /** Saved graph transform to restore on the FIRST graph render only. */
+  private pendingGraphTransform: Transform | null = null;
+  private noteEl: HTMLElement | null = null;
+  private noteTimer: ReturnType<typeof setTimeout> | null = null;
 
   public mount(container: HTMLElement, host: RendererHost, savedState: WebviewViewState | null): void {
     this.container = container;
     this.host = host;
     this.userToggled = new Set(savedState?.collapsedIds ?? []);
     this.activeEntry = savedState?.selectedId ?? null;
+    this.mode = savedState?.mode === 'graph' ? 'graph' : 'canvas';
+    // The persisted pan/zoom triple belongs to the mode that was ACTIVE at
+    // persist time (see getViewState) — route it to the matching sub-view.
     if (savedState) {
-      this.pendingScroll = { x: savedState.panX, y: savedState.panY };
+      if (savedState.mode === 'graph') {
+        this.pendingGraphTransform = {
+          zoom: savedState.zoom,
+          panX: savedState.panX,
+          panY: savedState.panY
+        };
+      } else {
+        this.pendingScroll = { x: savedState.panX, y: savedState.panY };
+      }
     }
   }
 
@@ -115,35 +144,106 @@ class CodedWorkflowRenderer implements Renderer {
 
   // --- rendering ------------------------------------------------------------
 
+  private hasGraph(): boolean {
+    return this.model?.graph !== null && typeof this.model?.graph === 'object';
+  }
+
+  /**
+   * The mode actually rendered. `mode` is the user's request; without a graph
+   * object (null build failure, or a pre-graph lastGood model where `graph`
+   * is undefined) the canvas is the only renderable view, so we fall back
+   * WITHOUT forgetting the request — if a later model brings the graph back,
+   * the user returns to it.
+   */
+  private effectiveMode(): 'canvas' | 'graph' {
+    return this.mode === 'graph' && this.hasGraph() ? 'graph' : 'canvas';
+  }
+
+  /**
+   * MODE-SWITCH DOM STRATEGY: the two sub-views never share live DOM — the
+   * whole `.cw-root` wrapper is rebuilt on every render/switch, hosting
+   * EITHER the canvas block-stack OR the graph view. Rebuilding keeps both
+   * lifecycles trivial; the deepEqual skip in update() still avoids rebuild
+   * churn on identical live-reload echoes, and each view's position is
+   * stashed here before teardown so in-session toggles restore it.
+   */
   private render(): void {
     if (!this.container || !this.model) {
       return;
     }
-    // Preserve scroll across re-renders; on the first render prefer the
-    // persisted view-state position.
-    const scroll = this.pendingScroll ?? {
-      x: this.scrollEl?.scrollLeft ?? 0,
-      y: this.scrollEl?.scrollTop ?? 0
-    };
-    this.pendingScroll = null;
+    if (this.scrollEl) {
+      this.canvasScrollStash = { x: this.scrollEl.scrollLeft, y: this.scrollEl.scrollTop };
+      this.scrollEl.removeEventListener('scroll', this.onScroll);
+      this.scrollEl = null;
+    }
+    if (this.graphView) {
+      this.graphTransformStash = this.graphView.getTransform();
+      this.graphView.dispose();
+      this.graphView = null;
+    }
     clearChildren(this.container);
 
-    const root = el('div', { class: 'cw-root' });
-    root.append(this.buildHeader(this.model));
-
-    if (this.model.classes.length === 0) {
-      root.append(this.buildEmptyState(this.model));
+    if (this.effectiveMode() === 'graph') {
+      this.renderGraphMode(this.container, this.model);
     } else {
-      for (const cls of this.model.classes) {
-        root.append(this.buildClassSection(cls, this.model.classes.length > 1));
+      this.renderCanvasMode(this.container, this.model);
+    }
+  }
+
+  /**
+   * Canvas (block-stack) mode — DOM unchanged from the pre-graph renderer:
+   * `.cw-root` itself scrolls and the header scrolls with the content.
+   */
+  private renderCanvasMode(container: HTMLElement, model: CodedWorkflowModel): void {
+    // Preserve scroll across re-renders; on the first render prefer the
+    // persisted view-state position, then the in-session stash.
+    const scroll = this.pendingScroll ?? this.canvasScrollStash ?? { x: 0, y: 0 };
+    this.pendingScroll = null;
+
+    const root = el('div', { class: 'cw-root' });
+    root.append(this.buildHeader(model));
+
+    if (model.classes.length === 0) {
+      root.append(this.buildEmptyState(model));
+    } else {
+      for (const cls of model.classes) {
+        root.append(this.buildClassSection(cls, model.classes.length > 1));
       }
     }
 
     root.addEventListener('scroll', this.onScroll);
     this.scrollEl = root;
-    this.container.append(root);
+    container.append(root);
     root.scrollLeft = scroll.x;
     root.scrollTop = scroll.y;
+  }
+
+  /**
+   * Graph mode — the SAME header (with the stale/partial pills) stays on
+   * top, so parse-health stays visible in both modes; the PanZoom graph view
+   * fills the rest.
+   */
+  private renderGraphMode(container: HTMLElement, model: CodedWorkflowModel): void {
+    const root = el('div', { class: 'cw-root cw-root--graph' });
+    root.append(el('div', { class: 'cwg-head' }, [this.buildHeader(model)]));
+    const body = el('div', { class: 'cwg-body' });
+    root.append(body);
+    container.append(root);
+
+    const view = createGraphView(body, {
+      post: (message) => this.host?.post(message),
+      onViewChange: () => this.host?.notifyViewChanged()
+    });
+    this.graphView = view;
+    // hasGraph() guarded the mode, so `graph` is an object here.
+    view.update(model.graph!);
+    const transform = this.pendingGraphTransform ?? this.graphTransformStash;
+    this.pendingGraphTransform = null;
+    if (transform) {
+      view.setTransform(transform);
+    } else {
+      view.fit();
+    }
   }
 
   private buildHeader(model: CodedWorkflowModel): HTMLElement {
@@ -186,10 +286,47 @@ class CodedWorkflowRenderer implements Renderer {
       ].join(' · ')
     });
 
-    return el('div', { class: 'cw-header' }, [
+    const header = el('div', { class: 'cw-header' }, [
       icon,
       el('div', { class: 'cw-header-text' }, [titleRow, stats])
     ]);
+    if (this.hasGraph()) {
+      header.append(this.buildModeTabs());
+    }
+    return header;
+  }
+
+  /** Segmented `Workflow | Call graph` control — built only when a graph exists. */
+  private buildModeTabs(): HTMLElement {
+    const active = this.effectiveMode();
+    const tabs = el('div', { class: 'cwg-mode-tabs' });
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'Coded workflow views');
+    const entries: Array<['canvas' | 'graph', string, string]> = [
+      ['canvas', 'Workflow', 'Show this file as a block-stack canvas'],
+      ['graph', 'Call graph', 'Show the project call graph']
+    ];
+    for (const [mode, label, title] of entries) {
+      const tab = el('button', {
+        class: `cwg-mode-tab${active === mode ? ' cwg-mode-tab--active' : ''}`,
+        text: label,
+        title
+      });
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(active === mode));
+      tab.addEventListener('click', () => this.setMode(mode));
+      tabs.append(tab);
+    }
+    return tabs;
+  }
+
+  private setMode(mode: 'canvas' | 'graph'): void {
+    if (this.mode === mode && this.effectiveMode() === mode) {
+      return;
+    }
+    this.mode = mode;
+    this.render();
+    this.host?.notifyViewChanged();
   }
 
   private buildEmptyState(model: CodedWorkflowModel): HTMLElement {
@@ -375,29 +512,90 @@ class CodedWorkflowRenderer implements Renderer {
 
   // --- Renderer contract --------------------------------------------------------
 
+  /** Host `control` actions — the `UiPath: Show Call Graph` command. */
+  public handleControl(action: string): void {
+    if (action !== 'showGraph') {
+      return;
+    }
+    if (this.hasGraph()) {
+      this.setMode('graph');
+      return;
+    }
+    // No graph to show (null build / pre-graph lastGood model): keep the
+    // canvas visible and explain, rather than switching to a blank view.
+    if (this.mode !== 'canvas') {
+      this.mode = 'canvas';
+      this.render();
+      this.host?.notifyViewChanged();
+    }
+    this.showTransientNote('No call graph available for this file');
+  }
+
+  private showTransientNote(text: string): void {
+    if (!this.container) {
+      return;
+    }
+    this.noteEl?.remove();
+    if (this.noteTimer) {
+      clearTimeout(this.noteTimer);
+    }
+    const noteEl = note(text);
+    noteEl.classList.add('cwg-float-note');
+    this.container.append(noteEl);
+    this.noteEl = noteEl;
+    this.noteTimer = setTimeout(() => {
+      noteEl.remove();
+      this.noteEl = null;
+      this.noteTimer = null;
+    }, 4000);
+  }
+
   public fit(): void {
+    if (this.graphView) {
+      this.graphView.fit();
+      return;
+    }
     this.scrollEl?.scrollTo({ left: 0, top: 0 });
   }
 
   public zoomIn(): void {
-    /* no zoom — block stack scrolls */
+    // Canvas mode has no zoom — the block stack scrolls.
+    this.graphView?.zoomIn();
   }
 
   public zoomOut(): void {
-    /* no zoom — block stack scrolls */
+    this.graphView?.zoomOut();
   }
 
   public getZoom(): number | null {
-    return null;
+    // Real zoom in graph mode (so the shell shows its zoom controls); null on
+    // the canvas, which scrolls instead of zooming.
+    return this.graphView ? this.graphView.getZoom() : null;
   }
 
   public getViewState(): WebviewViewState {
+    // VIEW-STATE MAPPING: WebviewViewState carries a single pan/zoom triple,
+    // which belongs to the ACTIVE mode at persist time (recorded in `mode`):
+    //   canvas → panX/panY are the scroll offsets, zoom is 1;
+    //   graph  → zoom/panX/panY are the graph PanZoom transform.
+    // Persisting BOTH views' positions through this one shape would be
+    // overconstrained; the inactive view's position survives in-session via
+    // the stashes and falls back to its default (scroll-top / fit) across
+    // sessions. selectedId / collapsedIds always keep their canvas meanings.
+    const base = {
+      selectedId: this.activeEntry,
+      collapsedIds: [...this.userToggled]
+    };
+    if (this.graphView) {
+      const t = this.graphView.getTransform();
+      return { zoom: t.zoom, panX: t.panX, panY: t.panY, mode: 'graph', ...base };
+    }
     return {
       zoom: 1,
       panX: this.scrollEl?.scrollLeft ?? 0,
       panY: this.scrollEl?.scrollTop ?? 0,
-      selectedId: this.activeEntry,
-      collapsedIds: [...this.userToggled]
+      mode: 'canvas',
+      ...base
     };
   }
 
@@ -406,6 +604,15 @@ class CodedWorkflowRenderer implements Renderer {
       clearTimeout(this.scrollTimer);
       this.scrollTimer = null;
     }
+    if (this.noteTimer) {
+      clearTimeout(this.noteTimer);
+      this.noteTimer = null;
+    }
+    this.noteEl = null;
+    this.graphView?.dispose();
+    this.graphView = null;
+    this.canvasScrollStash = null;
+    this.graphTransformStash = null;
     this.scrollEl?.removeEventListener('scroll', this.onScroll);
     this.scrollEl = null;
     this.container = null;
