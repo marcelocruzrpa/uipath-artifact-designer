@@ -164,10 +164,40 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
     ]
   },
   {
-    id: 'powerPoint',
+    // Lowercase on purpose: the receiver text in real coded workflows is
+    // `powerpoint.` (M0 lever L1 — the old `powerPoint` id never matched).
+    id: 'powerpoint',
     displayName: 'PowerPoint',
     icon: 'file-media',
     entries: []
+  },
+  {
+    id: 'java',
+    displayName: 'Java',
+    icon: 'coffee',
+    entries: [
+      {
+        method: 'UseJavaScope',
+        title: 'Use Java Scope',
+        args: [
+          { arg: 0, label: 'Options', render: 'objectProps', props: ['JavaPath'] }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'python',
+    displayName: 'Python',
+    icon: 'code',
+    entries: [
+      {
+        method: 'UsePythonScope',
+        title: 'Use Python Scope',
+        args: [
+          { arg: 0, label: 'Options', render: 'objectProps', props: ['Path', 'LibraryPath'] }
+        ]
+      }
+    ]
   },
   {
     id: 'ftp',

@@ -22,9 +22,13 @@
  *   `local_function_statement` is deliberately classified as ONE raw chip
  *   without recursing — helpers get no canvas, and a statement-level local
  *   function is a helper in spirit.  Bare `block` statements (`{ ... }`) are
- *   spliced into their parent slot.  Every other statement-level node —
- *   including `ERROR` nodes carrying broken source — is a LEAF and currently
- *   emits one tier-3 `CwRawChip` (tier-1/tier-2 dispatch lands in stages B/C).
+ *   spliced into their parent slot.  Every other statement-level node is a
+ *   LEAF: handle effects are tracked first (one forward-only `HandleMap` per
+ *   method), then tier-1 match → `CwActivityCard`, else a tier-3 `CwRawChip`
+ *   (tier-2 dispatch slots in between in Stage C).  `ERROR` nodes degrade to
+ *   chips carrying the exact broken source.  A `using` resource initializer
+ *   that matches tier-1 becomes the container's `resourceCard` (counted as a
+ *   tier-1 leaf) and its handle still tracks.
  *
  * IDS
  *   Hierarchical and stable: `<methodName>/<path>` where the path joins child
@@ -60,6 +64,7 @@ import type { Node, Tree } from 'web-tree-sitter';
 import type { Diagnostic } from '../types';
 import type {
   CodedWorkflowModel,
+  CwActivityCard,
   CwContainer,
   CwEntryPoint,
   CwHelperMethod,
@@ -72,6 +77,17 @@ import type {
   SourceSpan
 } from './cwTypes';
 import { HEADER_MAX_CHARS } from './limits';
+import {
+  matchTier1,
+  matchTier1Expression,
+  type Tier1Match
+} from './classify/tier1Match';
+import {
+  createHandleMap,
+  trackHandle,
+  type HandleMap
+} from './classify/handleTracking';
+import { extractArgs, extractIndexerKey } from './classify/argExtract';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -121,7 +137,7 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     const helperMethods: CwHelperMethod[] = [];
     for (const method of methods) {
       const name = method.childForFieldName('name')?.text ?? '(unnamed)';
-      const ctx: ClassifyContext = { source };
+      const ctx: ClassifyContext = { source, handles: createHandleMap() };
       const body = classifyMethodBody(method, ctx);
       const tierCounts = countTiers(body);
       totals.tier1 += tierCounts.tier1;
@@ -382,6 +398,8 @@ const STATEMENT_TYPES: ReadonlySet<string> = new Set([
 
 interface ClassifyContext {
   source: string;
+  /** Method-local service-handle map, fed in source order (forward-only). */
+  handles: HandleMap;
 }
 
 /** Exact source slice of a node. */
@@ -461,9 +479,61 @@ function classifyStatement(stmt: Node, ctx: ClassifyContext): CwStatement {
       // ONE chip, no recursion — helpers get no canvas (see module header).
       return makeChip(stmt, ctx);
     default:
-      // Leaves — including `ERROR` nodes, which carry the exact broken source.
-      return makeChip(stmt, ctx);
+      return classifyLeaf(stmt, ctx);
   }
+}
+
+/**
+ * Leaf dispatch: track handle effects first (forward-only, source order),
+ * then tier-1 match → card; otherwise a tier-3 raw chip.  `ERROR` nodes fall
+ * through to chips carrying the exact broken source.  (Tier-2 pseudo-step
+ * dispatch slots in between in Stage C.)
+ */
+function classifyLeaf(stmt: Node, ctx: ClassifyContext): CwStatement {
+  trackHandle(ctx.handles, stmt);
+  const match = matchTier1(stmt, ctx.handles);
+  if (match !== null) {
+    return makeCard(match, toSpan(stmt), ctx);
+  }
+  return makeChip(stmt, ctx);
+}
+
+/** Split PascalCase: 'ReadRange' → 'Read Range' (digits break words too). */
+function humanizeMethod(method: string): string {
+  return method.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+/** Card title: catalog title → wildcard template → humanized method name. */
+function cardTitle(match: Tier1Match): string {
+  if (match.method === '[indexer]') return 'Get Item';
+  if (match.catalogEntry !== undefined) return match.catalogEntry.title;
+  if (match.wildcardTitleTemplate !== undefined) {
+    return match.wildcardTitleTemplate.replace('{method}', match.method);
+  }
+  return humanizeMethod(match.method);
+}
+
+/** Build a CwActivityCard from a tier-1 match (id assigned later). */
+function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): CwActivityCard {
+  const entry = match.catalogEntry;
+  const args =
+    match.method === '[indexer]'
+      ? extractIndexerKey(match.indexerSubscript, ctx.source)
+      : extractArgs(match.invocation, entry, ctx.source);
+  return {
+    id: '',
+    span,
+    type: 'activity',
+    tier: 1,
+    service: match.familyId,
+    serviceDisplayName: match.familyDisplayName,
+    method: match.method,
+    ...(entry !== undefined ? { catalogId: `${match.familyId}.${match.method}` } : {}),
+    title: cardTitle(match),
+    args,
+    ...(match.resultBinding !== undefined ? { resultBinding: match.resultBinding } : {}),
+    icon: entry?.icon ?? match.familyIcon
+  };
 }
 
 /**
@@ -635,15 +705,49 @@ function buildSwitch(stmt: Node, ctx: ClassifyContext): CwContainer {
 }
 
 function buildUsing(stmt: Node, ctx: ClassifyContext): CwContainer {
+  // Track the resource handle BEFORE classifying the body so member calls on
+  // it resolve to the originating family.
+  trackHandle(ctx.handles, stmt);
+
   const body = stmt.childForFieldName('body');
   const resource =
     stmt.namedChildren.find(
       (c) => c.type !== 'comment' && (body === null || c.id !== body.id)
     ) ?? null;
   const header = `Use ${resource !== null ? slice(resource, ctx) : '?'}`;
-  return makeContainer(stmt, 'using', header, [
+
+  const resourceCard = resource !== null ? usingResourceCard(resource, ctx) : undefined;
+  const container = makeContainer(stmt, 'using', header, [
     slotFrom('body', 'Body', body, stmt, ctx)
   ]);
+  if (resourceCard !== undefined) container.resourceCard = resourceCard;
+  return container;
+}
+
+/**
+ * Tier-1 card for a `using` resource whose initializer is a service call:
+ * `using (var wb = excel.UseExcelFile(...))` → a Use Excel File card bound to
+ * `wb`, spanning the declarator.  Plain-expression resources
+ * (`using (excel.UseExcelFile(...))`) match without a binding.
+ */
+function usingResourceCard(resource: Node, ctx: ClassifyContext): CwActivityCard | undefined {
+  if (resource.type === 'variable_declaration') {
+    const declarator = resource.namedChildren.find((c) => c.type === 'variable_declarator');
+    if (declarator === undefined) return undefined;
+    const name = declarator.childForFieldName('name');
+    const initializer = declarator.namedChildren.find(
+      (c) =>
+        (name === null || c.id !== name.id) &&
+        c.type !== 'bracketed_argument_list' &&
+        c.type !== 'tuple_pattern' &&
+        c.type !== 'comment'
+    );
+    if (initializer === undefined) return undefined;
+    const match = matchTier1Expression(initializer, ctx.handles, name?.text);
+    return match !== null ? makeCard(match, toSpan(declarator), ctx) : undefined;
+  }
+  const match = matchTier1Expression(resource, ctx.handles);
+  return match !== null ? makeCard(match, toSpan(resource), ctx) : undefined;
 }
 
 /** One tier-3 raw chip for a leaf statement (id assigned later). */

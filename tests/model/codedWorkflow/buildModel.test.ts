@@ -173,8 +173,8 @@ describe('buildModel — container-aware body', () => {
     expect(ifC.slots.map((s) => s.role)).toEqual(['then']);
 
     const then = ifC.slots[0];
-    expect(then.children.map((s) => s.type)).toEqual(['raw', 'container']);
-    expect((then.children[0] as CwRawChip).code).toBe('Log("has name");');
+    // Log(...) is a tier-1 base-class call → an activity card since Stage B.
+    expect(then.children.map((s) => s.type)).toEqual(['activity', 'container']);
     const foreach = then.children[1] as CwContainer;
     expect(foreach.kind).toBe('foreach');
     expect(foreach.header).toBe('For Each c in name');
@@ -202,16 +202,19 @@ describe('buildModel — container-aware body', () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
     const chips = collectChips(execute.body);
-    expect(chips.length).toBe(4);
+    // count = 0; / count = count + 1; / return name; — Log is a card now.
+    expect(chips.length).toBe(3);
     for (const chip of chips) {
       expect(sliceBySpan(MIXED_FILE, chip.span)).toBe(chip.code);
       expect(chip.lineCount).toBe(chip.span.endLine - chip.span.startLine + 1);
       expect(chip.statementCount).toBe(1);
       expect(chip.codeTruncated).toBe(false);
     }
-    const logChip = chips[1];
-    expect(logChip.span.startLine).toBe(lineOf(MIXED_FILE, 'Log("has name");'));
-    expect(logChip.span.startCol).toBe(MIXED_FILE.split('\n')[logChip.span.startLine].indexOf('Log'));
+    const ifC = execute.body[1] as CwContainer;
+    const logCard = ifC.slots[0].children[0];
+    expect(logCard.type).toBe('activity');
+    expect(logCard.span.startLine).toBe(lineOf(MIXED_FILE, 'Log("has name");'));
+    expect(logCard.span.startCol).toBe(MIXED_FILE.split('\n')[logCard.span.startLine].indexOf('Log'));
   });
 });
 
@@ -227,16 +230,19 @@ describe('buildModel — stats and health', () => {
     expect(model.totalLines).toBe(MIXED_FILE.split('\n').length);
 
     const perMethod = [...cls.entryPoints, ...cls.helperMethods];
-    const summed = perMethod.reduce((sum, m) => sum + m.tierCounts.tier3, 0);
+    const summed = perMethod.reduce(
+      (sum, m) => sum + m.tierCounts.tier1 + m.tierCounts.tier2 + m.tierCounts.tier3,
+      0
+    );
     expect(summed).toBe(model.stats.totalStatements);
     // Execute: 4 leaves, Verify: 2, LogTwice: 2 — Helper class is excluded;
-    // containers do not count, only the leaves inside them.
+    // containers do not count, only the leaves inside them.  The four Log
+    // calls are tier-1 cards; the other four leaves stay tier-3 chips.
     expect(model.stats.totalStatements).toBe(8);
-    expect(model.stats.tier1).toBe(0);
+    expect(model.stats.tier1).toBe(4);
     expect(model.stats.tier2).toBe(0);
-    expect(model.stats.tier3).toBe(8);
+    expect(model.stats.tier3).toBe(4);
     for (const m of perMethod) {
-      expect(m.tierCounts.tier1).toBe(0);
       expect(m.tierCounts.tier2).toBe(0);
       const chipStatements = collectChips(m.body).reduce((s, c) => s + c.statementCount, 0);
       expect(m.tierCounts.tier3).toBe(chipStatements);

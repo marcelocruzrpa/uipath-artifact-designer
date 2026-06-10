@@ -5,9 +5,12 @@
  * Matching algorithm (per spec):
  *  1. Unwrap `expression_statement` / `local_declaration_statement` /
  *     `return_statement` to the candidate expression; unwrap
- *     `await_expression`, parens, and casts; capture `resultBinding` when the
- *     call sits behind `var x = ...` or `x = ...`.
- *  2. The candidate must be an `invocation_expression`.
+ *     `await_expression`, parens, casts, and `as`-expressions (M0 lever L3);
+ *     capture `resultBinding` when the call sits behind `var x = ...` or
+ *     `x = ...`.
+ *  2. The candidate must be an `invocation_expression` — EXCEPT the M0
+ *     lever L2 fallback: a bare element-access read on a tracked handle used
+ *     as a declaration/assignment initializer matches as method `[indexer]`.
  *  3. Walk the `member_access_expression` / `element_access_expression`
  *     chain (element access is walked THROUGH — `wb.Sheet["S1"].ReadRange()`
  *     passes through the indexer) down to the ROOT identifier, skipping a
@@ -37,11 +40,26 @@ import type { HandleMap } from './handleTracking';
 export interface Tier1Match {
   familyId: string;
   familyDisplayName: string;
+  /** Family icon id (entry-level overrides are applied by the consumer). */
+  familyIcon: string;
+  /** Wildcard family title template (`{method}` placeholder), when present. */
+  wildcardTitleTemplate?: string;
   method: string;
   /** Present only when the family explicitly catalogs this member. */
   catalogEntry?: CatalogEntry;
   /** Variable receiving the result (`var x = ...` or `x = ...`). */
   resultBinding?: string;
+  /**
+   * The matched `invocation_expression` node — lets the consumer extract arg
+   * summaries without re-walking the statement.  Absent for indexer matches.
+   * NOT serializable; never crosses the postMessage boundary.
+   */
+  invocation?: Node;
+  /**
+   * For `[indexer]` matches (M0 lever L2): the `bracketed_argument_list`
+   * holding the key expression.  NOT serializable.
+   */
+  indexerSubscript?: Node;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,8 +80,9 @@ function firstExpressionChild(node: Node): Node | null {
 }
 
 /**
- * Strip `await`, parentheses, and casts off an expression.
- * `await (T)(x.Foo())` → the inner `invocation_expression`.
+ * Strip `await`, parentheses, casts, and `as`-expressions off an expression.
+ * `await (T)(x.Foo())` → the inner `invocation_expression`;
+ * `x.Foo() as string` likewise (M0 lever L3).
  */
 export function unwrapExpression(node: Node): Node {
   let cur = node;
@@ -79,6 +98,10 @@ export function unwrapExpression(node: Node): Node {
       const value = cur.childForFieldName('value');
       if (value === null) return cur;
       cur = value;
+    } else if (cur.type === 'as_expression') {
+      const left = cur.childForFieldName('left');
+      if (left === null) return cur;
+      cur = left;
     } else {
       return cur;
     }
@@ -211,6 +234,8 @@ export function resolveInvocationFamily(
 interface UnwrappedStatement {
   expression: Node | null;
   resultBinding?: string;
+  /** Syntactic position the expression was found in. */
+  context: 'expression' | 'declaration' | 'assignment' | 'return';
 }
 
 /** Initializer expression of a `variable_declarator`, or null. */
@@ -230,22 +255,23 @@ function unwrapStatement(stmt: Node): UnwrappedStatement {
   switch (stmt.type) {
     case 'expression_statement': {
       const inner = firstExpressionChild(stmt);
-      if (inner === null) return { expression: null };
+      if (inner === null) return { expression: null, context: 'expression' };
       if (inner.type === 'assignment_expression') {
         const op = inner.childForFieldName('operator');
         if (op === null || op.text !== '=') {
           // Compound assignments are not call statements.
-          return { expression: null };
+          return { expression: null, context: 'assignment' };
         }
         const left = inner.childForFieldName('left');
         const right = inner.childForFieldName('right');
         return {
           expression: right,
           resultBinding:
-            left !== null && left.type === 'identifier' ? left.text : undefined
+            left !== null && left.type === 'identifier' ? left.text : undefined,
+          context: 'assignment'
         };
       }
-      return { expression: inner };
+      return { expression: inner, context: 'expression' };
     }
     case 'local_declaration_statement': {
       const declaration = stmt.namedChildren.find(
@@ -254,17 +280,18 @@ function unwrapStatement(stmt: Node): UnwrappedStatement {
       const declarator = declaration?.namedChildren.find(
         (c) => c.type === 'variable_declarator'
       );
-      if (declarator === undefined) return { expression: null };
+      if (declarator === undefined) return { expression: null, context: 'declaration' };
       const name = declarator.childForFieldName('name');
       return {
         expression: declaratorInitializer(declarator),
-        resultBinding: name !== null ? name.text : undefined
+        resultBinding: name !== null ? name.text : undefined,
+        context: 'declaration'
       };
     }
     case 'return_statement':
-      return { expression: firstExpressionChild(stmt) };
+      return { expression: firstExpressionChild(stmt), context: 'return' };
     default:
-      return { expression: null };
+      return { expression: null, context: 'expression' };
   }
 }
 
@@ -272,14 +299,37 @@ function unwrapStatement(stmt: Node): UnwrappedStatement {
 // Public matcher
 // ---------------------------------------------------------------------------
 
-/**
- * Match one statement against the tier-1 catalog.
- * Returns null when the statement is not a recognized service call.
- */
-export function matchTier1(stmt: Node, handles: HandleMap): Tier1Match | null {
-  const { expression, resultBinding } = unwrapStatement(stmt);
-  if (expression === null) return null;
+/** Assemble a Tier1Match from a resolved family + member. */
+function familyMatch(
+  family: ServiceFamily,
+  method: string,
+  resultBinding: string | undefined,
+  invocation: Node | undefined
+): Tier1Match {
+  return {
+    familyId: family.id,
+    familyDisplayName: family.displayName,
+    familyIcon: family.icon,
+    ...(family.wildcardTitleTemplate !== undefined
+      ? { wildcardTitleTemplate: family.wildcardTitleTemplate }
+      : {}),
+    method,
+    catalogEntry: family.entries.find((e) => e.method === method),
+    resultBinding,
+    invocation
+  };
+}
 
+/**
+ * Match a bare EXPRESSION (already detached from its statement) against the
+ * tier-1 catalog — used for `using`-statement resource initializers and as
+ * the core of `matchTier1`.  Unwraps await/parens/casts/`as` itself.
+ */
+export function matchTier1Expression(
+  expression: Node,
+  handles: HandleMap,
+  resultBinding?: string
+): Tier1Match | null {
   const inv = unwrapExpression(expression);
   if (inv.type !== 'invocation_expression') return null;
 
@@ -291,25 +341,58 @@ export function matchTier1(stmt: Node, handles: HandleMap): Tier1Match | null {
     if (baseFamily === undefined) return null;
     const entry = baseFamily.entries.find((e) => e.method === walk.method);
     if (entry === undefined) return null; // bare helper call, not a base API
-    return {
-      familyId: BASE_FAMILY_ID,
-      familyDisplayName: baseFamily.displayName,
-      method: walk.method,
-      catalogEntry: entry,
-      resultBinding
-    };
+    return familyMatch(baseFamily, walk.method, resultBinding, inv);
   }
 
   const familyId = resolveReceiver(walk.rootText, handles);
   if (familyId === null) return null;
   const family = FAMILY_BY_ID.get(familyId);
   if (family === undefined) return null;
+  return familyMatch(family, walk.method, resultBinding, inv);
+}
 
+/**
+ * M0 lever L2: a bare element-access READ on a tracked handle used as a
+ * declaration/assignment initializer (`string c = address["Country"];`)
+ * becomes a generic `[indexer]` tier-1 match on the handle's family.
+ */
+function matchIndexerRead(
+  expression: Node,
+  handles: HandleMap,
+  resultBinding: string | undefined
+): Tier1Match | null {
+  const access = unwrapExpression(expression);
+  if (access.type !== 'element_access_expression') return null;
+  const receiver = access.childForFieldName('expression');
+  if (receiver === null || receiver.type !== 'identifier') return null;
+  const familyId = handles[receiver.text];
+  if (familyId === undefined) return null;
+  const family = FAMILY_BY_ID.get(familyId);
+  if (family === undefined) return null;
+  const subscript = access.childForFieldName('subscript');
   return {
-    familyId,
+    familyId: family.id,
     familyDisplayName: family.displayName,
-    method: walk.method,
-    catalogEntry: family.entries.find((e) => e.method === walk.method),
-    resultBinding
+    familyIcon: family.icon,
+    method: '[indexer]',
+    resultBinding,
+    ...(subscript !== null ? { indexerSubscript: subscript } : {})
   };
+}
+
+/**
+ * Match one statement against the tier-1 catalog.
+ * Returns null when the statement is not a recognized service call.
+ */
+export function matchTier1(stmt: Node, handles: HandleMap): Tier1Match | null {
+  const { expression, resultBinding, context } = unwrapStatement(stmt);
+  if (expression === null) return null;
+
+  const call = matchTier1Expression(expression, handles, resultBinding);
+  if (call !== null) return call;
+
+  if (context === 'declaration' || context === 'assignment') {
+    return matchIndexerRead(expression, handles, resultBinding);
+  }
+  return null;
 }

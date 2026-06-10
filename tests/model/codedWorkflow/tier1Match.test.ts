@@ -210,6 +210,75 @@ describe('handle tracking — service handles flow through locals', () => {
   });
 });
 
+describe('matchTier1 — M0 levers', () => {
+  it('L1: resolves the lowercase powerpoint receiver', async () => {
+    const m = await match('powerpoint.UsePowerPointPresentation("deck.pptx");');
+    expect(m).not.toBeNull();
+    expect(m!.familyId).toBe('powerpoint');
+    expect(m!.familyDisplayName).toBe('PowerPoint');
+  });
+
+  it('L1: java and python scope handles track and resolve', async () => {
+    const { statements } = await parseWorkflowBody(
+      'var js = java.UseJavaScope(opts); js.InvokeMethod("sum"); var py = python.UsePythonScope(o2);'
+    );
+    const handles = createHandleMap();
+    trackHandle(handles, statements[0]);
+    trackHandle(handles, statements[2]);
+    expect(handles).toEqual({ js: 'java', py: 'python' });
+
+    const m = matchTier1(statements[1], handles);
+    expect(m).not.toBeNull();
+    expect(m!.familyId).toBe('java');
+    expect(m!.method).toBe('InvokeMethod');
+  });
+
+  it('L2: a tracked-handle element-access read matches as [indexer]', async () => {
+    const { statements } = await parseWorkflowBody(
+      'var row = testing.GetTestDataRow("Addresses"); string c = row["Country"];'
+    );
+    const handles = createHandleMap();
+    trackHandle(handles, statements[0]);
+
+    const m = matchTier1(statements[1], handles);
+    expect(m).not.toBeNull();
+    expect(m!.familyId).toBe('testing');
+    expect(m!.method).toBe('[indexer]');
+    expect(m!.resultBinding).toBe('c');
+    expect(m!.catalogEntry).toBeUndefined();
+  });
+
+  it('L2: indexer reads on untracked variables do not match', async () => {
+    expect(await match('string c = row["Country"];')).toBeNull();
+  });
+
+  it('L2: indexer WRITES and return-position reads do not match', async () => {
+    const { statements } = await parseWorkflowBody(
+      'var row = testing.GetTestDataRow("A"); row["Country"] = "RO"; return row["Country"];'
+    );
+    const handles = createHandleMap();
+    trackHandle(handles, statements[0]);
+    // Write: the element access is the assignment TARGET, not a read.
+    expect(matchTier1(statements[1], handles)).toBeNull();
+    // Read in return position: the lever covers declaration/assignment only.
+    expect(matchTier1(statements[2], handles)).toBeNull();
+  });
+
+  it('L3: unwraps as-expressions like casts', async () => {
+    const { statements } = await parseWorkflowBody(
+      'var wb = excel.UseExcelFile("a.xlsx"); var cellValue = wb.ReadCell(s, "B7", true) as string;'
+    );
+    const handles = createHandleMap();
+    trackHandle(handles, statements[0]);
+
+    const m = matchTier1(statements[1], handles);
+    expect(m).not.toBeNull();
+    expect(m!.familyId).toBe('excel');
+    expect(m!.method).toBe('ReadCell');
+    expect(m!.resultBinding).toBe('cellValue');
+  });
+});
+
 describe('tier-1 catalog integrity', () => {
   it('has unique family ids and includes the _base family', () => {
     const ids = TIER1_CATALOG.map((f) => f.id);
