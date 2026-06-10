@@ -134,8 +134,6 @@ export function getCSharpParser(): Promise<CSharpParserHandle> {
  */
 export function disposeCSharpParser(): void {
   if (_handle !== null) {
-    // Call parser.delete() directly; we cannot call _handle.dispose() because
-    // that would set _handle = null mid-flight — instead do the teardown here.
     try {
       _handle.dispose();
     } catch {
