@@ -88,6 +88,8 @@ import {
   type HandleMap
 } from './classify/handleTracking';
 import { extractArgs, extractIndexerKey } from './classify/argExtract';
+import { applyTier2, TIER2_RULES, type Tier2Rule } from './classify/tier2Rules';
+import { mergeAdjacentChips } from './chips';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -102,6 +104,11 @@ export interface BuildModelInput {
    * inline; defaults to 0.
    */
   parseMs?: number;
+  /**
+   * TEST SEAM: override the tier-2 rule registry.  Production callers leave
+   * this unset and get the shipped `TIER2_RULES` (currently empty).
+   */
+  tier2Rules?: readonly Tier2Rule[];
 }
 
 /** Monotonic milliseconds; 0 when no `performance` global exists (pure fallback). */
@@ -137,7 +144,11 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     const helperMethods: CwHelperMethod[] = [];
     for (const method of methods) {
       const name = method.childForFieldName('name')?.text ?? '(unnamed)';
-      const ctx: ClassifyContext = { source, handles: createHandleMap() };
+      const ctx: ClassifyContext = {
+        source,
+        handles: createHandleMap(),
+        tier2Rules: input.tier2Rules ?? TIER2_RULES
+      };
       const body = classifyMethodBody(method, ctx);
       const tierCounts = countTiers(body);
       totals.tier1 += tierCounts.tier1;
@@ -400,6 +411,8 @@ interface ClassifyContext {
   source: string;
   /** Method-local service-handle map, fed in source order (forward-only). */
   handles: HandleMap;
+  /** Tier-2 rule registry (the shipped one, or a test override). */
+  tier2Rules: readonly Tier2Rule[];
 }
 
 /** Exact source slice of a node. */
@@ -433,7 +446,9 @@ function blockStatements(block: Node): Node[] {
 
 /**
  * Classify a statement list into model nodes.  Bare `block` statements are
- * spliced into the parent list.
+ * spliced into the parent list.  Adjacent raw chips merge per slot as a
+ * post-pass (spliced sub-lists re-merge in the parent — the re-slice from
+ * source keeps that associative).
  */
 function classifyStatements(stmts: Node[], ctx: ClassifyContext): CwStatement[] {
   const out: CwStatement[] = [];
@@ -445,7 +460,7 @@ function classifyStatements(stmts: Node[], ctx: ClassifyContext): CwStatement[] 
     }
     out.push(classifyStatement(stmt, ctx));
   }
-  return out;
+  return mergeAdjacentChips(out, ctx.source);
 }
 
 /** Classify one (non-block, non-comment) statement node. */
@@ -484,10 +499,10 @@ function classifyStatement(stmt: Node, ctx: ClassifyContext): CwStatement {
 }
 
 /**
- * Leaf dispatch: track handle effects first (forward-only, source order),
- * then tier-1 match → card; otherwise a tier-3 raw chip.  `ERROR` nodes fall
- * through to chips carrying the exact broken source.  (Tier-2 pseudo-step
- * dispatch slots in between in Stage C.)
+ * Leaf dispatch, strictly ordered tier1 > tier2 > chip: track handle effects
+ * first (forward-only, source order), then tier-1 match → card, then tier-2
+ * rule match → pseudo-step, otherwise a tier-3 raw chip.  `ERROR` nodes fall
+ * through to chips carrying the exact broken source.
  */
 function classifyLeaf(stmt: Node, ctx: ClassifyContext): CwStatement {
   trackHandle(ctx.handles, stmt);
@@ -495,6 +510,8 @@ function classifyLeaf(stmt: Node, ctx: ClassifyContext): CwStatement {
   if (match !== null) {
     return makeCard(match, toSpan(stmt), ctx);
   }
+  const pseudo = applyTier2(stmt, ctx.source, ctx.tier2Rules);
+  if (pseudo !== null) return pseudo;
   return makeChip(stmt, ctx);
 }
 

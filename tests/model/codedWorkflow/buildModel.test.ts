@@ -275,10 +275,15 @@ describe('buildModel — stats and health', () => {
       }
     ]);
 
+    // The recovered statement and the broken region are adjacent chips and
+    // therefore merge into ONE chip carrying both raw texts (Stage C).
     const body = model.classes[0].entryPoints[0].body as CwRawChip[];
-    expect(body.length).toBeGreaterThanOrEqual(2);
-    expect(body[0].code).toBe('var x = 1;');
-    expect(body.some((c) => c.code.includes('foo((('))).toBe(true);
+    expect(body).toHaveLength(1);
+    // Exactly how many nodes tree-sitter recovers from the broken region is
+    // grammar-version detail — at least the clean statement plus one.
+    expect(body[0].statementCount).toBeGreaterThanOrEqual(2);
+    expect(body[0].code.startsWith('var x = 1;')).toBe(true);
+    expect(body[0].code).toContain('foo(((');
   });
 
   it('survives a JSON round-trip unchanged', async () => {
