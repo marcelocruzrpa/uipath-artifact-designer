@@ -13,3 +13,8 @@ coverage/
 .idea/
 *.swp
 .env*
+
+# M0 corpus spike (local repo clones + generated reports)
+corpus/
+corpus-report.json
+corpus-report.md

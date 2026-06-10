@@ -25,3 +25,7 @@ vitest.config.ts
 REVIEW.md
 .omc/research/**
 docs/**
+scripts/**
+corpus/**
+corpus-report.json
+corpus-report.md
