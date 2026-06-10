@@ -131,6 +131,11 @@
         "command": "uipathArtifactDesigner.refresh",
         "title": "UiPath Artifact Designer: Reload Artifact",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "uipathArtifactDesigner.showCallGraph",
+        "title": "UiPath: Show Call Graph",
+        "icon": "$(type-hierarchy)"
       }
     ],
     "menus": {
@@ -138,6 +143,11 @@
         {
           "command": "uipathArtifactDesigner.openDesigner",
           "when": "resourceExtname == .cs && uipathArtifactDesigner.activeCsIsWorkflow && activeCustomEditorId not in uipathArtifactDesigner.viewTypes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "uipathArtifactDesigner.showCallGraph",
+          "when": "activeCustomEditorId == uipathArtifactDesigner.codedWorkflowEditor",
           "group": "navigation@1"
         },
         {
@@ -168,6 +178,10 @@
         {
           "command": "uipathArtifactDesigner.reopenAsText",
           "when": "activeCustomEditorId in uipathArtifactDesigner.viewTypes"
+        },
+        {
+          "command": "uipathArtifactDesigner.showCallGraph",
+          "when": "activeCustomEditorId == uipathArtifactDesigner.codedWorkflowEditor || resourceExtname == .cs && uipathArtifactDesigner.activeCsIsWorkflow"
         }
       ]
     }

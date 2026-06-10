@@ -3,6 +3,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
+import { findProjectRoot } from './artifacts/codedProject';
+import { CodedProjectIndex } from './artifacts/codedProjectIndex';
+import { VIEW_TYPES } from './constants';
 import { artifactRegistry, descriptorForUri } from './model/registry';
 import { isCodedWorkflowSource } from './model/codedWorkflow/detectSource';
 import { configureCSharpParser, disposeCSharpParser } from './model/codedWorkflow/parser';
@@ -204,7 +207,46 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     ),
     vscode.commands.registerCommand('uipathArtifactDesigner.fitToView', () => provider.fitActive()),
-    vscode.commands.registerCommand('uipathArtifactDesigner.refresh', () => provider.refreshActive())
+    vscode.commands.registerCommand('uipathArtifactDesigner.refresh', () => provider.refreshActive()),
+    vscode.commands.registerCommand(
+      'uipathArtifactDesigner.showCallGraph',
+      async (uri?: vscode.Uri) => {
+        // Case 1: the active editor is already a coded-workflow designer —
+        // just ask its webview to switch views.
+        const activeDesignerUri = provider.getActiveDocumentUri();
+        if (
+          activeDesignerUri &&
+          descriptorForUri(activeDesignerUri)?.kind === 'coded-workflow'
+        ) {
+          provider.showGraphActive();
+          return;
+        }
+        // Case 2: a .cs target (command argument or active text editor)
+        // inside a UiPath project — open the designer, then ask for the
+        // graph. showGraphFor queues the control until the first model
+        // render, so the webview receives it after its renderer mounts.
+        const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+        if (target && target.path.toLowerCase().endsWith('.cs')) {
+          const root = await findProjectRoot(target);
+          if (root !== undefined) {
+            await vscode.commands.executeCommand(
+              'vscode.openWith',
+              target,
+              VIEW_TYPES['coded-workflow']
+            );
+            provider.showGraphFor(target);
+            return;
+          }
+        }
+        void vscode.window.showInformationMessage(
+          'UiPath: Show Call Graph needs a coded workflow — open a .cs file ' +
+            'inside a UiPath project (a folder with project.json).'
+        );
+      }
+    ),
+    // Drop the per-project graph indexes (and their parsed-fact caches) when
+    // the extension is deactivated.
+    { dispose: () => CodedProjectIndex.disposeAll() }
   );
 }
 
