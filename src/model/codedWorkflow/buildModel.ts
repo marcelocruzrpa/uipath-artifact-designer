@@ -44,22 +44,16 @@
  *   singleton roles (`then`, `else`, `try`, `finally`, `body`, `default`) do
  *   not.
  *
- * WORKFLOW-CLASS RULE (same as the corpus spike)
- *   A class is a workflow class when its base list names `CodedWorkflow` as
- *   the last segment of any base type, OR when at least one of its methods
- *   carries a `[Workflow]` / `[TestCase]` attribute (covers partial classes
- *   whose base list lives in another file).  All other classes are listed in
- *   `otherClassNames`.
- *
- * BASE-TYPE RULE
- *   `baseType` is the source text of the base whose last segment is
- *   `CodedWorkflow` when one exists; otherwise the first base type's text;
- *   otherwise (attribute-only class with no base list) the literal
- *   `'CodedWorkflow'`, since such classes inherit it via another partial.
+ * WORKFLOW-CLASS RULE / BASE-TYPE RULE
+ *   Live in `classDiscovery.ts` (shared with the call-graph layer).  Classes
+ *   failing the workflow-class rule are listed in `otherClassNames`.
  *
  * STATS RULE
  *   `tierCounts`/`stats` count LEAVES, not containers: tier-1 cards and
  *   tier-2 steps count 1 each, raw chips count their `statementCount`.
+ *
+ * Class discovery (the WORKFLOW-CLASS / BASE-TYPE rules) lives in the shared
+ * `classDiscovery.ts` module, also consumed by `graph/graphFacts.ts`.
  *
  * PURITY RULE: this module may import only types from `web-tree-sitter` and
  * the local model types.  No `vscode`, `fs`, `path`, or `node:*` imports —
@@ -96,6 +90,13 @@ import {
 import { extractArgs, extractIndexerKey } from './classify/argExtract';
 import { applyTier2, TIER2_RULES, type Tier2Rule } from './classify/tier2Rules';
 import { mergeAdjacentChips, chipFromSpan } from './chips';
+import {
+  baseTypeOf,
+  classMethods,
+  collectClasses,
+  entryPointAttribute,
+  extendsCodedWorkflow
+} from './classDiscovery';
 import {
   COLLAPSE_ALL_STATEMENTS,
   COLLAPSE_CONTAINER_LINES,
@@ -245,136 +246,8 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
 }
 
 // ---------------------------------------------------------------------------
-// Class discovery
-// ---------------------------------------------------------------------------
-
-interface FoundClass {
-  classDecl: Node;
-  /** Dotted enclosing namespace, or undefined at the top level. */
-  namespace: string | undefined;
-}
-
-/**
- * Collect every `class_declaration` in source order, tracking the enclosing
- * (possibly nested) namespace.  Classes nested inside other classes keep the
- * enclosing namespace only — outer class names are not appended.
- *
- * Note: in this grammar version a `file_scoped_namespace_declaration` spans
- * only the `namespace X;` line and the declarations follow as SIBLINGS, so it
- * sets the namespace for the rest of the current scope (we still recurse into
- * it to stay compatible with grammar versions that nest the declarations).
- */
-function collectClasses(node: Node, namespace: string | undefined): FoundClass[] {
-  const found: FoundClass[] = [];
-  let current = namespace;
-  for (const child of node.namedChildren) {
-    switch (child.type) {
-      case 'file_scoped_namespace_declaration': {
-        const name = child.childForFieldName('name')?.text;
-        if (name !== undefined) {
-          current = current === undefined ? name : `${current}.${name}`;
-        }
-        found.push(...collectClasses(child, current));
-        break;
-      }
-      case 'namespace_declaration': {
-        const name = child.childForFieldName('name')?.text;
-        const inner =
-          name === undefined ? current : current === undefined ? name : `${current}.${name}`;
-        found.push(...collectClasses(child, inner));
-        break;
-      }
-      case 'class_declaration': {
-        found.push({ classDecl: child, namespace: current });
-        const body = child.childForFieldName('body');
-        if (body !== null) found.push(...collectClasses(body, current));
-        break;
-      }
-      case 'declaration_list':
-      case 'ERROR':
-        found.push(...collectClasses(child, current));
-        break;
-      default:
-        break;
-    }
-  }
-  return found;
-}
-
-/** Last identifier segment of a type name (`A.B.CodedWorkflow` → `CodedWorkflow`). */
-function lastTypeNameSegment(node: Node): string | null {
-  switch (node.type) {
-    case 'identifier':
-      return node.text;
-    case 'qualified_name': {
-      const name = node.childForFieldName('name');
-      return name !== null ? lastTypeNameSegment(name) : null;
-    }
-    case 'generic_name': {
-      const id = node.namedChildren.find((c) => c.type === 'identifier');
-      return id !== undefined ? id.text : null;
-    }
-    case 'primary_constructor_base_type': {
-      for (const child of node.namedChildren) {
-        const seg = lastTypeNameSegment(child);
-        if (seg !== null) return seg;
-      }
-      return null;
-    }
-    default:
-      return null;
-  }
-}
-
-function baseListOf(classDecl: Node): Node | undefined {
-  return classDecl.namedChildren.find((c) => c.type === 'base_list');
-}
-
-/** True when the base list names `CodedWorkflow` as its last segment. */
-function extendsCodedWorkflow(classDecl: Node): boolean {
-  const baseList = baseListOf(classDecl);
-  if (baseList === undefined) return false;
-  return baseList.namedChildren.some((base) => lastTypeNameSegment(base) === 'CodedWorkflow');
-}
-
-/** Resolve `baseType` per the BASE-TYPE RULE in the module header. */
-function baseTypeOf(classDecl: Node): string {
-  const baseList = baseListOf(classDecl);
-  if (baseList !== undefined) {
-    const matching = baseList.namedChildren.find(
-      (base) => lastTypeNameSegment(base) === 'CodedWorkflow'
-    );
-    if (matching !== undefined) return matching.text;
-    const first = baseList.namedChildren[0];
-    if (first !== undefined) return first.text;
-  }
-  return 'CodedWorkflow';
-}
-
-// ---------------------------------------------------------------------------
 // Methods, attributes, signatures
 // ---------------------------------------------------------------------------
-
-/** Direct `method_declaration` children of the class body. */
-function classMethods(classDecl: Node): Node[] {
-  const body = classDecl.childForFieldName('body');
-  if (body === null) return [];
-  return body.namedChildren.filter((c) => c.type === 'method_declaration');
-}
-
-/** `'Workflow'` / `'TestCase'` when the method is an entry point, else null. */
-function entryPointAttribute(method: Node): 'Workflow' | 'TestCase' | null {
-  for (const child of method.namedChildren) {
-    if (child.type !== 'attribute_list') continue;
-    for (const attr of child.namedChildren) {
-      if (attr.type !== 'attribute') continue;
-      const name = attr.childForFieldName('name');
-      const seg = name !== null ? lastTypeNameSegment(name) : null;
-      if (seg === 'Workflow' || seg === 'TestCase') return seg;
-    }
-  }
-  return null;
-}
 
 /**
  * One-line signature summary: comma-joined parameters with their modifiers
