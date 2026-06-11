@@ -1,0 +1,1 @@
+var fullPath = Path.Combine(outputDir, "report.pdf");

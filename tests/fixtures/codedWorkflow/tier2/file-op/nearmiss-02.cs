@@ -1,0 +1,1 @@
+fin.Read(buffer, 0, n);

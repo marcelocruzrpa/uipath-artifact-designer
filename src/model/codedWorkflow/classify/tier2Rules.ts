@@ -20,7 +20,11 @@ import type { Node } from 'web-tree-sitter';
 import type { CwPseudoStep } from '../cwTypes';
 
 /** Union of shipped rule ids. */
-export type Tier2RuleId = 'assign-from-call' | 'string-op' | 'linq-single-chain';
+export type Tier2RuleId =
+  | 'assign-from-call'
+  | 'string-op'
+  | 'linq-single-chain'
+  | 'file-op';
 
 /** Hard budget on the number of shipped tier-2 rules. */
 export const MAX_TIER2_RULES = 15;
@@ -313,6 +317,135 @@ const LINQ_SINGLE_CHAIN: Tier2Rule = {
 };
 
 // ---------------------------------------------------------------------------
+// Rule: file-op (file, m0Rank 102 — pure floor)
+// ---------------------------------------------------------------------------
+
+/** `Receiver.Method` whitelist with card titles (manifest row 4). */
+const FILE_OP_TITLES: ReadonlyMap<string, string> = new Map([
+  ['File.ReadAllText', 'Read file'],
+  ['File.ReadAllLines', 'Read file lines'],
+  ['File.WriteAllText', 'Write file'],
+  ['File.AppendAllText', 'Append to file'],
+  ['File.Copy', 'Copy file'],
+  ['File.Move', 'Move file'],
+  ['File.Delete', 'Delete file'],
+  ['File.Exists', 'File exists?'],
+  ['Directory.CreateDirectory', 'Create folder'],
+  ['Directory.Delete', 'Delete folder'],
+  ['Directory.Exists', 'Folder exists?'],
+  ['Directory.GetFiles', 'List files'],
+  ['Path.Combine', 'Combine path'],
+  ['Path.GetFileName', 'File name of path'],
+  ['Path.GetDirectoryName', 'Folder of path']
+]);
+
+/**
+ * Per-method text shapes (`{x}` = binding, `{aN}` = exact arg source):
+ *   - File.ReadAllText (bound, 1 arg)      → `{x} = contents of {a0}`
+ *   - File.WriteAllText (2 args)           → `{a0} ← {a1}`
+ *   - File.Copy (2–3 args)                 → `{a0} → {a1}` + `, overwrite`
+ *                                            when {a2} is the literal `true`
+ *   - Directory.GetFiles (bound, 1 arg)    → `{x} = files in {a0}`
+ *   - Path.Combine (bound, ≥2 args)        → `{x} = {a0} + {a1} + …`
+ *   - everything else / shape fallback     → `{x} = {call}` when bound,
+ *                                            else the exact `{call}` source
+ */
+function fileOpText(
+  key: string,
+  binding: string | null,
+  args: Node[],
+  argSrc: string[],
+  call: string
+): string {
+  switch (key) {
+    case 'File.ReadAllText':
+      if (binding !== null && argSrc.length === 1) {
+        return `${binding} = contents of ${argSrc[0]}`;
+      }
+      break;
+    case 'File.WriteAllText':
+      if (argSrc.length === 2) return `${argSrc[0]} ← ${argSrc[1]}`;
+      break;
+    case 'File.Copy':
+      if (argSrc.length === 2 || argSrc.length === 3) {
+        const overwrite =
+          argSrc.length === 3 &&
+          args[2].type === 'boolean_literal' &&
+          args[2].text === 'true';
+        return `${argSrc[0]} → ${argSrc[1]}${overwrite ? ', overwrite' : ''}`;
+      }
+      break;
+    case 'Directory.GetFiles':
+      if (binding !== null && argSrc.length === 1) {
+        return `${binding} = files in ${argSrc[0]}`;
+      }
+      break;
+    case 'Path.Combine':
+      if (binding !== null && argSrc.length >= 2) {
+        return `${binding} = ${argSrc.join(' + ')}`;
+      }
+      break;
+    default:
+      break;
+  }
+  return binding !== null ? `${binding} = ${call}` : call;
+}
+
+function matchFileOp(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  let binding: string | null = null;
+  let value: Node;
+  const bound = boundValueOf(stmt);
+  if (bound !== null) {
+    if (bound.op !== '=') return null;
+    binding = bound.binding;
+    value = bound.value;
+  } else if (stmt.type === 'expression_statement') {
+    const inner = firstNonComment(stmt);
+    if (inner === null || inner.type === 'assignment_expression') return null;
+    value = inner;
+  } else {
+    return null;
+  }
+  if (value.type !== 'invocation_expression') return null;
+  const fn = value.childForFieldName('function');
+  if (fn === null || fn.type !== 'member_access_expression') return null;
+  const recv = fn.childForFieldName('expression');
+  const name = fn.childForFieldName('name');
+  if (recv === null || recv.type !== 'identifier') return null;
+  if (name === null || name.type !== 'identifier') return null;
+  const key = `${recv.text}.${name.text}`;
+  const title = FILE_OP_TITLES.get(key);
+  if (title === undefined) return null;
+  const args = argumentValues(value.childForFieldName('arguments'));
+  if (args === null || !args.every(isLiteralOrIdentifier)) return null;
+  const argSrc = args.map((n) => sliceOf(n, source));
+  return {
+    captures: {
+      title,
+      text: fileOpText(key, binding, args, argSrc, sliceOf(value, source))
+    }
+  };
+}
+
+const FILE_OP: Tier2Rule = {
+  id: 'file-op',
+  family: 'file',
+  m0Rank: 102,
+  doc:
+    'Static file-system API as a bare statement or bound value: a fixed ' +
+    'File./Directory./Path. method whitelist (see FILE_OP_TITLES) with every ' +
+    'arg a literal or identifier. Text shapes per method are documented on ' +
+    'fileOpText. Instance stream I/O (new StreamReader, fin.Read(buffer, ...)) ' +
+    'stays tier-3.',
+  match: matchFileOp,
+  titleTemplate: '{title}',
+  textTemplate: '{text}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: assign-from-call (assign, M0 rank 8)
 // ---------------------------------------------------------------------------
 
@@ -325,7 +458,7 @@ const LINQ_SINGLE_CHAIN: Tier2Rule = {
  */
 const SPECIFIC_FLOOR_MATCHERS: ReadonlyArray<
   (stmt: Node, source: string) => unknown
-> = [matchStringOp, matchLinqSingleChain];
+> = [matchStringOp, matchLinqSingleChain, matchFileOp];
 
 function matchAssignFromCall(
   stmt: Node,
@@ -530,7 +663,8 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 export const TIER2_RULES: readonly Tier2Rule[] = [
   ASSIGN_FROM_CALL,
   STRING_OP,
-  LINQ_SINGLE_CHAIN
+  LINQ_SINGLE_CHAIN,
+  FILE_OP
 ];
 
 /** Icon per rule family. */
