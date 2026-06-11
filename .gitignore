@@ -18,3 +18,6 @@ coverage/
 corpus/
 corpus-report.json
 corpus-report.md
+
+# M2 perf evidence (generated sample projects — scripts/genSampleProject.mjs)
+tmp-sample-project/

@@ -55,3 +55,65 @@ All 9 manual checks above must be marked **PASS** before merging `feat/coded-wor
 | Reviewer | Date | Result |
 |----------|------|--------|
 | | | ☐ PASS  ☐ FAIL |
+
+---
+
+## M2 — Call graph
+
+**Milestone:** M2 — Project call graph (T2.1–T2.4)
+**Gate:** G2 — Graph is correct, deterministic, fast, and navigable
+**Demo workspace:** `samples/coded-workflow-demo/`
+
+### Automated evidence (already proven by CI / scripts)
+
+| Claim | Evidence |
+|-------|----------|
+| **Fixture-map e2e**: real parses of the 5-file `sampleProject` fixture assemble into the exact expected 8-node / 7-edge map (unique + ambiguous `workflows.*` resolution, legacy xaml node, helper edge, dynamic-RunWorkflow singleton, no-match node, entry badge only on `Workflows/Main.cs`) | `tests/model/codedWorkflow/graphAssemble.test.ts` → `assembleGraph — sampleProject fixture end-to-end › produces the expected project map` |
+| **Assembly determinism**: identical graph JSON across runs and regardless of input file order | `graphAssemble.test.ts` → `assembleGraph — cap, aggregation, determinism › is deterministic: identical output across runs and input file order` |
+| **Layout determinism**: two dagre layout runs over the same graph are byte-identical | `tests/webview/graphLayout.test.ts` → `layoutGraph › is deterministic — two runs over the same graph are identical` |
+| **Node cap / truncation**: helpers dropped first, then unresolved; coded + xaml nodes never dropped; no dangling edges | `graphAssemble.test.ts` cap suite |
+
+### Performance evidence (G2 budgets: cold ≤ 1500 ms @ 50 files, increment ≤ 100 ms)
+
+Measured with `npx tsx scripts/graphPerf.mjs` over deterministic generated projects
+(`scripts/genSampleProject.mjs` — chained `workflows.*` calls, literal + dynamic
+`RunWorkflow`, 5 static helpers). The script measures the **pure pipeline**
+(read → tree-sitter parse → `extractFileFacts` → `assembleGraph`) in plain Node —
+the host index (`src/artifacts/codedProjectIndex.ts`) is thin stat-cache glue over
+exactly this pipeline, so this is the honest cold-build cost. The host's warm
+rebuild is stat-only and cannot be measured purely; instead the **warm increment**
+(re-parse ONE file + re-assemble from cached facts — the cost of a single-file
+edit) is measured.
+
+**Machine:** Intel Core Ultra 9 185H, 32 GB RAM, Windows 11 Home, Node v25.6.1 — measured 2026-06-11.
+
+| n   | .cs files | cold total (ms) | read | parse | facts | assemble | increment (ms, median of 5) | nodes | edges | truncated |
+| --- | --------- | --------------- | ---- | ----- | ----- | -------- | --------------------------- | ----- | ----- | --------- |
+| 50  | 55        | 122.6           | 5.4  | 74.5  | 39.4  | 3.4      | 3.2                         | 64    | 113   | false     |
+| 150 | 155       | 141.4           | 13.9 | 75.5  | 49.1  | 3.0      | 5.2                         | 178   | 336   | false     |
+
+- **cold(50) = 122.6 ms ≤ 1500 ms — PASS** (~12× headroom; a repeat run measured 136.4 ms — same order)
+- **increment(50) = 3.2 ms ≤ 100 ms — PASS**; increment(150) = 5.2 ms — PASS (assembly is pure recompute, ~3 ms)
+- One-time parser init (wasm load, paid at host activation, not per build): ~40 ms — cold(50) + init still ≪ budget.
+- Node-kind sanity at n=50: 50 coded-workflow + 8 xaml (every 7th file) + 5 helper + 1 dynamic-unresolved = 64 — exactly the generated shape.
+
+### Manual EDH checks
+
+Setup as in M1 (F5 → EDH → open `samples/coded-workflow-demo/`).
+
+| # | Step | Expected result | Requirement |
+|---|------|-----------------|-------------|
+| M2-1 | Open `Workflows/ProcessInvoices.cs` → click **Open Designer** | Canvas opens; the header shows the segmented **`Workflow \| Call graph`** control — the **Call graph** tab appears (a project graph exists) | T2.3 — mode tabs built only when a graph exists |
+| M2-2 | Click the **Call graph** tab | Graph view: nodes for **ProcessInvoices** and **ValidateInvoice** (entry badge on ProcessInvoices — the `project.json` entry point); an **XAML node for `Legacy/Archive.xaml`** with a **dashed border**, marked **target-file-missing** (the file does not exist in the demo); edges include the **solid `workflows.ValidateInvoice` edge** from ProcessInvoices | R6 — never-drop (missing xaml still shown, dashed); resolution rules |
+| M2-3 | Click the **ValidateInvoice** node | `Workflows/ValidateInvoice.cs` **opens in the editor** — node navigation resolves URIs via the **project root**, so it works across folders too | T2.3 — node click → open file |
+| M2-4 | Focus the plain **text editor** on `ProcessInvoices.cs` and run **`UiPath: Show Call Graph`** from the Command Palette | The designer **opens already on the graph view** (not the canvas) | `uipathArtifactDesigner.showCallGraph` command + control message |
+| M2-5 | With the graph visible, edit a `.cs` file **externally** (e.g. `Add-Content "Workflows/ValidateInvoice.cs" '// probe'` from the EDH terminal) | The graph **refreshes** within the debounce window — no manual reload needed | R7 — live update reaches the graph mode |
+| M2-6 | Watch the graph header/overlay throughout all checks above | The truncation chip (**"Graph truncated — showing workflows only"**) **never shows** on this small project (well under the 300-node cap) | Node cap only engages over 300 nodes |
+
+### Gate G2 Sign-off
+
+All 6 manual checks above must be marked **PASS** (with the automated + perf evidence green) before M2 is accepted.
+
+| Reviewer | Date | Result |
+|----------|------|--------|
+| | | ☐ PASS  ☐ FAIL |
