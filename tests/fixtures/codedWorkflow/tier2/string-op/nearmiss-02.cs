@@ -1,0 +1,1 @@
+var s2 = s.Trim().ToUpper();

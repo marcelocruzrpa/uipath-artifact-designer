@@ -1,0 +1,1 @@
+var summary = $"Invoice {invoiceId} due {dueDate}";

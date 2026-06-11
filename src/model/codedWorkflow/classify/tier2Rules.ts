@@ -20,7 +20,7 @@ import type { Node } from 'web-tree-sitter';
 import type { CwPseudoStep } from '../cwTypes';
 
 /** Union of shipped rule ids. */
-export type Tier2RuleId = 'assign-from-call';
+export type Tier2RuleId = 'assign-from-call' | 'string-op';
 
 /** Hard budget on the number of shipped tier-2 rules. */
 export const MAX_TIER2_RULES = 15;
@@ -169,7 +169,7 @@ function memberChainRoot(fn: Node): Node | null {
  */
 const SPECIFIC_FLOOR_MATCHERS: ReadonlyArray<
   (stmt: Node, source: string) => unknown
-> = [];
+> = [matchStringOp];
 
 function matchAssignFromCall(
   stmt: Node,
@@ -194,6 +194,167 @@ function matchAssignFromCall(
   return { captures: { x: bound.binding, call: sliceOf(value, source) } };
 }
 
+// ---------------------------------------------------------------------------
+// Rule: string-op (string, M0 rank 19)
+// ---------------------------------------------------------------------------
+
+/** Literal node types accepted as "simple" arguments/operands. */
+const LITERAL_TYPES: ReadonlySet<string> = new Set([
+  'string_literal',
+  'verbatim_string_literal',
+  'raw_string_literal',
+  'character_literal',
+  'integer_literal',
+  'real_literal',
+  'boolean_literal',
+  'null_literal'
+]);
+
+/** Literal types that force STRING semantics on a `+` chain. */
+const STRINGISH_TYPES: ReadonlySet<string> = new Set([
+  'string_literal',
+  'verbatim_string_literal',
+  'raw_string_literal',
+  'interpolated_string_expression'
+]);
+
+function isLiteralOrIdentifier(node: Node): boolean {
+  return LITERAL_TYPES.has(node.type) || node.type === 'identifier';
+}
+
+/** Value expression of one `argument` node (named args excluded), or null. */
+function argumentValue(arg: Node): Node | null {
+  const name = arg.childForFieldName('name');
+  if (name !== null) return null; // named arguments stay tier-3
+  const values = arg.namedChildren.filter((c) => c.type !== 'comment');
+  return values.length === 1 ? values[0] : null;
+}
+
+/** All argument value expressions of an argument_list, or null when odd. */
+function argumentValues(argList: Node | null): Node[] | null {
+  if (argList === null) return null;
+  const out: Node[] = [];
+  for (const arg of argList.namedChildren) {
+    if (arg.type === 'comment') continue;
+    if (arg.type !== 'argument') return null;
+    const value = argumentValue(arg);
+    if (value === null) return null;
+    out.push(value);
+  }
+  return out;
+}
+
+/** Single-method whitelist with title per method (see manifest row 2). */
+const STRING_METHOD_TITLES: ReadonlyMap<string, string> = new Map([
+  ['Trim', 'Trim text'],
+  ['TrimStart', 'Trim text'],
+  ['TrimEnd', 'Trim text'],
+  ['ToUpper', 'Upper-case text'],
+  ['ToLower', 'Lower-case text'],
+  ['Replace', 'Replace in text'],
+  ['Substring', 'Take substring'],
+  ['Split', 'Split text'],
+  ['IndexOf', 'Find in text'],
+  ['ToString', 'To text'],
+  ['Append', 'Append text'],
+  ['AppendLine', 'Append text']
+]);
+
+/**
+ * Validate a `+` concat tree: every leaf literal/identifier/interpolated,
+ * and (honesty shrink — see manifest) at least one leaf string-ish, which
+ * forces string semantics without type inference.  Returns whether the tree
+ * is a valid concat shape and whether a string-ish leaf was seen.
+ */
+function concatLeavesValid(node: Node): { valid: boolean; stringish: boolean } {
+  if (node.type === 'binary_expression') {
+    const op = node.childForFieldName('operator');
+    const left = node.childForFieldName('left');
+    const right = node.childForFieldName('right');
+    if (op === null || op.text !== '+' || left === null || right === null) {
+      return { valid: false, stringish: false };
+    }
+    const l = concatLeavesValid(left);
+    const r = concatLeavesValid(right);
+    return { valid: l.valid && r.valid, stringish: l.stringish || r.stringish };
+  }
+  if (STRINGISH_TYPES.has(node.type)) return { valid: true, stringish: true };
+  if (isLiteralOrIdentifier(node)) return { valid: true, stringish: false };
+  return { valid: false, stringish: false };
+}
+
+function matchStringOp(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  const bound = boundValueOf(stmt);
+  if (bound === null) return null;
+  const value = bound.value;
+  const captures = (title: string): { captures: Record<string, string> } => ({
+    captures: {
+      title,
+      x: bound.binding,
+      op: bound.op,
+      rhs: sliceOf(value, source)
+    }
+  });
+
+  // (a) one whitelisted string method on an identifier receiver, all args
+  // literal/identifier:  `var clean = rawName.Trim();`
+  if (value.type === 'invocation_expression') {
+    const fn = value.childForFieldName('function');
+    if (fn === null || fn.type !== 'member_access_expression') return null;
+    const recv = fn.childForFieldName('expression');
+    const name = fn.childForFieldName('name');
+    if (recv === null || recv.type !== 'identifier') return null;
+    if (name === null || name.type !== 'identifier') return null;
+    const title = STRING_METHOD_TITLES.get(name.text);
+    if (title === undefined) return null;
+    const args = argumentValues(value.childForFieldName('arguments'));
+    if (args === null || !args.every(isLiteralOrIdentifier)) return null;
+    return captures(title);
+  }
+
+  // (c) interpolation initializer:  `var s = $"...";`  (declarations only)
+  if (value.type === 'interpolated_string_expression') {
+    if (bound.context === 'declaration') return captures('Compose text');
+    // `x += $"..."` is an append — shape (b) below; plain `x = $"..."`
+    // reassignment stays tier-3 (manifest: interpolation INITIALIZERS).
+    if (bound.op === '+=') return captures('Build text');
+    return null;
+  }
+
+  // (b) concat builds:  `x = a + " " + b;` — at least one string-ish leaf
+  // (honesty shrink: identifier-only `+` could be numeric).  `x += <expr>`
+  // matches only with a string-ish RHS for the same reason.
+  if (value.type === 'binary_expression') {
+    const concat = concatLeavesValid(value);
+    if (!concat.valid || !concat.stringish) return null;
+    return captures('Build text');
+  }
+  if (bound.op === '+=' && STRINGISH_TYPES.has(value.type)) {
+    return captures('Build text');
+  }
+  return null;
+}
+
+const STRING_OP: Tier2Rule = {
+  id: 'string-op',
+  family: 'string',
+  m0Rank: 19,
+  doc:
+    'Single string operation bound to a variable: (a) one whitelisted method ' +
+    '(Trim/TrimStart/TrimEnd/ToUpper/ToLower/Replace/Substring/Split/IndexOf/' +
+    'ToString/Append/AppendLine) on an identifier receiver with ' +
+    'literal/identifier args, as decl init, `=` or `+=` assign; (b) `+` concat ' +
+    'whose leaves are literal/identifier/interpolated with at least one ' +
+    'string-ish leaf, and `+= <string-ish>` appends; (c) `$"..."` declaration ' +
+    'initializers. Fluent chains of >=2 ops and nested format calls stay tier-3.',
+  match: matchStringOp,
+  titleTemplate: '{title}',
+  textTemplate: '{x} {op} {rhs}'
+};
+
 const ASSIGN_FROM_CALL: Tier2Rule = {
   id: 'assign-from-call',
   family: 'assign',
@@ -210,7 +371,7 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 };
 
 /** The shipped registry — sorted ascending by m0Rank. */
-export const TIER2_RULES: readonly Tier2Rule[] = [ASSIGN_FROM_CALL];
+export const TIER2_RULES: readonly Tier2Rule[] = [ASSIGN_FROM_CALL, STRING_OP];
 
 /** Icon per rule family. */
 export const TIER2_FAMILY_ICONS: Record<Tier2Rule['family'], string> = {
