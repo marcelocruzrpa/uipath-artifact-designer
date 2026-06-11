@@ -1,0 +1,1 @@
+var total = lines.Sum(l => l.Amount);

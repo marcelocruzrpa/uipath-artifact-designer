@@ -1,0 +1,1 @@
+var vendorCount = order.Lines.Count();

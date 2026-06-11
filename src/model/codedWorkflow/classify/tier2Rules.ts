@@ -20,7 +20,7 @@ import type { Node } from 'web-tree-sitter';
 import type { CwPseudoStep } from '../cwTypes';
 
 /** Union of shipped rule ids. */
-export type Tier2RuleId = 'assign-from-call' | 'string-op';
+export type Tier2RuleId = 'assign-from-call' | 'string-op' | 'linq-single-chain';
 
 /** Hard budget on the number of shipped tier-2 rules. */
 export const MAX_TIER2_RULES = 15;
@@ -157,6 +157,162 @@ function memberChainRoot(fn: Node): Node | null {
 }
 
 // ---------------------------------------------------------------------------
+// Rule: linq-single-chain (linq, m0Rank 101 — pure floor)
+// ---------------------------------------------------------------------------
+
+/** Whitelisted chain links: lambda-taking ops and zero-arg terminals. */
+const LINQ_LAMBDA_LINKS: ReadonlySet<string> = new Set(['Where', 'Select', 'Sum']);
+const LINQ_BARE_LINKS: ReadonlySet<string> = new Set([
+  'Count',
+  'First',
+  'FirstOrDefault',
+  'ToList',
+  'ToArray'
+]);
+const LINQ_AGGREGATES: ReadonlySet<string> = new Set([
+  'Sum',
+  'Count',
+  'First',
+  'FirstOrDefault'
+]);
+const LINQ_MAX_LINKS = 3;
+
+interface LinqLink {
+  name: string;
+  /** Exact source of the lambda body — absent on bare links. */
+  body?: string;
+}
+
+/**
+ * A single-param, expression-bodied lambda with no nested call/await — the
+ * only lambda shape the linq rule accepts.  Returns the body node or null.
+ */
+function simpleLambdaBody(node: Node): Node | null {
+  if (node.type !== 'lambda_expression') return null;
+  const params = node.childForFieldName('parameters');
+  if (params === null) return null;
+  if (params.type !== 'implicit_parameter') {
+    if (params.type !== 'parameter_list') return null;
+    const named = params.namedChildren.filter((c) => c.type === 'parameter');
+    if (named.length !== 1) return null;
+  }
+  const body = node.childForFieldName('body');
+  if (body === null || body.type === 'block') return null;
+  if (containsType(body, ESCAPE_HATCH_TYPES)) return null;
+  if (containsType(body, new Set(['invocation_expression']))) return null;
+  return body;
+}
+
+/** True when `node` is an identifier or a pure identifier property path. */
+function isIdentifierPath(node: Node): boolean {
+  if (node.type === 'identifier') return true;
+  if (node.type !== 'member_access_expression') return false;
+  const expr = node.childForFieldName('expression');
+  return expr !== null && isIdentifierPath(expr);
+}
+
+function matchLinqSingleChain(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  const bound = boundValueOf(stmt);
+  if (bound === null || bound.op !== '=') return null;
+
+  // Decompose `src.L1(...).L2(...)...` outermost-first into links + source.
+  const reversed: LinqLink[] = [];
+  let cur: Node = bound.value;
+  let src: Node | null = null;
+  for (;;) {
+    if (cur.type !== 'invocation_expression') return null;
+    const fn = cur.childForFieldName('function');
+    if (fn === null || fn.type !== 'member_access_expression') return null;
+    const name = fn.childForFieldName('name');
+    const recv = fn.childForFieldName('expression');
+    if (name === null || name.type !== 'identifier' || recv === null) return null;
+    const args = argumentValues(cur.childForFieldName('arguments'));
+    if (args === null) return null;
+    if (LINQ_LAMBDA_LINKS.has(name.text)) {
+      if (args.length !== 1) return null;
+      const body = simpleLambdaBody(args[0]);
+      if (body === null) return null;
+      reversed.push({ name: name.text, body: sliceOf(body, source) });
+    } else if (LINQ_BARE_LINKS.has(name.text)) {
+      if (args.length !== 0) return null;
+      reversed.push({ name: name.text });
+    } else {
+      return null;
+    }
+    if (reversed.length > LINQ_MAX_LINKS) return null;
+    if (recv.type === 'invocation_expression') {
+      cur = recv;
+      continue;
+    }
+    if (!isIdentifierPath(recv)) return null;
+    src = recv;
+    break;
+  }
+  const links = reversed.reverse();
+
+  // Title by dominance: the last aggregate wins; else Where > Select > To list.
+  let title = 'To list';
+  const lastAggregate = [...links].reverse().find((l) => LINQ_AGGREGATES.has(l.name));
+  if (lastAggregate !== undefined) {
+    title =
+      lastAggregate.name === 'Sum'
+        ? 'Sum'
+        : lastAggregate.name === 'Count'
+          ? 'Count'
+          : 'Take first';
+  } else if (links.some((l) => l.name === 'Where')) {
+    title = 'Filter';
+  } else if (links.some((l) => l.name === 'Select')) {
+    title = 'Transform';
+  }
+
+  const segments = links.map((link) => {
+    switch (link.name) {
+      case 'Where':
+        return ` → where ${link.body}`;
+      case 'Select':
+        return ` → select ${link.body}`;
+      case 'Sum':
+        return ` → sum of ${link.body}`;
+      case 'Count':
+        return ' → count';
+      case 'First':
+      case 'FirstOrDefault':
+        return ' → first';
+      default: // ToList / ToArray
+        return ' → to list';
+    }
+  });
+
+  return {
+    captures: {
+      title,
+      x: bound.binding,
+      chain: `${sliceOf(src, source)}${segments.join('')}`
+    }
+  };
+}
+
+const LINQ_SINGLE_CHAIN: Tier2Rule = {
+  id: 'linq-single-chain',
+  family: 'linq',
+  m0Rank: 101,
+  doc:
+    'Short LINQ chain bound to a variable: <=3 links from {Where, Select, Sum, ' +
+    'Count, First, FirstOrDefault, ToList, ToArray} rooted at an identifier or ' +
+    'property path. Where/Select/Sum take exactly one single-param ' +
+    'expression-bodied lambda with no nested call; Count/First/FirstOrDefault/' +
+    'ToList/ToArray take zero args (predicate overloads stay tier-3). Title by ' +
+    'dominance: last aggregate > Where (Filter) > Select (Transform) > To list.',
+  match: matchLinqSingleChain,
+  titleTemplate: '{title}',
+  textTemplate: '{x} = {chain}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: assign-from-call (assign, M0 rank 8)
 // ---------------------------------------------------------------------------
 
@@ -169,7 +325,7 @@ function memberChainRoot(fn: Node): Node | null {
  */
 const SPECIFIC_FLOOR_MATCHERS: ReadonlyArray<
   (stmt: Node, source: string) => unknown
-> = [matchStringOp];
+> = [matchStringOp, matchLinqSingleChain];
 
 function matchAssignFromCall(
   stmt: Node,
@@ -371,7 +527,11 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 };
 
 /** The shipped registry — sorted ascending by m0Rank. */
-export const TIER2_RULES: readonly Tier2Rule[] = [ASSIGN_FROM_CALL, STRING_OP];
+export const TIER2_RULES: readonly Tier2Rule[] = [
+  ASSIGN_FROM_CALL,
+  STRING_OP,
+  LINQ_SINGLE_CHAIN
+];
 
 /** Icon per rule family. */
 export const TIER2_FAMILY_ICONS: Record<Tier2Rule['family'], string> = {
