@@ -189,8 +189,20 @@ interface LinqLink {
 }
 
 /**
- * A single-param, expression-bodied lambda with no nested call/await — the
- * only lambda shape the linq rule accepts.  Returns the body node or null.
+ * Work a linq lambda body must not hide: nested calls and allocations
+ * (`new T(...)`, target-typed `new(...)`) are real actions, so a body
+ * containing one stays tier-3.
+ */
+const LAMBDA_BODY_HIDDEN_WORK: ReadonlySet<string> = new Set([
+  'invocation_expression',
+  'object_creation_expression',
+  'implicit_object_creation_expression'
+]);
+
+/**
+ * A single-param, expression-bodied lambda with no nested call, object
+ * creation, or await — the only lambda shape the linq rule accepts.
+ * Returns the body node or null.
  */
 function simpleLambdaBody(node: Node): Node | null {
   if (node.type !== 'lambda_expression') return null;
@@ -204,7 +216,7 @@ function simpleLambdaBody(node: Node): Node | null {
   const body = node.childForFieldName('body');
   if (body === null || body.type === 'block') return null;
   if (containsType(body, ESCAPE_HATCH_TYPES)) return null;
-  if (containsType(body, new Set(['invocation_expression']))) return null;
+  if (containsType(body, LAMBDA_BODY_HIDDEN_WORK)) return null;
   return body;
 }
 
@@ -258,8 +270,9 @@ function matchLinqSingleChain(
   }
   const links = reversed.reverse();
 
-  // Title by dominance: the last aggregate wins; else Where > Select > To list.
-  let title = 'To list';
+  // Title by dominance: the last aggregate wins; else Where > Select > the
+  // terminal conversion (named for what it actually produces).
+  let title = links[links.length - 1].name === 'ToArray' ? 'To array' : 'To list';
   const lastAggregate = [...links].reverse().find((l) => LINQ_AGGREGATES.has(l.name));
   if (lastAggregate !== undefined) {
     title =
@@ -285,9 +298,12 @@ function matchLinqSingleChain(
       case 'Count':
         return ' → count';
       case 'First':
-      case 'FirstOrDefault':
         return ' → first';
-      default: // ToList / ToArray
+      case 'FirstOrDefault':
+        return ' → first or default';
+      case 'ToArray':
+        return ' → to array';
+      default: // ToList
         return ' → to list';
     }
   });
@@ -309,9 +325,11 @@ const LINQ_SINGLE_CHAIN: Tier2Rule = {
     'Short LINQ chain bound to a variable: <=3 links from {Where, Select, Sum, ' +
     'Count, First, FirstOrDefault, ToList, ToArray} rooted at an identifier or ' +
     'property path. Where/Select/Sum take exactly one single-param ' +
-    'expression-bodied lambda with no nested call; Count/First/FirstOrDefault/' +
-    'ToList/ToArray take zero args (predicate overloads stay tier-3). Title by ' +
-    'dominance: last aggregate > Where (Filter) > Select (Transform) > To list.',
+    'expression-bodied lambda with no nested call, object creation, or await; ' +
+    'Count/First/FirstOrDefault/ToList/ToArray take zero args (predicate ' +
+    'overloads stay tier-3). Title by dominance: last aggregate > Where ' +
+    '(Filter) > Select (Transform) > To list / To array. FirstOrDefault links ' +
+    'render "first or default"; ToArray renders "to array".',
   match: matchLinqSingleChain,
   titleTemplate: '{title}',
   textTemplate: '{x} = {chain}'
@@ -341,11 +359,43 @@ const FILE_OP_TITLES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
+ * Allowed argument counts per whitelisted method as `[min, max]` — any call
+ * outside the range stays tier-3.  The ranges are exactly the arities whose
+ * text shapes render EVERY argument (the hard fence: a card never drops an
+ * argument); encoding / SearchOption / recursive-flag overloads are
+ * deliberately out of range because their extra arg would change semantics
+ * the card title does not carry.
+ */
+const FILE_OP_ARITIES: ReadonlyMap<string, readonly [number, number]> = new Map<
+  string,
+  readonly [number, number]
+>([
+  ['File.ReadAllText', [1, 1]],
+  ['File.ReadAllLines', [1, 1]],
+  ['File.WriteAllText', [2, 2]],
+  ['File.AppendAllText', [2, 2]],
+  ['File.Copy', [2, 3]],
+  ['File.Move', [2, 2]],
+  ['File.Delete', [1, 1]],
+  ['File.Exists', [1, 1]],
+  ['Directory.CreateDirectory', [1, 1]],
+  ['Directory.Delete', [1, 1]],
+  ['Directory.Exists', [1, 1]],
+  ['Directory.GetFiles', [1, 2]],
+  ['Path.Combine', [2, Number.MAX_SAFE_INTEGER]],
+  ['Path.GetFileName', [1, 1]],
+  ['Path.GetDirectoryName', [1, 1]]
+]);
+
+/**
  * Per-method text shapes (`{x}` = binding, `{aN}` = exact arg source):
  *   - File.ReadAllText (bound, 1 arg)      → `{x} = contents of {a0}`
  *   - File.WriteAllText (2 args)           → `{a0} ← {a1}`
- *   - File.Copy (2–3 args)                 → `{a0} → {a1}` + `, overwrite`
- *                                            when {a2} is the literal `true`
+ *   - File.Copy (2–3 args)                 → `{a0} → {a1}` + `, overwrite` /
+ *                                            `, no overwrite` for the literal
+ *                                            `true`/`false` third arg
+ *                                            (matchFileOp guarantees a third
+ *                                            arg is a boolean literal)
  *   - Directory.GetFiles (bound, 1 arg)    → `{x} = files in {a0}`
  *   - Path.Combine (bound, ≥2 args)        → `{x} = {a0} + {a1} + …`
  *   - everything else / shape fallback     → `{x} = {call}` when bound,
@@ -369,11 +419,15 @@ function fileOpText(
       break;
     case 'File.Copy':
       if (argSrc.length === 2 || argSrc.length === 3) {
-        const overwrite =
-          argSrc.length === 3 &&
-          args[2].type === 'boolean_literal' &&
-          args[2].text === 'true';
-        return `${argSrc[0]} → ${argSrc[1]}${overwrite ? ', overwrite' : ''}`;
+        // Both literal flag values render explicitly so the third arg is
+        // never dropped from the card (non-literal flags never match).
+        const flag =
+          argSrc.length === 3
+            ? args[2].text === 'true'
+              ? ', overwrite'
+              : ', no overwrite'
+            : '';
+        return `${argSrc[0]} → ${argSrc[1]}${flag}`;
       }
       break;
     case 'Directory.GetFiles':
@@ -422,6 +476,15 @@ function matchFileOp(
   if (title === undefined) return null;
   const args = argumentValues(value.childForFieldName('arguments'));
   if (args === null || !args.every(isLiteralOrIdentifier)) return null;
+  const arity = FILE_OP_ARITIES.get(key);
+  if (arity === undefined) return null; // defensive: titled ⇒ arity row exists
+  if (args.length < arity[0] || args.length > arity[1]) return null;
+  // File.Copy's third arg is the overwrite FLAG: only a literal `true`/`false`
+  // renders honestly (`, overwrite` / `, no overwrite`); any other flag
+  // expression would have to be dropped from the card, so it stays tier-3.
+  if (key === 'File.Copy' && args.length === 3 && args[2].type !== 'boolean_literal') {
+    return null;
+  }
   const argSrc = args.map((n) => sliceOf(n, source));
   return {
     captures: {
@@ -438,7 +501,10 @@ const FILE_OP: Tier2Rule = {
   doc:
     'Static file-system API as a bare statement or bound value: a fixed ' +
     'File./Directory./Path. method whitelist (see FILE_OP_TITLES) with every ' +
-    'arg a literal or identifier. Text shapes per method are documented on ' +
+    'arg a literal or identifier AND an allowed arity (see FILE_OP_ARITIES — ' +
+    'wrong arities stay tier-3). File.Copy with 3 args needs a literal ' +
+    'true/false overwrite flag, rendered ", overwrite" / ", no overwrite"; a ' +
+    'non-literal flag stays tier-3. Text shapes per method are documented on ' +
     'fileOpText. Instance stream I/O (new StreamReader, fin.Read(buffer, ...)) ' +
     'stays tier-3.',
   match: matchFileOp,
@@ -689,6 +755,10 @@ function matchStringOp(
   const bound = boundValueOf(stmt);
   if (bound === null) return null;
   const value = bound.value;
+  // Escape hatches ANYWHERE in the RHS — including inside `$"{...}"`
+  // interpolation holes and concat operands — keep the statement tier-3
+  // (same fence as assign-from-call: await/lambda/query is hidden work).
+  if (containsType(value, ESCAPE_HATCH_TYPES)) return null;
   const captures = (title: string): { captures: Record<string, string> } => ({
     captures: {
       title,
@@ -748,7 +818,9 @@ const STRING_OP: Tier2Rule = {
     'literal/identifier args, as decl init, `=` or `+=` assign; (b) `+` concat ' +
     'whose leaves are literal/identifier/interpolated with at least one ' +
     'string-ish leaf, and `+= <string-ish>` appends; (c) `$"..."` declaration ' +
-    'initializers. Fluent chains of >=2 ops and nested format calls stay tier-3.',
+    'initializers. Any await/lambda/query anywhere in the RHS — interpolation ' +
+    'holes included — stays tier-3, as do fluent chains of >=2 ops and nested ' +
+    'format calls.',
   match: matchStringOp,
   titleTemplate: '{title}',
   textTemplate: '{x} {op} {rhs}'

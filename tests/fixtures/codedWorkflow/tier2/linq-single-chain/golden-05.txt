@@ -1,0 +1,1 @@
+Take first | firstPending = invoices → first or default

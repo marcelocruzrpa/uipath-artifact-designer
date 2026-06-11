@@ -1,0 +1,1 @@
+File.Delete(tempPath, force);
