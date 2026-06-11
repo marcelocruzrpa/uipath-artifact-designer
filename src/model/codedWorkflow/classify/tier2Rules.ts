@@ -24,7 +24,8 @@ export type Tier2RuleId =
   | 'assign-from-call'
   | 'string-op'
   | 'linq-single-chain'
-  | 'file-op';
+  | 'file-op'
+  | 'datetime-arith';
 
 /** Hard budget on the number of shipped tier-2 rules. */
 export const MAX_TIER2_RULES = 15;
@@ -446,6 +447,115 @@ const FILE_OP: Tier2Rule = {
 };
 
 // ---------------------------------------------------------------------------
+// Rule: datetime-arith (datetime, m0Rank 103 — pure floor)
+// ---------------------------------------------------------------------------
+
+/** `DateTime.<prop>` reads that are decidable without type inference. */
+const NOW_WORDS: ReadonlyMap<string, string> = new Map([
+  ['Now', 'now'],
+  ['Today', 'today'],
+  ['UtcNow', 'now (UTC)']
+]);
+
+/** `Add*` method → singular unit word. */
+const ADD_UNITS: ReadonlyMap<string, string> = new Map([
+  ['AddDays', 'day'],
+  ['AddMonths', 'month'],
+  ['AddYears', 'year'],
+  ['AddHours', 'hour'],
+  ['AddMinutes', 'minute']
+]);
+
+/** `DateTime.{Now,Today,UtcNow}` member access → its now-word, else null. */
+function nowWordOf(node: Node): string | null {
+  if (node.type !== 'member_access_expression') return null;
+  const expr = node.childForFieldName('expression');
+  const name = node.childForFieldName('name');
+  if (expr === null || expr.type !== 'identifier' || expr.text !== 'DateTime') {
+    return null;
+  }
+  if (name === null || name.type !== 'identifier') return null;
+  return NOW_WORDS.get(name.text) ?? null;
+}
+
+function matchDatetimeArith(
+  stmt: Node,
+  _source: string
+): { captures: Record<string, string> } | null {
+  const bound = boundValueOf(stmt);
+  if (bound === null || bound.op !== '=') return null;
+  const value = bound.value;
+
+  // Bare clock read: `var t = DateTime.Now;` → `Read clock | t = now`.
+  const bareWord = nowWordOf(value);
+  if (bareWord !== null) {
+    return {
+      captures: { title: 'Read clock', x: bound.binding, value: bareWord }
+    };
+  }
+
+  // One Add* call on the clock: `DateTime.Today.AddDays(30)`.
+  if (value.type !== 'invocation_expression') return null;
+  const fn = value.childForFieldName('function');
+  if (fn === null || fn.type !== 'member_access_expression') return null;
+  const recv = fn.childForFieldName('expression');
+  const name = fn.childForFieldName('name');
+  if (recv === null || name === null || name.type !== 'identifier') return null;
+  const unit = ADD_UNITS.get(name.text);
+  const nowWord = nowWordOf(recv);
+  if (unit === undefined || nowWord === null) return null;
+  const args = argumentValues(value.childForFieldName('arguments'));
+  if (args === null || args.length !== 1) return null;
+  const arg = args[0];
+
+  // Amount: integer literal, unary-minus integer literal, or identifier.
+  let sign = '+';
+  let amount: string;
+  let singular = false;
+  if (arg.type === 'integer_literal') {
+    amount = arg.text;
+    singular = Number(arg.text.replace(/[_lLuU]/g, '')) === 1;
+  } else if (arg.type === 'prefix_unary_expression') {
+    const op = arg.child(0);
+    const inner = arg.namedChildren.find((c) => c.type === 'integer_literal');
+    if (op === null || op.type !== '-' || inner === undefined) return null;
+    sign = '−'; // U+2212, rendered with the absolute value
+    amount = inner.text;
+    singular = Number(inner.text.replace(/[_lLuU]/g, '')) === 1;
+  } else if (arg.type === 'identifier') {
+    amount = arg.text; // identifiers always render plural
+  } else {
+    return null;
+  }
+
+  return {
+    captures: {
+      title: 'Calculate date',
+      x: bound.binding,
+      value: `${nowWord} ${sign} ${amount} ${unit}${singular ? '' : 's'}`
+    }
+  };
+}
+
+const DATETIME_ARITH: Tier2Rule = {
+  id: 'datetime-arith',
+  family: 'datetime',
+  m0Rank: 103,
+  doc:
+    'Clock reads and clock arithmetic bound to a variable: ' +
+    '`DateTime.{Now,Today,UtcNow}` bare reads (`Read clock | t = now`) and a ' +
+    'single `Add{Days,Months,Years,Hours,Minutes}(n)` call on such a read ' +
+    'with n an integer literal, unary-minus literal, or identifier ' +
+    '(`Calculate date | dueDate = today + 30 days`; negative literals render ' +
+    'as U+2212 with the absolute value; the unit is singular only for ' +
+    'literal ±1). DateTimeOffset/TimeSpan property reads and general +/− ' +
+    'date arithmetic need type inference and stay tier-3.',
+  match: matchDatetimeArith,
+  titleTemplate: '{title}',
+  textTemplate: '{x} = {value}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: assign-from-call (assign, M0 rank 8)
 // ---------------------------------------------------------------------------
 
@@ -458,7 +568,7 @@ const FILE_OP: Tier2Rule = {
  */
 const SPECIFIC_FLOOR_MATCHERS: ReadonlyArray<
   (stmt: Node, source: string) => unknown
-> = [matchStringOp, matchLinqSingleChain, matchFileOp];
+> = [matchStringOp, matchLinqSingleChain, matchFileOp, matchDatetimeArith];
 
 function matchAssignFromCall(
   stmt: Node,
@@ -664,7 +774,8 @@ export const TIER2_RULES: readonly Tier2Rule[] = [
   ASSIGN_FROM_CALL,
   STRING_OP,
   LINQ_SINGLE_CHAIN,
-  FILE_OP
+  FILE_OP,
+  DATETIME_ARITH
 ];
 
 /** Icon per rule family. */
