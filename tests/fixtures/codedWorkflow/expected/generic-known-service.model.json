@@ -208,18 +208,18 @@
                 "endLine": 21,
                 "endCol": 50
               },
-              "type": "raw",
-              "tier": 3,
-              "code": "var compact = string.Join(\",\", parts);",
-              "lineCount": 1,
-              "statementCount": 1,
-              "codeTruncated": false
+              "type": "pseudo",
+              "tier": 2,
+              "ruleId": "assign-from-call",
+              "title": "Assign",
+              "text": "compact = string.Join(\",\", parts)",
+              "icon": "arrow-right"
             }
           ],
           "tierCounts": {
             "tier1": 6,
-            "tier2": 0,
-            "tier3": 1
+            "tier2": 1,
+            "tier3": 0
           }
         }
       ],
@@ -234,7 +234,7 @@
   "stats": {
     "totalStatements": 7,
     "tier1": 6,
-    "tier2": 0,
-    "tier3": 1
+    "tier2": 1,
+    "tier3": 0
   }
 }

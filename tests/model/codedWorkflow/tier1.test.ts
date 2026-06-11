@@ -231,9 +231,14 @@ describe('tier-1 cards — M0 levers L1/L2 + generic titles', () => {
     expect(item.args).toEqual([{ label: 'Key', value: 'Country', kind: 'literal' }]);
   });
 
-  it('still degrades unmatched leaves to raw chips', () => {
+  it('leaves unmatched by tier-1 fall through to the tier-2/tier-3 layers', () => {
+    // `var compact = string.Join(",", parts);` is no tier-1 service call.
+    // Since T3.2 shipped `assign-from-call` it renders as a tier-2 pseudo-step
+    // (pre-T3.2 it degraded to a raw chip); raw-chip degradation itself is
+    // covered by chips.test.ts ("dispatches tier1 > tier2 > chip").
     const body = generic.classes[0].entryPoints[0].body;
     const last = body[body.length - 1];
-    expect(last.type).toBe('raw');
+    expect(last.type).toBe('pseudo');
+    expect((last as { ruleId?: string }).ruleId).toBe('assign-from-call');
   });
 });

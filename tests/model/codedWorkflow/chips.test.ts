@@ -157,8 +157,10 @@ const fakeCatchAllRule = {
 } as unknown as Tier2Rule;
 
 describe('tier-2 engine', () => {
-  it('ships an EMPTY rule registry within the budget', () => {
-    expect(TIER2_RULES).toEqual([]);
+  it('ships a non-empty rule registry within the budget', () => {
+    // T3.2 lands the floor rules; the structural guards (ordering, manifest
+    // parity, fixture evidence) live in tier2Cap.test.ts.
+    expect(TIER2_RULES.length).toBeGreaterThanOrEqual(1);
     expect(TIER2_RULES.length).toBeLessThanOrEqual(MAX_TIER2_RULES);
   });
 
@@ -207,10 +209,11 @@ describe('tier-2 engine', () => {
     expect(reversed!.ruleId).toBe('test.catchAll');
   });
 
-  it('returns null when no rule matches (and on the empty shipped registry)', async () => {
+  it('returns null when no rule matches (and on the shipped registry)', async () => {
     const { stmt, source } = await parseFlagStatement();
     expect(applyTier2(stmt, source, [])).toBeNull();
-    expect(applyTier2(stmt, source)).toBeNull(); // shipped registry is empty
+    // `flag = true;` has a literal RHS — no shipped floor rule claims it.
+    expect(applyTier2(stmt, source)).toBeNull();
   });
 });
 
