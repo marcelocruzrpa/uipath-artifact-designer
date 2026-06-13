@@ -52,6 +52,7 @@ import {
   type HandleMap
 } from '../src/model/codedWorkflow/classify/handleTracking';
 import { normalizeStatement } from '../src/model/codedWorkflow/normalizeStatement';
+import { applyTier2 } from '../src/model/codedWorkflow/classify/tier2Rules';
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -258,8 +259,11 @@ interface WalkContext {
   relFile: string;
   handles: HandleMap;
   tier1: number;
+  tier2: number;
   tier3: number;
   buckets: Map<string, PatternBucket>;
+  /** Corpus-shared tally of which tier-2 rule claimed each tier-2 leaf. */
+  tier2ByRule: Map<string, number>;
 }
 
 function exampleCode(stmt: Node, source: string): string {
@@ -270,11 +274,18 @@ function exampleCode(stmt: Node, source: string): string {
     .slice(0, MAX_EXAMPLE_CODE);
 }
 
-/** Tally one LEAF statement: track handles, then tier-1 match or bucket. */
+/** Tally one LEAF statement: track handles, then tier-1 / tier-2 / bucket. */
 function countLeaf(stmt: Node, ctx: WalkContext): void {
   trackHandle(ctx.handles, stmt);
   if (matchTier1(stmt, ctx.handles) !== null) {
     ctx.tier1 += 1;
+    return;
+  }
+  // Tier-2: the production whitelist engine (same `applyTier2` the model uses).
+  const pseudo = applyTier2(stmt, ctx.source);
+  if (pseudo !== null) {
+    ctx.tier2 += 1;
+    ctx.tier2ByRule.set(pseudo.ruleId, (ctx.tier2ByRule.get(pseudo.ruleId) ?? 0) + 1);
     return;
   }
   ctx.tier3 += 1;
@@ -374,8 +385,11 @@ interface WorkflowRow {
   entryPoint: string;
   statements: number;
   tier1: number;
+  tier2: number;
   tier3: number;
   tier1Ratio: number;
+  /** (tier1 + tier2) / statements — the Goal-3 legibility coverage metric. */
+  coverageRatio: number;
 }
 
 interface UnmatchedPattern {
@@ -401,8 +415,13 @@ interface Report {
   aggregate: {
     statements: number;
     tier1: number;
+    tier2: number;
     tier3: number;
     tier1Ratio: number;
+    /** (tier1 + tier2) / statements — the Goal-3 coverage metric. */
+    coverageRatio: number;
+    /** Tier-2 leaves per rule id, descending by count. */
+    tier2ByRule: { ruleId: string; count: number }[];
     projectedTierRatioWithTopKBuckets: { k: number; ratio: number }[];
   };
   unmatchedPatterns: UnmatchedPattern[];
@@ -434,7 +453,8 @@ function analyzeWorkflowFile(
   parser: CSharpParserHandle,
   source: string,
   relFile: string,
-  buckets: Map<string, PatternBucket>
+  buckets: Map<string, PatternBucket>,
+  tier2ByRule: Map<string, number>
 ): FileAnalysis {
   const tree = parser.parse(source);
   const rows: WorkflowRow[] = [];
@@ -450,6 +470,7 @@ function analyzeWorkflowFile(
     const className = nameNode !== null ? nameNode.text : '(anonymous)';
 
     let tier1 = 0;
+    let tier2 = 0;
     let tier3 = 0;
     for (const method of methods) {
       const ctx: WalkContext = {
@@ -457,26 +478,31 @@ function analyzeWorkflowFile(
         relFile,
         handles: createHandleMap(), // one HandleMap per method
         tier1: 0,
+        tier2: 0,
         tier3: 0,
-        buckets
+        buckets,
+        tier2ByRule
       };
       visitMethodBody(method.childForFieldName('body'), ctx);
       tier1 += ctx.tier1;
+      tier2 += ctx.tier2;
       tier3 += ctx.tier3;
     }
 
     const entryNames = entryMethods
       .map((m) => m.childForFieldName('name')?.text ?? '(unnamed)')
       .join(', ');
-    const statements = tier1 + tier3;
+    const statements = tier1 + tier2 + tier3;
     rows.push({
       file: relFile,
       class: className,
       entryPoint: entryNames === '' ? '(none)' : entryNames,
       statements,
       tier1,
+      tier2,
       tier3,
-      tier1Ratio: ratio2(tier1, statements)
+      tier1Ratio: ratio2(tier1, statements),
+      coverageRatio: ratio2(tier1 + tier2, statements)
     });
   }
 
@@ -524,13 +550,15 @@ function renderMarkdown(report: Report): string {
 
   lines.push('## Top 20 workflows by statement count');
   lines.push('');
-  lines.push('| File | Class | Entry point | Stmts | Tier 1 | Tier 3 | Ratio |');
-  lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: |');
+  lines.push(
+    '| File | Class | Entry point | Stmts | Tier 1 | Tier 2 | Tier 3 | Coverage |'
+  );
+  lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |');
   for (const row of report.workflows.slice(0, 20)) {
     lines.push(
       `| ${mdEscape(row.file)} | ${mdEscape(row.class)} | ` +
         `${mdEscape(row.entryPoint)} | ${row.statements} | ${row.tier1} | ` +
-        `${row.tier3} | ${row.tier1Ratio.toFixed(2)} |`
+        `${row.tier2} | ${row.tier3} | ${row.coverageRatio.toFixed(2)} |`
     );
   }
   lines.push('');
@@ -541,11 +569,29 @@ function renderMarkdown(report: Report): string {
   lines.push('| --- | ---: |');
   lines.push(`| Leaf statements | ${aggregate.statements} |`);
   lines.push(`| Tier 1 | ${aggregate.tier1} |`);
+  lines.push(`| Tier 2 | ${aggregate.tier2} |`);
   lines.push(`| Tier 3 | ${aggregate.tier3} |`);
   lines.push(`| Tier-1 ratio | ${aggregate.tier1Ratio.toFixed(2)} |`);
+  lines.push(
+    `| **Coverage (tier 1+2) ratio** | **${aggregate.coverageRatio.toFixed(2)}** |`
+  );
+  lines.push('');
+
+  lines.push('### Tier-2 leaves by rule');
+  lines.push('');
+  if (aggregate.tier2ByRule.length === 0) {
+    lines.push('_No tier-2 rules matched._');
+  } else {
+    lines.push('| Rule | Count | % of statements |');
+    lines.push('| --- | ---: | ---: |');
+    for (const { ruleId, count } of aggregate.tier2ByRule) {
+      const pct = aggregate.statements === 0 ? 0 : (count / aggregate.statements) * 100;
+      lines.push(`| ${mdCode(ruleId)} | ${count} | ${pct.toFixed(1)} |`);
+    }
+  }
   lines.push('');
   lines.push(
-    '### Projected ratio if the top K unmatched buckets became tier-2 rules'
+    '### Projected coverage if the top K remaining tier-3 buckets became rules'
   );
   lines.push('');
   lines.push('| K | Projected ratio |');
@@ -607,6 +653,7 @@ async function main(): Promise<void> {
     filesWithParseErrors: 0
   };
   const buckets = new Map<string, PatternBucket>();
+  const tier2ByRule = new Map<string, number>();
   const workflows: WorkflowRow[] = [];
 
   for (const file of csFiles) {
@@ -624,7 +671,8 @@ async function main(): Promise<void> {
       parser,
       source,
       relFile,
-      buckets
+      buckets,
+      tier2ByRule
     );
     if (hadParseError) counts.filesWithParseErrors += 1;
     if (rows.length === 0) {
@@ -646,8 +694,17 @@ async function main(): Promise<void> {
   );
 
   const tier1 = workflows.reduce((sum, w) => sum + w.tier1, 0);
+  const tier2 = workflows.reduce((sum, w) => sum + w.tier2, 0);
   const tier3 = workflows.reduce((sum, w) => sum + w.tier3, 0);
-  const statements = tier1 + tier3;
+  const statements = tier1 + tier2 + tier3;
+
+  const tier2ByRuleSorted = [...tier2ByRule.entries()]
+    .map(([ruleId, count]) => ({ ruleId, count }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        (a.ruleId < b.ruleId ? -1 : a.ruleId > b.ruleId ? 1 : 0)
+    );
 
   const unmatchedPatterns: UnmatchedPattern[] = [...buckets.entries()]
     .map(([signature, bucket]) => ({
@@ -666,7 +723,7 @@ async function main(): Promise<void> {
     const covered = unmatchedPatterns
       .slice(0, k)
       .reduce((sum, p) => sum + p.count, 0);
-    return { k, ratio: ratio2(tier1 + covered, statements) };
+    return { k, ratio: ratio2(tier1 + tier2 + covered, statements) };
   });
 
   const report: Report = {
@@ -676,8 +733,11 @@ async function main(): Promise<void> {
     aggregate: {
       statements,
       tier1,
+      tier2,
       tier3,
       tier1Ratio: ratio2(tier1, statements),
+      coverageRatio: ratio2(tier1 + tier2, statements),
+      tier2ByRule: tier2ByRuleSorted,
       projectedTierRatioWithTopKBuckets
     },
     unmatchedPatterns
@@ -695,10 +755,18 @@ async function main(): Promise<void> {
   );
   console.log(
     `aggregate: ${statements} leaf statements — tier1 ${tier1}, ` +
-      `tier3 ${tier3}, ratio ${report.aggregate.tier1Ratio.toFixed(2)}`
+      `tier2 ${tier2}, tier3 ${tier3}, ` +
+      `coverage ${report.aggregate.coverageRatio.toFixed(2)} ` +
+      `(tier1 ratio ${report.aggregate.tier1Ratio.toFixed(2)})`
   );
+  if (tier2ByRuleSorted.length > 0) {
+    console.log('tier-2 by rule:');
+    for (const { ruleId, count } of tier2ByRuleSorted) {
+      console.log(`  ${String(count).padStart(5)}  ${ruleId}`);
+    }
+  }
   for (const { k, ratio } of projectedTierRatioWithTopKBuckets) {
-    console.log(`  top-${k} buckets as tier-2 → ${ratio.toFixed(2)}`);
+    console.log(`  +top-${k} remaining buckets → ${ratio.toFixed(2)}`);
   }
   console.log('top unmatched signatures:');
   for (const p of unmatchedPatterns.slice(0, 10)) {

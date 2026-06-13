@@ -224,3 +224,54 @@ Method: each `unmatchedPatterns` signature was assigned to exactly one of {lever
 | Rejected: throw family | 6 | 4 | `throw` (3), `throw new:ArgumentException(str)` (3) |
 | Residual tier-3 | 76 | 29 | `decl=expr` (8 after L3), `break` (4), `assign= var` (3), `decl=ternary` (3), `OrderBy.Select.ToList`, bit/arith binops, `Parallel.ForEach`, `Task.Run`, `MapGet`, IronPython interop, etc. |
 | **Total** | **485** | **256** | = measured tier-3 ✓ |
+
+## Addendum — M3 / Gate G3: measured tier ratios with the shipped 9-rule whitelist
+
+**Date:** 2026-06-13. **Method:** `scripts/corpusSpike.ts` now runs the production `applyTier2` engine (the same one `buildModel` uses) on every leaf that misses tier-1, before bucketing the remainder as tier-3 — so the spike measures the *real shipped classifier*, not a projection. Re-run over the full corpus and over the official-samples subset:
+
+```
+npx tsx scripts/corpusSpike.ts --corpus ./corpus --out corpus-report.json --md corpus-report.md
+npx tsx scripts/corpusSpike.ts --corpus ./corpus/codedautomations-samples --out subset-report.json --md subset-report.md
+```
+
+### Result — both Goal-3 targets met
+
+| Scope | Leaf stmts | Tier-1 | Tier-2 | Tier-3 | Coverage (T1+T2) | Goal-3 target | Verdict |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | :--: |
+| Full corpus | 840 | 392 | 222 | 226 | **0.73** | ≥ 0.70 | ✅ pass |
+| Official-samples subset | 390 | 171 | 147 | 72 | **0.82** | ≥ 0.80 | ✅ pass |
+
+Counts are internally consistent (392 + 222 + 226 = 840; 171 + 147 + 72 = 390). Tier-1 392 / subset 171 match this report's post-lever projections (§4) exactly.
+
+### Tier-2 leaves by rule (measured vs the Appendix-A bucket-signature projection)
+
+| Rule | Corpus measured | Corpus proj. | Subset measured | Subset proj. |
+| --- | ---: | ---: | ---: | ---: |
+| `console-write` | 66 | 68 | 66 | 68 |
+| `assign-from-call` | 57 | 51 | 17 | 16 |
+| `collection-add` | 37 | 37 | 22 | 22 |
+| `assign-literal` | 27 | 37 | 21 | 24 |
+| `assign-new-object` | 25 | 25 | 16 | 15 |
+| `string-op` | 4 | 20 | 2 | 13 |
+| `file-op` | 3 | 6 | 3 | 4 |
+| `datetime-arith` | 2 | 6 | 0 | 1 |
+| `linq-single-chain` | 1 | 5 | 0 | 2 |
+| **Total tier-2** | **222** | **255** | **147** | **165** |
+
+### Why measured (222) runs below the bucket-signature projection (255)
+
+Appendix A counted `normalizeStatement` *signatures* that looked rule-shaped; the shipped matchers are stricter because they enforce the honesty fences the lossy signature could not see:
+
+- **`string-op`** is the largest gap (20→4 corpus): the projected buckets include `x += a.ToString() + b` (a method-call concat leaf), `"x" + Guid.NewGuid()`, `s.ToString(fmt)` with a non-literal format, and `s.Trim().ToLower()` fluent chains — all correctly **rejected** (a concat/format that hides a call, or a ≥2-op chain, stays tier-3).
+- **`assign-literal`** (37→27): `String.Empty` (capital-S identifier) stays tier-3 by design — only the lowercase keyword `string.Empty` is decidable as the constant without type info.
+- **`datetime-arith` / `linq-single-chain` / `file-op`** trail their small projections for the same reason (chained `Add` calls and property-read date arithmetic, >3-link or predicate-overload LINQ, non-literal `File.Copy` flags — all deliberately tier-3).
+
+Crucially this is **under-matching, the safe direction**: a rejected borderline statement becomes a grey tier-3 chip (honest), never a card that hides a semantic. And the generic **`assign-from-call` floor rule cushions the shortfall** — it measured *above* its projection (51→57 corpus) precisely because `x = <call>` statements the stricter specialized rules reject still land an honest `Assign | x = call()` card instead of dropping to tier-3.
+
+### Whitelist discipline held — the ratio was not gamed
+
+The largest remaining tier-3 buckets are exactly the candidates the manifest *deliberately rejected*: `AddCriticalError`/`AddWarning`/`AddInfo` project-local helpers (AIDemo-only, 55 corpus stmts), the `return`/`throw` control-flow families (35), and `decl=expr`/bit-arith residual. The measured "+ top-K remaining buckets" headroom (corpus → 0.80 at K=5) is entirely those rejected project-local helpers; whitelisting them would optimise the ratio against demo skew, not user comprehension — so they stay out and the cap holds at **9 of 15 slots**.
+
+### Gate G3 — passed
+
+Cap / manifest / evidence guard tests green (full suite **487 passed**); measured coverage **0.73 corpus / 0.82 subset**, both above the Goal-3 floor. Per the plan, **launch is gated on the Goal-1 legibility sessions (M4), not on this ratio** — the ratio is reported here, it is not itself a launch gate.
