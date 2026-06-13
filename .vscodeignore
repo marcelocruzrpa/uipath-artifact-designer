@@ -29,3 +29,10 @@ scripts/**
 corpus/**
 corpus-report.json
 corpus-report.md
+subset-report.json
+subset-report.md
+
+# M2 perf sample project (scripts/genSampleProject.mjs output) + CI/repo meta
+tmp-sample-project/**
+**/tmp-sample-project/**
+.github/**
