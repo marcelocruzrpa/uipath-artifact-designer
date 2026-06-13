@@ -193,6 +193,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "smoke": "node scripts/bundleSmoke.mjs",
     "package": "vsce package",
     "vscode:prepublish": "node esbuild.mjs --production"
   },

@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild';
 import { mkdir, copyFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -7,7 +8,7 @@ const watch = process.argv.includes('--watch');
 /** Copy tree-sitter wasm files flat into dist/ so the extension host can load
  *  them at runtime via an absolute fsPath.  Called once at the top of run()
  *  — the files don't change between watch rebuilds. */
-async function copyWasm() {
+export async function copyWasm() {
   await mkdir('dist', { recursive: true });
   await Promise.all([
     copyFile(
@@ -34,18 +35,32 @@ const common = {
 };
 
 /** @type {import('esbuild').BuildOptions} */
-const hostConfig = {
+export const hostConfig = {
   ...common,
   entryPoints: ['src/extension.ts'],
   outfile: 'dist/extension.js',
   platform: 'node',
   format: 'cjs',
   target: 'node18',
-  external: ['vscode']
+  external: ['vscode'],
+  // web-tree-sitter resolves to its ESM build via the `import` condition (our
+  // parser.ts uses `import` syntax), and that build runs, under Node,
+  // `createRequire(import.meta.url)` + `new URL(..., import.meta.url)`. esbuild
+  // rewrites `import.meta` to `{}` in a cjs bundle, so `import.meta.url` is
+  // `undefined` and `createRequire(undefined)` throws at parser init (the
+  // "filename must be a file URL … Received undefined" error). Shim it to the
+  // bundle's own file URL — valid in cjs via __filename, and also the correct
+  // value for any other import.meta.url use. Verified by scripts/bundleSmoke.mjs;
+  // regressing this breaks the canvas at runtime while every vitest test (which
+  // loads web-tree-sitter unbundled) still passes.
+  define: { 'import.meta.url': '__cjsImportMetaUrl' },
+  banner: {
+    js: "const __cjsImportMetaUrl = require('node:url').pathToFileURL(__filename).href;"
+  }
 };
 
 /** @type {import('esbuild').BuildOptions} */
-const webviewConfig = {
+export const webviewConfig = {
   ...common,
   entryPoints: ['webview/index.ts'],
   outfile: 'dist/webview.js',
@@ -62,7 +77,7 @@ const webviewConfig = {
   }
 };
 
-async function run() {
+export async function run() {
   await copyWasm();
   if (watch) {
     const host = await esbuild.context(hostConfig);
@@ -75,7 +90,11 @@ async function run() {
   }
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Build only when invoked directly (`node esbuild.mjs [...]`). When imported —
+// e.g. by scripts/bundleSmoke.mjs to reuse hostConfig — this stays inert.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

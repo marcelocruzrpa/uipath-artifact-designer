@@ -36,3 +36,4 @@ subset-report.md
 tmp-sample-project/**
 **/tmp-sample-project/**
 .github/**
+.smoke/**

@@ -23,3 +23,6 @@ subset-report.md
 
 # M2 perf evidence (generated sample projects — scripts/genSampleProject.mjs)
 tmp-sample-project/
+
+# Bundled-runtime parser smoke output (scripts/bundleSmoke.mjs)
+.smoke/
