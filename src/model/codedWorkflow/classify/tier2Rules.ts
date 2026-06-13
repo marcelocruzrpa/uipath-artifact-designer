@@ -375,6 +375,60 @@ const COLLECTION_ADD: Tier2Rule = {
 };
 
 // ---------------------------------------------------------------------------
+// Rule: assign-new-object (assign, m0Rank 50 — aggregated long tail)
+// ---------------------------------------------------------------------------
+
+function matchAssignNewObject(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  const bound = boundValueOf(stmt);
+  if (bound === null || bound.op !== '=') return null;
+  const value = bound.value;
+  // EXPLICIT `new T(...)` only — the type name must be syntactically present.
+  // Target-typed `new(...)` (implicit_object_creation_expression) and array
+  // creations (`new[] {...}`, `new int[] {...}`) are different node types and
+  // never reach here.  A `new` nested as a call argument
+  // (`var x = Foo(new Bar())`) has an invocation RHS root, handled by
+  // assign-from-call.  No parens/cast unwrap: `(Base)new D()` stays tier-3 so
+  // the cast is never hidden.
+  if (value.type !== 'object_creation_expression') return null;
+  const type = value.childForFieldName('type');
+  if (type === null) return null;
+  // await/lambda/query anywhere in the ctor args or initializer is hidden work
+  // (`new Timer(() => Tick())`, `new Foo(await X())`) — shared escape fence.
+  if (containsType(value, ESCAPE_HATCH_TYPES)) return null;
+  return {
+    captures: {
+      t: sliceOf(type, source),
+      x: bound.binding,
+      value: sliceOf(value, source)
+    }
+  };
+}
+
+const ASSIGN_NEW_OBJECT: Tier2Rule = {
+  id: 'assign-new-object',
+  family: 'assign',
+  m0Rank: 50,
+  doc:
+    'Assign an explicit object creation to a variable: `var x = new T(...)` / ' +
+    '`T x = new T(...)` / `x = new T(...)` (op `=`), including ' +
+    '`new T { ... }` / `new T(...) { ... }` initializers and generic ' +
+    '`new List<int>(...)`. Title "Create <T>" where <T> is the exact source of ' +
+    'the object_creation `type` field (so `new List<int>()` → "Create ' +
+    'List<int>"); text shows the whole `new ...` expression verbatim. m0Rank 50 ' +
+    'is a representative rank for an aggregated long tail of 21 low-count ' +
+    'buckets with no single dominant bucket — its honest provenance. ' +
+    'Implicit/target-typed `new(...)`, array creations (`new[] {...}`, ' +
+    '`new int[] {...}`), `return new T()`, a `new` nested as a call argument, ' +
+    'and any await/lambda/query in the args/initializer stay tier-3.',
+  match: matchAssignNewObject,
+  titleTemplate: 'Create {t}',
+  textTemplate: '{x} = {value}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: linq-single-chain (linq, m0Rank 101 — pure floor)
 // ---------------------------------------------------------------------------
 
@@ -1069,6 +1123,7 @@ export const TIER2_RULES: readonly Tier2Rule[] = [
   COLLECTION_ADD,
   ASSIGN_FROM_CALL,
   STRING_OP,
+  ASSIGN_NEW_OBJECT,
   LINQ_SINGLE_CHAIN,
   FILE_OP,
   DATETIME_ARITH
