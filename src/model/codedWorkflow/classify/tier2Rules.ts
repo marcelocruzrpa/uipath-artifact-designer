@@ -75,6 +75,26 @@ function unwrapParensCasts(node: Node): Node {
   }
 }
 
+/**
+ * Strip ONLY non-semantic parentheses — casts are KEPT.  Mirrors
+ * `unwrapParensCasts` without the `cast_expression` branch, so a displayed
+ * source slice taken from the result still shows any `(T)` the author wrote
+ * (a cast is semantics a tier-2 card must never hide), while harmless
+ * grouping parens (`(Compute())`) are dropped.
+ */
+function unwrapParensOnly(node: Node): Node {
+  let cur = node;
+  for (;;) {
+    if (cur.type === 'parenthesized_expression') {
+      const inner = firstNonComment(cur);
+      if (inner === null) return cur;
+      cur = inner;
+    } else {
+      return cur;
+    }
+  }
+}
+
 /** True when the subtree (including `node` itself) contains any of `types`. */
 function containsType(node: Node, types: ReadonlySet<string>): boolean {
   if (types.has(node.type)) return true;
@@ -656,7 +676,12 @@ function matchAssignFromCall(
   for (const specific of SPECIFIC_FLOOR_MATCHERS) {
     if (specific(stmt, source) !== null) return null;
   }
-  return { captures: { x: bound.binding, call: sliceOf(value, source) } };
+  // Display from the parens-only unwrap so a value cast stays VISIBLE in the
+  // card (`var x = (int)Compute();` → `x = (int)Compute()`); the match gate
+  // above already saw through the cast to the invocation.  Non-semantic
+  // grouping parens (`(Compute())`) are still dropped.
+  const display = unwrapParensOnly(bound.value);
+  return { captures: { x: bound.binding, call: sliceOf(display, source) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -835,6 +860,9 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
     'RHS (parens/casts unwrapped, await NOT unwrapped) is exactly one invocation ' +
     'whose function is an identifier or a pure member-access chain rooted at an ' +
     'identifier/static type name, with no await/lambda/query anywhere in the RHS. ' +
+    'A value cast on the RHS is seen through for the MATCH but kept VISIBLE in the ' +
+    'card text (`var x = (int)Compute();` → `x = (int)Compute()`); only ' +
+    'non-semantic grouping parens are stripped from the display. ' +
     'Yields to the more specific floor rules via SPECIFIC_FLOOR_MATCHERS.',
   match: matchAssignFromCall,
   titleTemplate: 'Assign',
