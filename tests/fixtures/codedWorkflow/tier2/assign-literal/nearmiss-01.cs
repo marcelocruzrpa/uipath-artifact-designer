@@ -1,0 +1,1 @@
+var total = price + tax;

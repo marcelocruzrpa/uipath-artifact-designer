@@ -247,6 +247,64 @@ const CONSOLE_WRITE: Tier2Rule = {
 };
 
 // ---------------------------------------------------------------------------
+// Rule: assign-literal (assign, m0Rank 6)
+// ---------------------------------------------------------------------------
+
+/**
+ * True for `string.Empty` written exactly as the `string` predefined-type
+ * member access (the one constant member-access the rule treats as a literal).
+ * `String.Empty` (capital-S identifier receiver) and every other member access
+ * stay tier-3 — only the lower-case keyword form is decidable as the constant.
+ */
+function isStringEmpty(node: Node): boolean {
+  if (node.type !== 'member_access_expression') return false;
+  const expr = node.childForFieldName('expression');
+  const name = node.childForFieldName('name');
+  return (
+    expr !== null &&
+    expr.type === 'predefined_type' &&
+    expr.text === 'string' &&
+    name !== null &&
+    name.type === 'identifier' &&
+    name.text === 'Empty'
+  );
+}
+
+function matchAssignLiteral(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  const bound = boundValueOf(stmt);
+  if (bound === null || bound.op !== '=') return null;
+  const value = bound.value;
+  // A single literal token, or exactly `string.Empty` — nothing else.
+  // `LITERAL_TYPES` is the no-interpolation literal set (an interpolated
+  // `$"..."` is not a single literal token and is string-op's job).
+  if (!LITERAL_TYPES.has(value.type) && !isStringEmpty(value)) return null;
+  return {
+    captures: { x: bound.binding, value: sliceOf(value, source) }
+  };
+}
+
+const ASSIGN_LITERAL: Tier2Rule = {
+  id: 'assign-literal',
+  family: 'assign',
+  m0Rank: 6,
+  doc:
+    'Assign a single literal token to a variable: `var x = <lit>;` / ' +
+    '`T x = <lit>;` / `x = <lit>;` (op `=` only) where <lit> is one string/' +
+    'verbatim/raw string, character, integer, real, boolean, or null literal — ' +
+    'OR exactly the member access `string.Empty` (the only allowed ' +
+    'member-access RHS). Rendered `Assign | x = <exact literal source>`. ' +
+    'Declarations without an initializer, arithmetic/ternary/call RHS, ' +
+    'interpolated strings, and any other member-access/property read ' +
+    '(`Foo.Bar`) stay tier-3 — the value must be a single literal token.',
+  match: matchAssignLiteral,
+  titleTemplate: 'Assign',
+  textTemplate: '{x} = {value}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: linq-single-chain (linq, m0Rank 101 — pure floor)
 // ---------------------------------------------------------------------------
 
@@ -937,6 +995,7 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 /** The shipped registry — sorted ascending by m0Rank. */
 export const TIER2_RULES: readonly Tier2Rule[] = [
   CONSOLE_WRITE,
+  ASSIGN_LITERAL,
   ASSIGN_FROM_CALL,
   STRING_OP,
   LINQ_SINGLE_CHAIN,
@@ -966,12 +1025,20 @@ function substitute(template: string, captures: Record<string, string>): string 
  * Evaluate the rules against one leaf statement — first match wins.
  * Returns a `CwPseudoStep` with an EMPTY id (the model builder assigns
  * hierarchical ids in its own pass), or null when nothing matches.
+ *
+ * HARD FENCE (error tolerance): a statement whose subtree carries a parse
+ * ERROR/missing node never renders as a tier-2 card — tree-sitter recovery can
+ * make broken source (`count = = 1;` → an `assignment_expression` with an
+ * inner ERROR token) look like a clean pattern, which would HIDE the broken
+ * code behind an honest-looking card.  Such statements fall through to a tier-3
+ * raw chip that shows the exact broken source (R8 error tolerance).
  */
 export function applyTier2(
   stmt: Node,
   source: string,
   rules: readonly Tier2Rule[] = TIER2_RULES
 ): CwPseudoStep | null {
+  if (stmt.hasError) return null;
   for (const rule of rules) {
     const result = rule.match(stmt, source);
     if (result === null) continue;

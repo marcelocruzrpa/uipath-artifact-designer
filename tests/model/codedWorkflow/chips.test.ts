@@ -85,7 +85,7 @@ describe('mergeAdjacentChips — runs, breaks, invariants', () => {
   it('re-slices merged code from source with comments/blank lines verbatim', () => {
     const merged = asChip(model.classes[0].entryPoints[0].body[0]);
     expect(merged.code).toBe(sliceBySpan(SOURCE, merged.span));
-    expect(merged.code.startsWith('var a = 1;')).toBe(true);
+    expect(merged.code.startsWith('var a = total + 1;')).toBe(true);
     expect(merged.code.endsWith('var c = a + b;')).toBe(true);
     expect(merged.code).toContain('// trailing comment stays inside the merged slice');
     expect(merged.code).toContain('// a standalone comment between chips is re-sliced verbatim');
@@ -210,16 +210,23 @@ describe('tier-2 engine', () => {
   });
 
   it('returns null when no rule matches (and on the shipped registry)', async () => {
+    // An EMPTY registry never matches anything — the engine's base case.
     const { stmt, source } = await parseFlagStatement();
     expect(applyTier2(stmt, source, [])).toBeNull();
-    // `flag = true;` has a literal RHS — no shipped floor rule claims it.
-    expect(applyTier2(stmt, source)).toBeNull();
+    // The SHIPPED registry returns null for a statement no floor rule claims:
+    // `total = total + 1;` is a numeric binary reassignment (assign-literal
+    // wants a single literal token, string-op wants a string-ish leaf,
+    // assign-from-call wants an invocation — none match).
+    const { stmt: unclaimed, source: unclaimedSrc } = await parseStatement(
+      'total = total + 1;'
+    );
+    expect(applyTier2(unclaimed, unclaimedSrc)).toBeNull();
   });
 });
 
-async function parseFlagStatement() {
-  const source =
-    'class W : CodedWorkflow { [Workflow] public void Execute() { flag = true; } }';
+/** Parse a single statement snippet and return its first body node + source. */
+async function parseStatement(snippet: string) {
+  const source = `class W : CodedWorkflow { [Workflow] public void Execute() { ${snippet} } }`;
   const parser = await getCSharpParser();
   const tree = parser.parse(source);
   const classBody = tree.rootNode.namedChildren
@@ -228,4 +235,8 @@ async function parseFlagStatement() {
   const method = classBody.namedChildren.find((n) => n.type === 'method_declaration')!;
   const stmt = method.childForFieldName('body')!.namedChildren[0];
   return { stmt, source };
+}
+
+function parseFlagStatement() {
+  return parseStatement('flag = true;');
 }

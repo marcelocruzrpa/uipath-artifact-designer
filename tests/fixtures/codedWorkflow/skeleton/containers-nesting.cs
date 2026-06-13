@@ -1,7 +1,9 @@
 // Fixture: every CwContainerKind plus >=4-level nesting, for containers.test.ts.
 // Leaf statements deliberately avoid tier-1 service calls (no Log/system/etc.)
-// so they stay raw chips across all classifier stages, and no two chips are
-// adjacent in any slot so chip merging never changes this fixture's shape.
+// AND single-literal assigns (no `seed = 0;`) so they stay raw chips across all
+// classifier stages — including tier-2 (assign-literal would card a lone
+// literal). No two chips are adjacent in any slot so chip merging never changes
+// this fixture's shape.
 using System;
 using System.IO;
 using UiPath.CodedWorkflows;
@@ -13,7 +15,7 @@ namespace Acme.Containers
         [Workflow]
         public void Execute(int mode, string name)
         {
-            var seed = 0;
+            var seed = mode;
             if (name.Length > 0)
             {
                 seed = seed + 1;
@@ -31,15 +33,15 @@ namespace Acme.Containers
             }
             else if (mode == 1)
             {
-                seed = 10;
+                seed = mode + 10;
             }
             else if (mode == 2)
             {
-                seed = 20;
+                seed = mode + 20;
             }
             else
             {
-                seed = 30;
+                seed = mode + 30;
             }
             for (var i = 0; i < mode; i++)
             {
@@ -63,7 +65,7 @@ namespace Acme.Containers
             }
             finally
             {
-                failures = 0;
+                failures = mode;
             }
             switch (mode)
             {
@@ -79,10 +81,10 @@ namespace Acme.Containers
             {
                 touched = touched + 1;
             }
-            if (mode > 9) seed = 99;
+            if (mode > 9) seed = mode + 99;
             if (name.Contains("alpha") && name.Contains("bravo") && name.Contains("charlie") && name.Contains("delta"))
             {
-                seed = 2;
+                seed = mode + 2;
             }
             int Local(int v)
             {

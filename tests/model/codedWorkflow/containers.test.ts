@@ -78,7 +78,7 @@ describe('containers — top-level structure', () => {
       s.type === 'container' ? (s as CwContainer).kind : s.type
     );
     expect(kinds).toEqual([
-      'raw', // var seed = 0;
+      'raw', // var seed = mode;
       'if',
       'for',
       'do',
@@ -231,7 +231,7 @@ describe('containers — block-less bodies, header caps, local functions', () =>
     expect(ifC.header).toBe('If mode > 9');
     expect(ifC.slots).toHaveLength(1);
     const chip = asChip(ifC.slots[0].children[0]);
-    expect(chip.code).toBe('seed = 99;');
+    expect(chip.code).toBe('seed = mode + 99;');
     // Block-less slot span === the single statement's span.
     expect(ifC.slots[0].span).toEqual(chip.span);
   });

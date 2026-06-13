@@ -38,7 +38,7 @@
               },
               "type": "raw",
               "tier": 3,
-              "code": "var a = 1;\n            var b = 2; // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            var c = a + b;",
+              "code": "var a = total + 1;\n            var b = a + 2; // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            var c = a + b;",
               "lineCount": 5,
               "statementCount": 3,
               "codeTruncated": false

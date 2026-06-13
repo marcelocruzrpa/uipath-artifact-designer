@@ -11,8 +11,8 @@ namespace Acme.Chips
         [Workflow]
         public void Execute(int total)
         {
-            var a = 1;
-            var b = 2; // trailing comment stays inside the merged slice
+            var a = total + 1;
+            var b = a + 2; // trailing comment stays inside the merged slice
 
             // a standalone comment between chips is re-sliced verbatim
             var c = a + b;

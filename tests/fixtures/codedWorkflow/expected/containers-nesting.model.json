@@ -11,9 +11,9 @@
       "namespace": "Acme.Containers",
       "baseType": "CodedWorkflow",
       "span": {
-        "startLine": 10,
+        "startLine": 12,
         "startCol": 4,
-        "endLine": 101,
+        "endLine": 103,
         "endCol": 5
       },
       "entryPoints": [
@@ -21,9 +21,9 @@
           "name": "Execute",
           "attribute": "Workflow",
           "span": {
-            "startLine": 12,
+            "startLine": 14,
             "startCol": 8,
-            "endLine": 90,
+            "endLine": 92,
             "endCol": 9
           },
           "signatureSummary": "int mode, string name",
@@ -31,14 +31,14 @@
             {
               "id": "ContainerFlow#Execute/0",
               "span": {
-                "startLine": 15,
+                "startLine": 17,
                 "startCol": 12,
-                "endLine": 15,
-                "endCol": 25
+                "endLine": 17,
+                "endCol": 28
               },
               "type": "raw",
               "tier": 3,
-              "code": "var seed = 0;",
+              "code": "var seed = mode;",
               "lineCount": 1,
               "statementCount": 1,
               "codeTruncated": false
@@ -46,9 +46,9 @@
             {
               "id": "ContainerFlow#Execute/1",
               "span": {
-                "startLine": 16,
+                "startLine": 18,
                 "startCol": 12,
-                "endLine": 42,
+                "endLine": 44,
                 "endCol": 13
               },
               "type": "container",
@@ -62,9 +62,9 @@
                     {
                       "id": "ContainerFlow#Execute/1.then.0",
                       "span": {
-                        "startLine": 18,
+                        "startLine": 20,
                         "startCol": 16,
-                        "endLine": 18,
+                        "endLine": 20,
                         "endCol": 32
                       },
                       "type": "raw",
@@ -77,9 +77,9 @@
                     {
                       "id": "ContainerFlow#Execute/1.then.1",
                       "span": {
-                        "startLine": 19,
+                        "startLine": 21,
                         "startCol": 16,
-                        "endLine": 29,
+                        "endLine": 31,
                         "endCol": 17
                       },
                       "type": "container",
@@ -93,9 +93,9 @@
                             {
                               "id": "ContainerFlow#Execute/1.then.1.body.0",
                               "span": {
-                                "startLine": 21,
+                                "startLine": 23,
                                 "startCol": 20,
-                                "endLine": 28,
+                                "endLine": 30,
                                 "endCol": 21
                               },
                               "type": "container",
@@ -109,9 +109,9 @@
                                     {
                                       "id": "ContainerFlow#Execute/1.then.1.body.0.body.0",
                                       "span": {
-                                        "startLine": 23,
+                                        "startLine": 25,
                                         "startCol": 24,
-                                        "endLine": 26,
+                                        "endLine": 28,
                                         "endCol": 25
                                       },
                                       "type": "container",
@@ -125,9 +125,9 @@
                                             {
                                               "id": "ContainerFlow#Execute/1.then.1.body.0.body.0.then.0",
                                               "span": {
-                                                "startLine": 25,
+                                                "startLine": 27,
                                                 "startCol": 28,
-                                                "endLine": 25,
+                                                "endLine": 27,
                                                 "endCol": 44
                                               },
                                               "type": "raw",
@@ -139,9 +139,9 @@
                                             }
                                           ],
                                           "span": {
-                                            "startLine": 24,
+                                            "startLine": 26,
                                             "startCol": 24,
-                                            "endLine": 26,
+                                            "endLine": 28,
                                             "endCol": 25
                                           }
                                         }
@@ -151,9 +151,9 @@
                                     {
                                       "id": "ContainerFlow#Execute/1.then.1.body.0.body.1",
                                       "span": {
-                                        "startLine": 27,
+                                        "startLine": 29,
                                         "startCol": 24,
-                                        "endLine": 27,
+                                        "endLine": 29,
                                         "endCol": 40
                                       },
                                       "type": "raw",
@@ -165,9 +165,9 @@
                                     }
                                   ],
                                   "span": {
-                                    "startLine": 22,
+                                    "startLine": 24,
                                     "startCol": 20,
-                                    "endLine": 28,
+                                    "endLine": 30,
                                     "endCol": 21
                                   }
                                 }
@@ -176,9 +176,9 @@
                             }
                           ],
                           "span": {
-                            "startLine": 20,
+                            "startLine": 22,
                             "startCol": 16,
-                            "endLine": 29,
+                            "endLine": 31,
                             "endCol": 17
                           }
                         }
@@ -187,9 +187,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 17,
+                    "startLine": 19,
                     "startCol": 12,
-                    "endLine": 30,
+                    "endLine": 32,
                     "endCol": 13
                   }
                 },
@@ -200,23 +200,23 @@
                     {
                       "id": "ContainerFlow#Execute/1.elseif0.0",
                       "span": {
-                        "startLine": 33,
+                        "startLine": 35,
                         "startCol": 16,
-                        "endLine": 33,
-                        "endCol": 26
+                        "endLine": 35,
+                        "endCol": 33
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = 10;",
+                      "code": "seed = mode + 10;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 32,
+                    "startLine": 34,
                     "startCol": 12,
-                    "endLine": 34,
+                    "endLine": 36,
                     "endCol": 13
                   }
                 },
@@ -227,23 +227,23 @@
                     {
                       "id": "ContainerFlow#Execute/1.elseif1.0",
                       "span": {
-                        "startLine": 37,
+                        "startLine": 39,
                         "startCol": 16,
-                        "endLine": 37,
-                        "endCol": 26
+                        "endLine": 39,
+                        "endCol": 33
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = 20;",
+                      "code": "seed = mode + 20;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 36,
+                    "startLine": 38,
                     "startCol": 12,
-                    "endLine": 38,
+                    "endLine": 40,
                     "endCol": 13
                   }
                 },
@@ -254,23 +254,23 @@
                     {
                       "id": "ContainerFlow#Execute/1.else.0",
                       "span": {
-                        "startLine": 41,
+                        "startLine": 43,
                         "startCol": 16,
-                        "endLine": 41,
-                        "endCol": 26
+                        "endLine": 43,
+                        "endCol": 33
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = 30;",
+                      "code": "seed = mode + 30;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 40,
+                    "startLine": 42,
                     "startCol": 12,
-                    "endLine": 42,
+                    "endLine": 44,
                     "endCol": 13
                   }
                 }
@@ -280,9 +280,9 @@
             {
               "id": "ContainerFlow#Execute/2",
               "span": {
-                "startLine": 43,
+                "startLine": 45,
                 "startCol": 12,
-                "endLine": 46,
+                "endLine": 48,
                 "endCol": 13
               },
               "type": "container",
@@ -296,9 +296,9 @@
                     {
                       "id": "ContainerFlow#Execute/2.body.0",
                       "span": {
-                        "startLine": 45,
+                        "startLine": 47,
                         "startCol": 16,
-                        "endLine": 45,
+                        "endLine": 47,
                         "endCol": 32
                       },
                       "type": "raw",
@@ -310,9 +310,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 44,
+                    "startLine": 46,
                     "startCol": 12,
-                    "endLine": 46,
+                    "endLine": 48,
                     "endCol": 13
                   }
                 }
@@ -322,9 +322,9 @@
             {
               "id": "ContainerFlow#Execute/3",
               "span": {
-                "startLine": 47,
+                "startLine": 49,
                 "startCol": 12,
-                "endLine": 50,
+                "endLine": 52,
                 "endCol": 31
               },
               "type": "container",
@@ -338,9 +338,9 @@
                     {
                       "id": "ContainerFlow#Execute/3.body.0",
                       "span": {
-                        "startLine": 49,
+                        "startLine": 51,
                         "startCol": 16,
-                        "endLine": 49,
+                        "endLine": 51,
                         "endCol": 32
                       },
                       "type": "raw",
@@ -352,9 +352,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 48,
+                    "startLine": 50,
                     "startCol": 12,
-                    "endLine": 50,
+                    "endLine": 52,
                     "endCol": 13
                   }
                 }
@@ -364,9 +364,9 @@
             {
               "id": "ContainerFlow#Execute/4",
               "span": {
-                "startLine": 51,
+                "startLine": 53,
                 "startCol": 12,
-                "endLine": 66,
+                "endLine": 68,
                 "endCol": 13
               },
               "type": "container",
@@ -380,9 +380,9 @@
                     {
                       "id": "ContainerFlow#Execute/4.try.0",
                       "span": {
-                        "startLine": 53,
+                        "startLine": 55,
                         "startCol": 16,
-                        "endLine": 53,
+                        "endLine": 55,
                         "endCol": 26
                       },
                       "type": "raw",
@@ -394,9 +394,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 52,
+                    "startLine": 54,
                     "startCol": 12,
-                    "endLine": 54,
+                    "endLine": 56,
                     "endCol": 13
                   }
                 },
@@ -407,9 +407,9 @@
                     {
                       "id": "ContainerFlow#Execute/4.catch0.0",
                       "span": {
-                        "startLine": 57,
+                        "startLine": 59,
                         "startCol": 16,
-                        "endLine": 57,
+                        "endLine": 59,
                         "endCol": 40
                       },
                       "type": "raw",
@@ -421,9 +421,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 56,
+                    "startLine": 58,
                     "startCol": 12,
-                    "endLine": 58,
+                    "endLine": 60,
                     "endCol": 13
                   }
                 },
@@ -434,9 +434,9 @@
                     {
                       "id": "ContainerFlow#Execute/4.catch1.0",
                       "span": {
-                        "startLine": 61,
+                        "startLine": 63,
                         "startCol": 16,
-                        "endLine": 61,
+                        "endLine": 63,
                         "endCol": 40
                       },
                       "type": "raw",
@@ -448,9 +448,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 60,
+                    "startLine": 62,
                     "startCol": 12,
-                    "endLine": 62,
+                    "endLine": 64,
                     "endCol": 13
                   }
                 },
@@ -461,23 +461,23 @@
                     {
                       "id": "ContainerFlow#Execute/4.finally.0",
                       "span": {
-                        "startLine": 65,
+                        "startLine": 67,
                         "startCol": 16,
-                        "endLine": 65,
-                        "endCol": 29
+                        "endLine": 67,
+                        "endCol": 32
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "failures = 0;",
+                      "code": "failures = mode;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 64,
+                    "startLine": 66,
                     "startCol": 12,
-                    "endLine": 66,
+                    "endLine": 68,
                     "endCol": 13
                   }
                 }
@@ -487,9 +487,9 @@
             {
               "id": "ContainerFlow#Execute/5",
               "span": {
-                "startLine": 67,
+                "startLine": 69,
                 "startCol": 12,
-                "endLine": 76,
+                "endLine": 78,
                 "endCol": 13
               },
               "type": "container",
@@ -503,9 +503,9 @@
                     {
                       "id": "ContainerFlow#Execute/5.case0.0",
                       "span": {
-                        "startLine": 70,
+                        "startLine": 72,
                         "startCol": 20,
-                        "endLine": 70,
+                        "endLine": 72,
                         "endCol": 27
                       },
                       "type": "raw",
@@ -517,9 +517,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 69,
+                    "startLine": 71,
                     "startCol": 16,
-                    "endLine": 70,
+                    "endLine": 72,
                     "endCol": 27
                   }
                 },
@@ -528,9 +528,9 @@
                   "label": "Case 2",
                   "children": [],
                   "span": {
-                    "startLine": 71,
+                    "startLine": 73,
                     "startCol": 16,
-                    "endLine": 71,
+                    "endLine": 73,
                     "endCol": 23
                   }
                 },
@@ -541,9 +541,9 @@
                     {
                       "id": "ContainerFlow#Execute/5.case2.0",
                       "span": {
-                        "startLine": 73,
+                        "startLine": 75,
                         "startCol": 20,
-                        "endLine": 73,
+                        "endLine": 75,
                         "endCol": 48
                       },
                       "type": "raw",
@@ -555,9 +555,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 72,
+                    "startLine": 74,
                     "startCol": 16,
-                    "endLine": 73,
+                    "endLine": 75,
                     "endCol": 48
                   }
                 },
@@ -568,9 +568,9 @@
                     {
                       "id": "ContainerFlow#Execute/5.default.0",
                       "span": {
-                        "startLine": 75,
+                        "startLine": 77,
                         "startCol": 20,
-                        "endLine": 75,
+                        "endLine": 77,
                         "endCol": 27
                       },
                       "type": "raw",
@@ -582,9 +582,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 74,
+                    "startLine": 76,
                     "startCol": 16,
-                    "endLine": 75,
+                    "endLine": 77,
                     "endCol": 27
                   }
                 }
@@ -594,9 +594,9 @@
             {
               "id": "ContainerFlow#Execute/6",
               "span": {
-                "startLine": 77,
+                "startLine": 79,
                 "startCol": 12,
-                "endLine": 80,
+                "endLine": 82,
                 "endCol": 13
               },
               "type": "container",
@@ -610,9 +610,9 @@
                     {
                       "id": "ContainerFlow#Execute/6.body.0",
                       "span": {
-                        "startLine": 79,
+                        "startLine": 81,
                         "startCol": 16,
-                        "endLine": 79,
+                        "endLine": 81,
                         "endCol": 38
                       },
                       "type": "raw",
@@ -624,9 +624,9 @@
                     }
                   ],
                   "span": {
-                    "startLine": 78,
+                    "startLine": 80,
                     "startCol": 12,
-                    "endLine": 80,
+                    "endLine": 82,
                     "endCol": 13
                   }
                 }
@@ -636,10 +636,10 @@
             {
               "id": "ContainerFlow#Execute/7",
               "span": {
-                "startLine": 81,
+                "startLine": 83,
                 "startCol": 12,
-                "endLine": 81,
-                "endCol": 36
+                "endLine": 83,
+                "endCol": 43
               },
               "type": "container",
               "kind": "if",
@@ -652,24 +652,24 @@
                     {
                       "id": "ContainerFlow#Execute/7.then.0",
                       "span": {
-                        "startLine": 81,
+                        "startLine": 83,
                         "startCol": 26,
-                        "endLine": 81,
-                        "endCol": 36
+                        "endLine": 83,
+                        "endCol": 43
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = 99;",
+                      "code": "seed = mode + 99;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 81,
+                    "startLine": 83,
                     "startCol": 26,
-                    "endLine": 81,
-                    "endCol": 36
+                    "endLine": 83,
+                    "endCol": 43
                   }
                 }
               ],
@@ -678,9 +678,9 @@
             {
               "id": "ContainerFlow#Execute/8",
               "span": {
-                "startLine": 82,
+                "startLine": 84,
                 "startCol": 12,
-                "endLine": 85,
+                "endLine": 87,
                 "endCol": 13
               },
               "type": "container",
@@ -694,23 +694,23 @@
                     {
                       "id": "ContainerFlow#Execute/8.then.0",
                       "span": {
-                        "startLine": 84,
+                        "startLine": 86,
                         "startCol": 16,
-                        "endLine": 84,
-                        "endCol": 25
+                        "endLine": 86,
+                        "endCol": 32
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = 2;",
+                      "code": "seed = mode + 2;",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 83,
+                    "startLine": 85,
                     "startCol": 12,
-                    "endLine": 85,
+                    "endLine": 87,
                     "endCol": 13
                   }
                 }
@@ -720,9 +720,9 @@
             {
               "id": "ContainerFlow#Execute/9",
               "span": {
-                "startLine": 86,
+                "startLine": 88,
                 "startCol": 12,
-                "endLine": 89,
+                "endLine": 91,
                 "endCol": 13
               },
               "type": "raw",
@@ -744,18 +744,18 @@
         {
           "name": "Process",
           "span": {
-            "startLine": 92,
+            "startLine": 94,
             "startCol": 8,
-            "endLine": 95,
+            "endLine": 97,
             "endCol": 9
           },
           "body": [
             {
               "id": "ContainerFlow#Process/0",
               "span": {
-                "startLine": 94,
+                "startLine": 96,
                 "startCol": 12,
-                "endLine": 94,
+                "endLine": 96,
                 "endCol": 30
               },
               "type": "raw",
@@ -775,18 +775,18 @@
         {
           "name": "OpenFile",
           "span": {
-            "startLine": 97,
+            "startLine": 99,
             "startCol": 8,
-            "endLine": 100,
+            "endLine": 102,
             "endCol": 9
           },
           "body": [
             {
               "id": "ContainerFlow#OpenFile/0",
               "span": {
-                "startLine": 99,
+                "startLine": 101,
                 "startCol": 12,
-                "endLine": 99,
+                "endLine": 101,
                 "endCol": 24
               },
               "type": "raw",
@@ -810,7 +810,7 @@
   "parseHealth": "ok",
   "parseErrorCount": 0,
   "truncated": false,
-  "totalLines": 104,
+  "totalLines": 106,
   "stats": {
     "totalStatements": 22,
     "tier1": 0,

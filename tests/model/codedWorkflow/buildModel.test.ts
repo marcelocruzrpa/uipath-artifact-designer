@@ -16,6 +16,7 @@ import { buildModel } from '../../../src/model/codedWorkflow/buildModel';
 import type {
   CodedWorkflowModel,
   CwContainer,
+  CwPseudoStep,
   CwRawChip,
   CwStatement
 } from '../../../src/model/codedWorkflow/cwTypes';
@@ -206,8 +207,11 @@ describe('buildModel — container-aware body', () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
 
-    expect(execute.body.map((s) => s.type)).toEqual(['raw', 'container', 'raw']);
-    expect((execute.body[0] as CwRawChip).code).toBe('count = 0;');
+    // `count = 0;` is a single-literal assign → a tier-2 assign-literal card
+    // since the data-driven rules shipped; `return name;` stays a tier-3 chip.
+    expect(execute.body.map((s) => s.type)).toEqual(['pseudo', 'container', 'raw']);
+    expect((execute.body[0] as CwPseudoStep).ruleId).toBe('assign-literal');
+    expect((execute.body[0] as CwPseudoStep).text).toBe('count = 0');
     expect((execute.body[2] as CwRawChip).code).toBe('return name;');
 
     const ifC = execute.body[1] as CwContainer;
@@ -334,8 +338,9 @@ describe('buildModel — container-aware body', () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
     const chips = collectChips(execute.body);
-    // count = 0; / count = count + 1; / return name; — Log is a card now.
-    expect(chips.length).toBe(3);
+    // count = count + 1; / return name; — Log is a tier-1 card and count = 0;
+    // is now a tier-2 assign-literal card, leaving two tier-3 chips.
+    expect(chips.length).toBe(2);
     for (const chip of chips) {
       expect(sliceBySpan(MIXED_FILE, chip.span)).toBe(chip.code);
       expect(chip.lineCount).toBe(chip.span.endLine - chip.span.startLine + 1);
@@ -369,13 +374,14 @@ describe('buildModel — stats and health', () => {
     expect(summed).toBe(model.stats.totalStatements);
     // Execute: 4 leaves, Verify: 2, LogTwice: 2 — Helper class is excluded;
     // containers do not count, only the leaves inside them.  The four Log
-    // calls are tier-1 cards; the other four leaves stay tier-3 chips.
+    // calls are tier-1 cards; the two single-literal assigns (`count = 0;`,
+    // `var expected = 3;`) are tier-2 assign-literal cards; `count = count + 1;`
+    // and `return name;` stay tier-3 chips.
     expect(model.stats.totalStatements).toBe(8);
     expect(model.stats.tier1).toBe(4);
-    expect(model.stats.tier2).toBe(0);
-    expect(model.stats.tier3).toBe(4);
+    expect(model.stats.tier2).toBe(2);
+    expect(model.stats.tier3).toBe(2);
     for (const m of perMethod) {
-      expect(m.tierCounts.tier2).toBe(0);
       const chipStatements = collectChips(m.body).reduce((s, c) => s + c.statementCount, 0);
       expect(m.tierCounts.tier3).toBe(chipStatements);
     }
@@ -390,7 +396,7 @@ describe('buildModel — stats and health', () => {
       '    [Workflow]',
       '    void E()',
       '    {',
-      '        var x = 1;',
+      '        var x = a + b;',
       '        foo(((  ;',
       '    }',
       '}',
@@ -414,7 +420,7 @@ describe('buildModel — stats and health', () => {
     // Exactly how many nodes tree-sitter recovers from the broken region is
     // grammar-version detail — at least the clean statement plus one.
     expect(body[0].statementCount).toBeGreaterThanOrEqual(2);
-    expect(body[0].code.startsWith('var x = 1;')).toBe(true);
+    expect(body[0].code.startsWith('var x = a + b;')).toBe(true);
     expect(body[0].code).toContain('foo(((');
   });
 
