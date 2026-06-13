@@ -305,6 +305,76 @@ const ASSIGN_LITERAL: Tier2Rule = {
 };
 
 // ---------------------------------------------------------------------------
+// Rule: collection-add (collection, m0Rank 7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Last property segment of an identifier/property path: the `name` of a
+ * `member_access_expression`, or the identifier text itself.  Used to pick the
+ * specialized `.Rows`/`.Columns` title.  Returns null for anything that is not
+ * a pure identifier path (callers gate on `isIdentifierPath` first).
+ */
+function lastPathSegment(node: Node): string | null {
+  if (node.type === 'identifier') return node.text;
+  if (node.type === 'member_access_expression') {
+    const name = node.childForFieldName('name');
+    return name !== null && name.type === 'identifier' ? name.text : null;
+  }
+  return null;
+}
+
+function matchCollectionAdd(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  // BARE statement only — a bound `var r = x.Add(...)` falls to
+  // assign-from-call, keeping the dispatch simple and unambiguous.
+  if (stmt.type !== 'expression_statement') return null;
+  if (boundValueOf(stmt) !== null) return null;
+  const value = firstNonComment(stmt);
+  if (value === null || value.type !== 'invocation_expression') return null;
+  const fn = value.childForFieldName('function');
+  if (fn === null || fn.type !== 'member_access_expression') return null;
+  const recv = fn.childForFieldName('expression');
+  const name = fn.childForFieldName('name');
+  if (recv === null || name === null || name.type !== 'identifier') return null;
+  if (name.text !== 'Add') return null;
+  // Receiver must be a pure identifier or identifier-property path — computed
+  // receivers (`GetList().Add`, `map[k].Add`) hide an action and stay tier-3.
+  if (!isIdentifierPath(recv)) return null;
+  // await/lambda/query anywhere in the args is hidden work — shared fence.
+  const args = value.childForFieldName('arguments');
+  if (args === null || containsType(args, ESCAPE_HATCH_TYPES)) return null;
+  // Args must be a well-formed list (no named-arg/odd shapes); the title never
+  // drops an argument because the whole `recv.Add(args)` slice is shown.
+  if (argumentValues(args) === null) return null;
+
+  const segment = lastPathSegment(recv);
+  const title =
+    segment === 'Columns' ? 'Add column' : segment === 'Rows' ? 'Add row' : 'Add item';
+  return { captures: { title, call: sliceOf(value, source) } };
+}
+
+const COLLECTION_ADD: Tier2Rule = {
+  id: 'collection-add',
+  family: 'collection',
+  m0Rank: 7,
+  doc:
+    'Bare `<receiver>.Add(<args>)` where <receiver> is an identifier or a pure ' +
+    'identifier property path (isIdentifierPath). Title "Add item" by default, ' +
+    '"Add column" when the path ends in `.Columns`, "Add row" when it ends in ' +
+    '`.Rows` (DataTable demos). Rendered `<title> | <exact source of the whole ' +
+    'receiver.Add(args) call>` so no argument is ever dropped. Computed ' +
+    'receivers — `.Add` on a method-call result (`GetList().Add(x)`) or an ' +
+    'element-access (`map[k].Add(x)`) — stay tier-3, as does any await/lambda/' +
+    'query in the args. Only the bare expression statement matches; a bound ' +
+    '`var r = x.Add(...)` falls to assign-from-call.',
+  match: matchCollectionAdd,
+  titleTemplate: '{title}',
+  textTemplate: '{call}'
+};
+
+// ---------------------------------------------------------------------------
 // Rule: linq-single-chain (linq, m0Rank 101 — pure floor)
 // ---------------------------------------------------------------------------
 
@@ -996,6 +1066,7 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 export const TIER2_RULES: readonly Tier2Rule[] = [
   CONSOLE_WRITE,
   ASSIGN_LITERAL,
+  COLLECTION_ADD,
   ASSIGN_FROM_CALL,
   STRING_OP,
   LINQ_SINGLE_CHAIN,
