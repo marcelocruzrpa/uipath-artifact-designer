@@ -21,8 +21,12 @@ import type { CwPseudoStep } from '../cwTypes';
 
 /** Union of shipped rule ids. */
 export type Tier2RuleId =
+  | 'console-write'
+  | 'assign-literal'
+  | 'collection-add'
   | 'assign-from-call'
   | 'string-op'
+  | 'assign-new-object'
   | 'linq-single-chain'
   | 'file-op'
   | 'datetime-arith';
@@ -180,6 +184,67 @@ function memberChainRoot(fn: Node): Node | null {
   }
   return cur.type === 'identifier' || cur.type === 'predefined_type' ? cur : null;
 }
+
+// ---------------------------------------------------------------------------
+// Rule: console-write (console, m0Rank 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * `Console.WriteLine(<arg>)` as a BARE expression statement with EXACTLY ONE
+ * argument that is a literal, an interpolated string, or an identifier — the
+ * three simple log shapes.  A nested CALL in the argument
+ * (`Console.WriteLine(wb.GetTableRange(...))`) is the real action and must NOT
+ * hide inside a log card, so it stays tier-3; the shared escape-hatch fence
+ * rejects await/lambda/query anywhere in the arg (interpolation holes
+ * included), while a plain SYNC call inside an interpolation hole
+ * (`$"{x.Name}"`) renders verbatim — consistent with string-op.  WriteLine
+ * returns void, so there is no bound form to match.
+ */
+function matchConsoleWrite(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  if (stmt.type !== 'expression_statement') return null;
+  const inner = firstNonComment(stmt);
+  if (inner === null || inner.type !== 'invocation_expression') return null;
+  const fn = inner.childForFieldName('function');
+  if (fn === null || fn.type !== 'member_access_expression') return null;
+  const recv = fn.childForFieldName('expression');
+  const name = fn.childForFieldName('name');
+  if (recv === null || recv.type !== 'identifier' || recv.text !== 'Console') return null;
+  if (name === null || name.type !== 'identifier' || name.text !== 'WriteLine') return null;
+  const args = argumentValues(inner.childForFieldName('arguments'));
+  if (args === null || args.length !== 1) return null;
+  const arg = args[0];
+  // Exactly the three simple shapes — a nested call (or any other expression)
+  // stays tier-3 so the real action is never buried in a log card.
+  if (!isLiteralOrIdentifier(arg) && arg.type !== 'interpolated_string_expression') {
+    return null;
+  }
+  // await/lambda/query anywhere in the arg (e.g. an interpolation hole) is
+  // hidden work — same fence as string-op / assign-from-call.
+  if (containsType(arg, ESCAPE_HATCH_TYPES)) return null;
+  return { captures: { arg: sliceOf(arg, source) } };
+}
+
+const CONSOLE_WRITE: Tier2Rule = {
+  id: 'console-write',
+  family: 'console',
+  m0Rank: 1,
+  doc:
+    'Bare `Console.WriteLine(<arg>)` with exactly one argument that is a ' +
+    'literal, an interpolated string, or an identifier → "Write line" card ' +
+    'showing the arg verbatim. Receiver must be the identifier `Console`, ' +
+    'method `WriteLine`. A nested call in the argument ' +
+    '(`Console.WriteLine(wb.GetTableRange(...))`) stays tier-3 — the call ' +
+    'inside is the real action and must not hide in a log card — as does any ' +
+    'await/lambda/query anywhere in the arg (interpolation holes included); a ' +
+    'plain sync call inside an interpolation hole renders verbatim. WriteLine ' +
+    'returns void, so only the bare expression statement matches.',
+  match: matchConsoleWrite,
+  titleTemplate: 'Write line',
+  textTemplate: '{arg}'
+};
 
 // ---------------------------------------------------------------------------
 // Rule: linq-single-chain (linq, m0Rank 101 — pure floor)
@@ -871,6 +936,7 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
 
 /** The shipped registry — sorted ascending by m0Rank. */
 export const TIER2_RULES: readonly Tier2Rule[] = [
+  CONSOLE_WRITE,
   ASSIGN_FROM_CALL,
   STRING_OP,
   LINQ_SINGLE_CHAIN,
