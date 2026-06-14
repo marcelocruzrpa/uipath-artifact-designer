@@ -23,6 +23,7 @@ Each file type opens in its own designer automatically, as its default editor.
 | **Maestro BPMN** | `*.bpmn` | Full BPMN 2.0 modeler (`bpmn-js`); UiPath `uipath:*` extension XML round-trips losslessly on save. |
 | **Maestro Case** | `caseplan.json` | Stage-graph canvas (v19 & v20 schemas) with stage, edge, entry / exit condition, and SLA editing. |
 | **Coded App** | `action-schema.json` | Form editor for the inputs / outputs / inOuts / outcomes data contract, with a read-only deployment-status panel. |
+| **Coded Workflow Canvas** | `*.cs` | Read-only activity-graph canvas for UiPath coded workflows, with an inter-workflow call graph panel. Opens via **Open With… → UiPath: Open Designer** (not the default editor for `.cs` files). Read-only by default; top-level argument value editing (L0) can be enabled per-file via the inspector toggle. |
 
 *Maestro is UiPath's low-code agentic orchestration platform — flows, BPMN processes,
 and case management.*
