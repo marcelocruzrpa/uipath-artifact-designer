@@ -83,6 +83,7 @@ describe('tier-1 cards — straight-line sequence', () => {
         value: 'starting run',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"starting run"',
         valueSpan: { start: 420, end: 434 }
       }
     ]);
@@ -102,6 +103,7 @@ describe('tier-1 cards — straight-line sequence', () => {
         value: 'ApiEndpoint',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"ApiEndpoint"',
         valueSpan: { start: 480, end: 493 }
       }
     ]);
@@ -119,6 +121,7 @@ describe('tier-1 cards — straight-line sequence', () => {
         value: 'endpoint',
         kind: 'identifier',
         editableKind: 'identifier',
+        valueRaw: 'endpoint',
         valueSpan: { start: 649, end: 657 }
       },
       {
@@ -126,6 +129,7 @@ describe('tier-1 cards — straight-line sequence', () => {
         value: '3',
         kind: 'literal',
         editableKind: 'number',
+        valueRaw: '3',
         valueSpan: { start: 659, end: 660 }
       }
     ]);
@@ -138,6 +142,7 @@ describe('tier-1 cards — straight-line sequence', () => {
       value: 'Shared\\Notify.xaml',
       kind: 'literal',
       editableKind: 'string',
+      valueRaw: '@"Shared\\Notify.xaml"',
       valueSpan: { start: 687, end: 708 }
     });
     const log = asCard(sequence.classes[0].entryPoints[0].body[6]);
@@ -147,6 +152,7 @@ describe('tier-1 cards — straight-line sequence', () => {
         value: 'done with {endpoint}',
         kind: 'interpolated',
         editableKind: 'raw',
+        valueRaw: '$"done with {endpoint}"',
         valueSpan: { start: 734, end: 757 }
       }
     ]);
@@ -177,6 +183,7 @@ describe('tier-1 cards — excel handles', () => {
         value: 'invoices.xlsx',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"invoices.xlsx"',
         valueSpan: { start: 454, end: 469 }
       },
       {
@@ -213,6 +220,7 @@ describe('tier-1 cards — excel handles', () => {
         value: 'sheet',
         kind: 'identifier',
         editableKind: 'identifier',
+        valueRaw: 'sheet',
         valueSpan: { start: 653, end: 658 }
       },
       {
@@ -220,6 +228,7 @@ describe('tier-1 cards — excel handles', () => {
         value: 'B7',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"B7"',
         valueSpan: { start: 660, end: 664 }
       }
     ]);
@@ -293,6 +302,7 @@ describe('tier-1 cards — M0 levers L1/L2 + generic titles', () => {
         value: 'Country',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"Country"',
         valueSpan: { start: 822, end: 831 }
       }
     ]);

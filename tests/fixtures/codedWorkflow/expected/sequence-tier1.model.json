@@ -52,7 +52,8 @@
                   "valueSpan": {
                     "start": 420,
                     "end": 434
-                  }
+                  },
+                  "valueRaw": "\"starting run\""
                 }
               ],
               "icon": "play-circle"
@@ -81,7 +82,8 @@
                   "valueSpan": {
                     "start": 480,
                     "end": 493
-                  }
+                  },
+                  "valueRaw": "\"ApiEndpoint\""
                 }
               ],
               "resultBinding": "endpoint",
@@ -111,7 +113,8 @@
                   "valueSpan": {
                     "start": 541,
                     "end": 554
-                  }
+                  },
+                  "valueRaw": "\"ServiceUser\""
                 }
               ],
               "resultBinding": "creds",
@@ -141,7 +144,8 @@
                   "valueSpan": {
                     "start": 589,
                     "end": 599
-                  }
+                  },
+                  "valueRaw": "\"Invoices\""
                 }
               ],
               "icon": "gear"
@@ -169,7 +173,8 @@
                   "valueSpan": {
                     "start": 649,
                     "end": 657
-                  }
+                  },
+                  "valueRaw": "endpoint"
                 },
                 {
                   "label": "arg2",
@@ -179,7 +184,8 @@
                   "valueSpan": {
                     "start": 659,
                     "end": 660
-                  }
+                  },
+                  "valueRaw": "3"
                 }
               ],
               "icon": "type-hierarchy"
@@ -208,7 +214,8 @@
                   "valueSpan": {
                     "start": 687,
                     "end": 708
-                  }
+                  },
+                  "valueRaw": "@\"Shared\\Notify.xaml\""
                 }
               ],
               "icon": "play-circle"
@@ -237,7 +244,8 @@
                   "valueSpan": {
                     "start": 734,
                     "end": 757
-                  }
+                  },
+                  "valueRaw": "$\"done with {endpoint}\""
                 }
               ],
               "icon": "play-circle"
@@ -266,7 +274,8 @@
                   "valueSpan": {
                     "start": 795,
                     "end": 807
-                  }
+                  },
+                  "valueRaw": "\"ReportName\""
                 }
               ],
               "icon": "gear"

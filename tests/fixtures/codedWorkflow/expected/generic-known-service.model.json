@@ -67,7 +67,8 @@
                           "valueSpan": {
                             "start": 525,
                             "end": 526
-                          }
+                          },
+                          "valueRaw": "1"
                         }
                       ],
                       "icon": "file-media"
@@ -105,7 +106,8 @@
                     "valueSpan": {
                       "start": 465,
                       "end": 476
-                    }
+                    },
+                    "valueRaw": "\"deck.pptx\""
                   }
                 ],
                 "resultBinding": "pow",
@@ -187,7 +189,8 @@
                   "valueSpan": {
                     "start": 771,
                     "end": 782
-                  }
+                  },
+                  "valueRaw": "\"Addresses\""
                 }
               ],
               "resultBinding": "address",
@@ -216,7 +219,8 @@
                   "valueSpan": {
                     "start": 822,
                     "end": 831
-                  }
+                  },
+                  "valueRaw": "\"Country\""
                 }
               ],
               "resultBinding": "country",

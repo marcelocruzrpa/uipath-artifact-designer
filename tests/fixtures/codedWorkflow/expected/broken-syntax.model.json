@@ -57,7 +57,8 @@
                   "valueSpan": {
                     "start": 345,
                     "end": 364
-                  }
+                  },
+                  "valueRaw": "\"before the damage\""
                 }
               ],
               "icon": "play-circle"
@@ -86,7 +87,8 @@
                   "valueSpan": {
                     "start": 407,
                     "end": 412
-                  }
+                  },
+                  "valueRaw": "\"Key\""
                 }
               ],
               "resultBinding": "asset",
@@ -149,7 +151,8 @@
                   "valueSpan": {
                     "start": 557,
                     "end": 582
-                  }
+                  },
+                  "valueRaw": "\"untouched by the damage\""
                 }
               ],
               "icon": "play-circle"

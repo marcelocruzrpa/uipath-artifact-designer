@@ -69,7 +69,7 @@ export function extractArgs(
       value !== null
         ? renderValue(value, source, ARG_VALUE_MAX_LEN)
         : { value: '', kind: 'expression', editableKind: 'none' };
-    return finalize(`arg${i + 1}`, rendered);
+    return finalize(`arg${i + 1}`, rendered, source);
   });
 }
 
@@ -85,7 +85,7 @@ export function extractIndexerKey(
   const arg = subscript.namedChildren.find((c) => c.type === 'argument');
   const value = arg !== undefined ? argValueNode(arg) : null;
   if (value === null) return [];
-  return [finalize('Key', renderValue(value, source, ARG_VALUE_MAX_LEN))];
+  return [finalize('Key', renderValue(value, source, ARG_VALUE_MAX_LEN), source)];
 }
 
 // ---------------------------------------------------------------------------
@@ -162,15 +162,23 @@ function editableKindOf(node: Node): CwArgSummary['editableKind'] {
   }
 }
 
-/** Build the final summary row from a label + rendered value/edit metadata. */
-function finalize(label: string, rendered: Rendered): CwArgSummary {
+/**
+ * Build the final summary row from a label + rendered value/edit metadata.
+ * When a backing `node` is present, both `valueSpan` and its exact source slice
+ * `valueRaw` are emitted from it, so the invariant
+ * `valueRaw === source.slice(valueSpan.start, valueSpan.end)` always holds.
+ */
+function finalize(label: string, rendered: Rendered, source: string): CwArgSummary {
   return {
     label,
     value: rendered.value,
     kind: rendered.kind,
     editableKind: rendered.editableKind,
     ...(rendered.node !== undefined
-      ? { valueSpan: { start: rendered.node.startIndex, end: rendered.node.endIndex } }
+      ? {
+          valueSpan: { start: rendered.node.startIndex, end: rendered.node.endIndex },
+          valueRaw: source.slice(rendered.node.startIndex, rendered.node.endIndex)
+        }
       : {})
   };
 }
@@ -320,5 +328,5 @@ function renderSpec(
       break;
   }
   if (rendered === null) return null;
-  return finalize(spec.label, rendered);
+  return finalize(spec.label, rendered, source);
 }

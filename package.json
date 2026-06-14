@@ -199,10 +199,12 @@
   },
   "devDependencies": {
     "@types/dagre": "^0.7.54",
+    "@types/jsdom": "^28.0.3",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.84.0",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.28.0",
+    "jsdom": "^29.1.1",
     "tree-sitter-c-sharp": "^0.23.5",
     "tsx": "^4.22.4",
     "typescript": "^5.4.5",

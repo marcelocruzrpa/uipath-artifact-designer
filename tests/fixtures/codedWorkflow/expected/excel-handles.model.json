@@ -85,7 +85,8 @@
                           "valueSpan": {
                             "start": 653,
                             "end": 658
-                          }
+                          },
+                          "valueRaw": "sheet"
                         },
                         {
                           "label": "arg2",
@@ -95,7 +96,8 @@
                           "valueSpan": {
                             "start": 660,
                             "end": 664
-                          }
+                          },
+                          "valueRaw": "\"B7\""
                         }
                       ],
                       "resultBinding": "cellValue",
@@ -152,7 +154,8 @@
                     "valueSpan": {
                       "start": 454,
                       "end": 469
-                    }
+                    },
+                    "valueRaw": "\"invoices.xlsx\""
                   },
                   {
                     "label": "Options",
@@ -189,7 +192,8 @@
                   "valueSpan": {
                     "start": 768,
                     "end": 781
-                  }
+                  },
+                  "valueRaw": "\"report.xlsx\""
                 }
               ],
               "resultBinding": "report",
@@ -218,7 +222,8 @@
                   "valueSpan": {
                     "start": 815,
                     "end": 820
-                  }
+                  },
+                  "valueRaw": "range"
                 }
               ],
               "icon": "table"

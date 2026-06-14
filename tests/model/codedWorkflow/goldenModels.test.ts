@@ -78,6 +78,7 @@ describe('golden models — skeleton fixtures', () => {
         value: 'ApiEndpoint',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"ApiEndpoint"',
         valueSpan: { start: 480, end: 493 }
       }
     ]);
@@ -107,6 +108,7 @@ describe('golden models — skeleton fixtures', () => {
         value: 'Country',
         kind: 'literal',
         editableKind: 'string',
+        valueRaw: '"Country"',
         valueSpan: { start: 822, end: 831 }
       }
     ]);

@@ -18,6 +18,9 @@ it('captures the value span + editableKind of a Log message literal', async () =
     expect(arg.editableKind).toBe('string');
     expect(arg.valueSpan).toBeDefined();
     expect(source.slice(arg.valueSpan!.start, arg.valueSpan!.end)).toBe('"hi"');
+    // valueRaw is the exact source slice — the raw token the form edits.
+    expect(arg.valueRaw).toBe('"hi"');
+    expect(arg.valueRaw).toBe(source.slice(arg.valueSpan!.start, arg.valueSpan!.end));
   } finally {
     tree.delete();
   }

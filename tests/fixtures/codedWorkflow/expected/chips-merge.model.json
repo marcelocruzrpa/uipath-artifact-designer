@@ -67,7 +67,8 @@
                   "valueSpan": {
                     "start": 625,
                     "end": 635
-                  }
+                  },
+                  "valueRaw": "\"midpoint\""
                 }
               ],
               "icon": "play-circle"

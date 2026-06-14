@@ -15,6 +15,7 @@
  */
 import type {
   CodedWorkflowModel,
+  CwActivityCard,
   CwEntryPoint,
   CwStatement,
   CwWorkflowClass
@@ -28,6 +29,7 @@ import { effectiveCollapsed, toggleId } from './codedWorkflow/collapsePolicy';
 import { renderStatements, type RenderCtx } from './codedWorkflow/containers';
 import { cwIcon } from './codedWorkflow/cwIcons';
 import { createGraphView, type GraphView } from './codedWorkflow/graphView';
+import { renderPropertiesPanel } from './codedWorkflow/propertiesPanel';
 
 const SCROLL_PERSIST_DELAY_MS = 300;
 
@@ -88,6 +90,26 @@ function onActivate(node: HTMLElement, handler: () => void): void {
   });
 }
 
+/**
+ * Depth-first search for the activity card with `id`, descending container
+ * slots AND a `using` container's `resourceCard` (which carries its own id and
+ * a `[data-id]` card in the DOM). Returns null when no activity matches.
+ */
+function findActivityCard(stmts: CwStatement[], id: string): CwActivityCard | null {
+  for (const stmt of stmts) {
+    if (stmt.type === 'activity') {
+      if (stmt.id === id) return stmt;
+    } else if (stmt.type === 'container') {
+      if (stmt.resourceCard && stmt.resourceCard.id === id) return stmt.resourceCard;
+      for (const slot of stmt.slots) {
+        const hit = findActivityCard(slot.children, id);
+        if (hit) return hit;
+      }
+    }
+  }
+  return null;
+}
+
 class CodedWorkflowRenderer implements Renderer {
   private container: HTMLElement | null = null;
   private host: RendererHost | null = null;
@@ -110,12 +132,23 @@ class CodedWorkflowRenderer implements Renderer {
   private pendingGraphTransform: Transform | null = null;
   private noteEl: HTMLElement | null = null;
   private noteTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The SELECTED activity card for the properties panel — transient (not
+   * persisted). Distinct from `activeEntry` (the active entry-POINT tab), which
+   * keeps its own meaning in the view state's `selectedId`.
+   */
+  private selectedNodeId: string | null = null;
+  /** Value-editing mode for the panel; read-only is the default. Persisted. */
+  private editing = false;
+  /** The docked properties-panel region (canvas mode only); re-rendered in place. */
+  private dockEl: HTMLElement | null = null;
 
   public mount(container: HTMLElement, host: RendererHost, savedState: WebviewViewState | null): void {
     this.container = container;
     this.host = host;
     this.userToggled = new Set(savedState?.collapsedIds ?? []);
     this.activeEntry = savedState?.selectedId ?? null;
+    this.editing = savedState?.editing === true;
     this.mode = savedState?.mode === 'graph' ? 'graph' : 'canvas';
     // The persisted pan/zoom triple belongs to the mode that was ACTIVE at
     // persist time (see getViewState) — route it to the matching sub-view.
@@ -176,6 +209,7 @@ class CodedWorkflowRenderer implements Renderer {
       this.scrollEl.removeEventListener('scroll', this.onScroll);
       this.scrollEl = null;
     }
+    this.dockEl = null;
     if (this.graphView) {
       this.graphTransformStash = this.graphView.getTransform();
       this.graphView.dispose();
@@ -191,8 +225,10 @@ class CodedWorkflowRenderer implements Renderer {
   }
 
   /**
-   * Canvas (block-stack) mode — DOM unchanged from the pre-graph renderer:
-   * `.cw-root` itself scrolls and the header scrolls with the content.
+   * Canvas (block-stack) mode. `.cw-root` is the scroll area (header scrolls
+   * with the content, unchanged); it now sits in a `.cw-layout` flex row next
+   * to the docked properties panel (`.cw-props-dock`), a NON-scrolling flex
+   * sibling so the canvas keeps its own independent scroll.
    */
   private renderCanvasMode(container: HTMLElement, model: CodedWorkflowModel): void {
     // Preserve scroll across re-renders; on the first render prefer the
@@ -211,11 +247,145 @@ class CodedWorkflowRenderer implements Renderer {
       }
     }
 
+    this.wireCardSelection(root);
+
+    const dock = el('div', { class: 'cw-props-dock' });
+    this.dockEl = dock;
+    this.renderDock(model);
+
+    const layout = el('div', { class: 'cw-layout' }, [root, dock]);
+
     root.addEventListener('scroll', this.onScroll);
     this.scrollEl = root;
-    container.append(root);
+    container.append(layout);
     root.scrollLeft = scroll.x;
     root.scrollTop = scroll.y;
+  }
+
+  /**
+   * Makes every activity card in the canvas selectable: a click (or Enter /
+   * Space) sets `selectedNodeId` and refreshes the dock in place — no canvas
+   * rebuild, so scroll and collapse state are untouched. Activity cards carry
+   * `data-id` (see stepCard.ts); container/chip nodes also carry `data-id`, so
+   * we match only `.cw-card--activity` to avoid selecting non-cards.
+   */
+  private wireCardSelection(root: HTMLElement): void {
+    const cards = root.querySelectorAll<HTMLElement>('.cw-card--activity[data-id]');
+    cards.forEach((cardEl) => {
+      const id = cardEl.dataset.id;
+      if (id === undefined) {
+        return;
+      }
+      cardEl.tabIndex = 0;
+      cardEl.setAttribute('role', 'button');
+      onActivate(cardEl, () => this.selectCard(id));
+    });
+    this.applySelectionHighlight(root);
+  }
+
+  private selectCard(id: string): void {
+    if (this.selectedNodeId === id) {
+      return;
+    }
+    this.selectedNodeId = id;
+    if (this.model) {
+      this.renderDock(this.model);
+    }
+    if (this.scrollEl) {
+      this.applySelectionHighlight(this.scrollEl);
+    }
+    this.host?.notifyViewChanged();
+  }
+
+  /** Adds `.cw-card--selected` to the selected card, removing it elsewhere. */
+  private applySelectionHighlight(root: HTMLElement): void {
+    root.querySelectorAll('.cw-card--selected').forEach((n) => n.classList.remove('cw-card--selected'));
+    if (this.selectedNodeId === null) {
+      return;
+    }
+    const sel = root.querySelector<HTMLElement>(
+      `.cw-card--activity[data-id="${CSS.escape(this.selectedNodeId)}"]`
+    );
+    sel?.classList.add('cw-card--selected');
+  }
+
+  /**
+   * (Re)builds the dock contents: the edit-mode toggle plus EITHER the
+   * properties panel for the selected card or a hint when nothing is selected.
+   */
+  private renderDock(model: CodedWorkflowModel): void {
+    const dock = this.dockEl;
+    if (!dock) {
+      return;
+    }
+    clearChildren(dock);
+    dock.append(this.buildEditToggle());
+
+    const card =
+      this.selectedNodeId !== null ? this.findSelectedCard(model) : null;
+    if (card === null) {
+      dock.append(
+        el('div', {
+          class: 'cw-props-hint',
+          text: 'Select a card to see its properties'
+        })
+      );
+      return;
+    }
+    dock.append(
+      renderPropertiesPanel(card, {
+        editing: this.editing,
+        onEdit: (edit) => {
+          this.host?.post({
+            type: 'editValue',
+            id: edit.id,
+            argIndex: edit.argIndex,
+            newText: edit.newText
+          });
+        }
+      })
+    );
+  }
+
+  /** The selected `CwActivityCard`, walking all classes/entries/helpers, or null. */
+  private findSelectedCard(model: CodedWorkflowModel): CwActivityCard | null {
+    if (this.selectedNodeId === null) {
+      return null;
+    }
+    for (const cls of model.classes) {
+      for (const ep of cls.entryPoints) {
+        const hit = findActivityCard(ep.body, this.selectedNodeId);
+        if (hit) return hit;
+      }
+      for (const hm of cls.helperMethods) {
+        const hit = findActivityCard(hm.body, this.selectedNodeId);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
+
+  /** The read-only ⇄ edit toggle button shown at the top of the dock. */
+  private buildEditToggle(): HTMLElement {
+    const btn = el('button', {
+      class: `cw-props-toggle${this.editing ? ' cw-props-toggle--on' : ''}`,
+      text: this.editing ? 'Editing — click to lock' : 'Read-only — click to edit',
+      title: this.editing
+        ? 'Values are editable. Click to return to read-only.'
+        : 'Values are read-only. Click to enable editing.'
+    });
+    btn.setAttribute('role', 'switch');
+    btn.setAttribute('aria-checked', String(this.editing));
+    btn.addEventListener('click', () => this.toggleEditing());
+    return btn;
+  }
+
+  private toggleEditing(): void {
+    this.editing = !this.editing;
+    if (this.model) {
+      this.renderDock(this.model);
+    }
+    this.host?.notifyViewChanged();
   }
 
   /**
@@ -584,7 +754,10 @@ class CodedWorkflowRenderer implements Renderer {
     // sessions. selectedId / collapsedIds always keep their canvas meanings.
     const base = {
       selectedId: this.activeEntry,
-      collapsedIds: [...this.userToggled]
+      collapsedIds: [...this.userToggled],
+      // The panel's value-editing mode (read-only by default). Only persisted
+      // when on, so a never-edited document keeps `editing` absent.
+      ...(this.editing ? { editing: true } : {})
     };
     if (this.graphView) {
       const t = this.graphView.getTransform();
@@ -615,6 +788,7 @@ class CodedWorkflowRenderer implements Renderer {
     this.graphTransformStash = null;
     this.scrollEl?.removeEventListener('scroll', this.onScroll);
     this.scrollEl = null;
+    this.dockEl = null;
     this.container = null;
     this.host = null;
     this.model = null;

@@ -31,6 +31,12 @@ export interface CwArgSummary {
   /** Exact source range of the VALUE token(s); absent when the value is synthesized. */
   valueSpan?: OffsetSpan;
   /**
+   * The exact source slice of the value token — `source.slice(valueSpan.start,
+   * valueSpan.end)`. Present whenever `valueSpan` is (same backing node). Unlike
+   * `value` (the unquoted/clipped DISPLAY), this is the raw token the form edits.
+   */
+  valueRaw?: string;
+  /**
    * How the value may be edited from a form:
    *   'string'|'number'|'bool'|'enum' → typed field; 'identifier' → text field;
    *   'raw' → raw-text only (expression/interpolated); 'none' → read-only.
