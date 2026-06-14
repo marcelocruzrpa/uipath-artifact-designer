@@ -8,6 +8,7 @@ import type { HostToWebview, WebviewToHost } from './util/messages';
 import { getNonce } from './util/nonce';
 import { validateWebviewMessage } from './util/validateMessage';
 import { logError, logWarn } from './util/log';
+import { computeValueEdit } from './artifacts/codedWorkflowEdit';
 
 /**
  * A single, registry-driven CustomTextEditorProvider that renders any
@@ -358,6 +359,33 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       case 'persistViewState':
       case 'log':
         break;
+      case 'editValue': {
+        // Coded-workflow value edit. The model build + resolve + parse-gate
+        // live in a vscode-free helper so they stay unit-testable; here we
+        // only translate the result into a range WorkspaceEdit.
+        const source = document.getText();
+        const computed = await computeValueEdit(source, message);
+        if (!computed.ok) {
+          void vscode.window.showWarningMessage(`Edit rejected: ${computed.error}`);
+          break;
+        }
+        // Prime the echo-guard with the FULL resulting text BEFORE applying:
+        // after the range edit `document.getText() === computed.after`, so the
+        // onDidChangeTextDocument listener's `=== lastWrittenText.get(key)`
+        // check skips the self-triggered re-render (native undo reverts in one
+        // step). This mirrors the whole-file path in applyFileEdits.
+        this.lastWrittenText.set(this.documentKey(document.uri), computed.after);
+        const edit = new vscode.WorkspaceEdit();
+        for (const p of computed.patches) {
+          edit.replace(
+            document.uri,
+            new vscode.Range(document.positionAt(p.start), document.positionAt(p.end)),
+            p.newText
+          );
+        }
+        await vscode.workspace.applyEdit(edit);
+        break;
+      }
       default:
         if (descriptor) {
           await descriptor.applyEdit(message, document, this.editContext);
