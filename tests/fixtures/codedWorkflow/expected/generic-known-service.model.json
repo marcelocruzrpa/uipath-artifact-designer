@@ -64,6 +64,10 @@
                           "value": "1",
                           "kind": "literal",
                           "editableKind": "number",
+                          "argSpan": {
+                            "start": 525,
+                            "end": 526
+                          },
                           "valueSpan": {
                             "start": 525,
                             "end": 526
@@ -71,7 +75,11 @@
                           "valueRaw": "1"
                         }
                       ],
-                      "icon": "file-media"
+                      "icon": "file-media",
+                      "argListSpan": {
+                        "start": 525,
+                        "end": 526
+                      }
                     }
                   ],
                   "span": {
@@ -103,6 +111,10 @@
                     "value": "deck.pptx",
                     "kind": "literal",
                     "editableKind": "string",
+                    "argSpan": {
+                      "start": 465,
+                      "end": 476
+                    },
                     "valueSpan": {
                       "start": 465,
                       "end": 476
@@ -111,7 +123,11 @@
                   }
                 ],
                 "resultBinding": "pow",
-                "icon": "file-media"
+                "icon": "file-media",
+                "argListSpan": {
+                  "start": 465,
+                  "end": 476
+                }
               }
             },
             {
@@ -134,11 +150,19 @@
                   "label": "Options",
                   "value": "JavaPath: C:\\jdk",
                   "kind": "expression",
-                  "editableKind": "none"
+                  "editableKind": "none",
+                  "argSpan": {
+                    "start": 582,
+                    "end": 629
+                  }
                 }
               ],
               "resultBinding": "js",
-              "icon": "coffee"
+              "icon": "coffee",
+              "argListSpan": {
+                "start": 582,
+                "end": 629
+              }
             },
             {
               "id": "GenericFlow#Execute/2",
@@ -160,11 +184,19 @@
                   "label": "Options",
                   "value": "Path: C:\\py",
                   "kind": "expression",
-                  "editableKind": "none"
+                  "editableKind": "none",
+                  "argSpan": {
+                    "start": 675,
+                    "end": 719
+                  }
                 }
               ],
               "resultBinding": "py",
-              "icon": "code"
+              "icon": "code",
+              "argListSpan": {
+                "start": 675,
+                "end": 719
+              }
             },
             {
               "id": "GenericFlow#Execute/3",
@@ -186,6 +218,10 @@
                   "value": "Addresses",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 771,
+                    "end": 782
+                  },
                   "valueSpan": {
                     "start": 771,
                     "end": 782
@@ -194,7 +230,11 @@
                 }
               ],
               "resultBinding": "address",
-              "icon": "beaker"
+              "icon": "beaker",
+              "argListSpan": {
+                "start": 771,
+                "end": 782
+              }
             },
             {
               "id": "GenericFlow#Execute/4",

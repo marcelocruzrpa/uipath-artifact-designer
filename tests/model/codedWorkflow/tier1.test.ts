@@ -84,7 +84,8 @@ describe('tier-1 cards — straight-line sequence', () => {
         kind: 'literal',
         editableKind: 'string',
         valueRaw: '"starting run"',
-        valueSpan: { start: 420, end: 434 }
+        valueSpan: { start: 420, end: 434 },
+        argSpan: { start: 420, end: 434 }
       }
     ]);
     expect(card.resultBinding).toBeUndefined();
@@ -104,7 +105,8 @@ describe('tier-1 cards — straight-line sequence', () => {
         kind: 'literal',
         editableKind: 'string',
         valueRaw: '"ApiEndpoint"',
-        valueSpan: { start: 480, end: 493 }
+        valueSpan: { start: 480, end: 493 },
+        argSpan: { start: 480, end: 493 }
       }
     ]);
   });
@@ -122,7 +124,8 @@ describe('tier-1 cards — straight-line sequence', () => {
         kind: 'identifier',
         editableKind: 'identifier',
         valueRaw: 'endpoint',
-        valueSpan: { start: 649, end: 657 }
+        valueSpan: { start: 649, end: 657 },
+        argSpan: { start: 649, end: 657 }
       },
       {
         label: 'arg2',
@@ -130,7 +133,8 @@ describe('tier-1 cards — straight-line sequence', () => {
         kind: 'literal',
         editableKind: 'number',
         valueRaw: '3',
-        valueSpan: { start: 659, end: 660 }
+        valueSpan: { start: 659, end: 660 },
+        argSpan: { start: 659, end: 660 }
       }
     ]);
   });
@@ -143,7 +147,8 @@ describe('tier-1 cards — straight-line sequence', () => {
       kind: 'literal',
       editableKind: 'string',
       valueRaw: '@"Shared\\Notify.xaml"',
-      valueSpan: { start: 687, end: 708 }
+      valueSpan: { start: 687, end: 708 },
+      argSpan: { start: 687, end: 708 }
     });
     const log = asCard(sequence.classes[0].entryPoints[0].body[6]);
     expect(log.args).toEqual([
@@ -153,7 +158,8 @@ describe('tier-1 cards — straight-line sequence', () => {
         kind: 'interpolated',
         editableKind: 'raw',
         valueRaw: '$"done with {endpoint}"',
-        valueSpan: { start: 734, end: 757 }
+        valueSpan: { start: 734, end: 757 },
+        argSpan: { start: 734, end: 757 }
       }
     ]);
   });
@@ -184,13 +190,15 @@ describe('tier-1 cards — excel handles', () => {
         kind: 'literal',
         editableKind: 'string',
         valueRaw: '"invoices.xlsx"',
-        valueSpan: { start: 454, end: 469 }
+        valueSpan: { start: 454, end: 469 },
+        argSpan: { start: 454, end: 469 }
       },
       {
         label: 'Options',
         value: 'SaveChanges: true, ReadOnly: false',
         kind: 'expression',
-        editableKind: 'none'
+        editableKind: 'none',
+        argSpan: { start: 471, end: 534 }
       }
     ]);
 
@@ -221,7 +229,8 @@ describe('tier-1 cards — excel handles', () => {
         kind: 'identifier',
         editableKind: 'identifier',
         valueRaw: 'sheet',
-        valueSpan: { start: 653, end: 658 }
+        valueSpan: { start: 653, end: 658 },
+        argSpan: { start: 653, end: 658 }
       },
       {
         label: 'arg2',
@@ -229,7 +238,8 @@ describe('tier-1 cards — excel handles', () => {
         kind: 'literal',
         editableKind: 'string',
         valueRaw: '"B7"',
-        valueSpan: { start: 660, end: 664 }
+        valueSpan: { start: 660, end: 664 },
+        argSpan: { start: 660, end: 664 }
       }
     ]);
   });
@@ -273,7 +283,13 @@ describe('tier-1 cards — M0 levers L1/L2 + generic titles', () => {
     expect(java.title).toBe('Use Java Scope');
     expect(java.resultBinding).toBe('js');
     expect(java.args).toEqual([
-      { label: 'Options', value: 'JavaPath: C:\\jdk', kind: 'expression', editableKind: 'none' }
+      {
+        label: 'Options',
+        value: 'JavaPath: C:\\jdk',
+        kind: 'expression',
+        editableKind: 'none',
+        argSpan: { start: 582, end: 629 }
+      }
     ]);
 
     const python = asCard(body[2]);

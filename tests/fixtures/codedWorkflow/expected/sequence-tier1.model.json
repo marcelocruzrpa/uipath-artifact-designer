@@ -49,6 +49,10 @@
                   "value": "starting run",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 420,
+                    "end": 434
+                  },
                   "valueSpan": {
                     "start": 420,
                     "end": 434
@@ -56,7 +60,11 @@
                   "valueRaw": "\"starting run\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 420,
+                "end": 434
+              }
             },
             {
               "id": "SequenceFlow#Execute/1",
@@ -79,6 +87,10 @@
                   "value": "ApiEndpoint",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 480,
+                    "end": 493
+                  },
                   "valueSpan": {
                     "start": 480,
                     "end": 493
@@ -87,7 +99,11 @@
                 }
               ],
               "resultBinding": "endpoint",
-              "icon": "gear"
+              "icon": "gear",
+              "argListSpan": {
+                "start": 480,
+                "end": 493
+              }
             },
             {
               "id": "SequenceFlow#Execute/2",
@@ -110,6 +126,10 @@
                   "value": "ServiceUser",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 541,
+                    "end": 554
+                  },
                   "valueSpan": {
                     "start": 541,
                     "end": 554
@@ -118,7 +138,11 @@
                 }
               ],
               "resultBinding": "creds",
-              "icon": "gear"
+              "icon": "gear",
+              "argListSpan": {
+                "start": 541,
+                "end": 554
+              }
             },
             {
               "id": "SequenceFlow#Execute/3",
@@ -141,6 +165,10 @@
                   "value": "Invoices",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 589,
+                    "end": 599
+                  },
                   "valueSpan": {
                     "start": 589,
                     "end": 599
@@ -148,7 +176,11 @@
                   "valueRaw": "\"Invoices\""
                 }
               ],
-              "icon": "gear"
+              "icon": "gear",
+              "argListSpan": {
+                "start": 589,
+                "end": 609
+              }
             },
             {
               "id": "SequenceFlow#Execute/4",
@@ -170,6 +202,10 @@
                   "value": "endpoint",
                   "kind": "identifier",
                   "editableKind": "identifier",
+                  "argSpan": {
+                    "start": 649,
+                    "end": 657
+                  },
                   "valueSpan": {
                     "start": 649,
                     "end": 657
@@ -181,6 +217,10 @@
                   "value": "3",
                   "kind": "literal",
                   "editableKind": "number",
+                  "argSpan": {
+                    "start": 659,
+                    "end": 660
+                  },
                   "valueSpan": {
                     "start": 659,
                     "end": 660
@@ -188,7 +228,11 @@
                   "valueRaw": "3"
                 }
               ],
-              "icon": "type-hierarchy"
+              "icon": "type-hierarchy",
+              "argListSpan": {
+                "start": 649,
+                "end": 660
+              }
             },
             {
               "id": "SequenceFlow#Execute/5",
@@ -211,6 +255,10 @@
                   "value": "Shared\\Notify.xaml",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 687,
+                    "end": 708
+                  },
                   "valueSpan": {
                     "start": 687,
                     "end": 708
@@ -218,7 +266,11 @@
                   "valueRaw": "@\"Shared\\Notify.xaml\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 687,
+                "end": 715
+              }
             },
             {
               "id": "SequenceFlow#Execute/6",
@@ -241,6 +293,10 @@
                   "value": "done with {endpoint}",
                   "kind": "interpolated",
                   "editableKind": "raw",
+                  "argSpan": {
+                    "start": 734,
+                    "end": 757
+                  },
                   "valueSpan": {
                     "start": 734,
                     "end": 757
@@ -248,7 +304,11 @@
                   "valueRaw": "$\"done with {endpoint}\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 734,
+                "end": 757
+              }
             },
             {
               "id": "SequenceFlow#Execute/7",
@@ -271,6 +331,10 @@
                   "value": "ReportName",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 795,
+                    "end": 807
+                  },
                   "valueSpan": {
                     "start": 795,
                     "end": 807
@@ -278,7 +342,11 @@
                   "valueRaw": "\"ReportName\""
                 }
               ],
-              "icon": "gear"
+              "icon": "gear",
+              "argListSpan": {
+                "start": 795,
+                "end": 807
+              }
             }
           ],
           "tierCounts": {

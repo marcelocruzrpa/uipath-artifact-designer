@@ -75,6 +75,7 @@ import type {
   CwStatement,
   CwTierCounts,
   CwWorkflowClass,
+  OffsetSpan,
   SourceSpan
 } from './cwTypes';
 import {
@@ -431,6 +432,25 @@ function cardTitle(match: Tier1Match): string {
   return humanizeMethod(match.method);
 }
 
+/** Interior char span of an invocation's argument_list (between the parens). */
+function argListInterior(invocation: Node | undefined): OffsetSpan | undefined {
+  if (invocation === undefined) return undefined;
+  const argList = invocation.childForFieldName('arguments');
+  if (argList === null) return undefined;
+  // argument_list children are `( arg , arg )`; the interior is between the
+  // first '(' and the last ')'.
+  let open: Node | null = null;
+  let close: Node | null = null;
+  for (let i = 0; i < argList.childCount; i += 1) {
+    const c = argList.child(i);
+    if (c === null) continue;
+    if (c.type === '(' && open === null) open = c;
+    if (c.type === ')') close = c;
+  }
+  if (open === null || close === null) return undefined;
+  return { start: open.endIndex, end: close.startIndex };
+}
+
 /** Build a CwActivityCard from a tier-1 match (id assigned later). */
 function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): CwActivityCard {
   const entry = match.catalogEntry;
@@ -450,7 +470,10 @@ function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): Cw
     title: cardTitle(match),
     args,
     ...(match.resultBinding !== undefined ? { resultBinding: match.resultBinding } : {}),
-    icon: entry?.icon ?? match.familyIcon
+    icon: entry?.icon ?? match.familyIcon,
+    ...(match.method !== '[indexer]'
+      ? { argListSpan: argListInterior(match.invocation) }
+      : {})
   };
 }
 

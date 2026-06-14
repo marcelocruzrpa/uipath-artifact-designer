@@ -54,6 +54,10 @@
                   "value": "before the damage",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 345,
+                    "end": 364
+                  },
                   "valueSpan": {
                     "start": 345,
                     "end": 364
@@ -61,7 +65,11 @@
                   "valueRaw": "\"before the damage\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 345,
+                "end": 364
+              }
             },
             {
               "id": "BrokenFlow#Execute/1",
@@ -84,6 +92,10 @@
                   "value": "Key",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 407,
+                    "end": 412
+                  },
                   "valueSpan": {
                     "start": 407,
                     "end": 412
@@ -92,7 +104,11 @@
                 }
               ],
               "resultBinding": "asset",
-              "icon": "gear"
+              "icon": "gear",
+              "argListSpan": {
+                "start": 407,
+                "end": 412
+              }
             },
             {
               "id": "BrokenFlow#Execute/2",
@@ -148,6 +164,10 @@
                   "value": "untouched by the damage",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 557,
+                    "end": 582
+                  },
                   "valueSpan": {
                     "start": 557,
                     "end": 582
@@ -155,7 +175,11 @@
                   "valueRaw": "\"untouched by the damage\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 557,
+                "end": 582
+              }
             }
           ],
           "tierCounts": {

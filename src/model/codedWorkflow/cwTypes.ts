@@ -37,6 +37,12 @@ export interface CwArgSummary {
    */
   valueRaw?: string;
   /**
+   * Char offsets of the WHOLE `argument` node (name + value), so a remove can
+   * delete the argument and a change can replace it. Absent for synthesized
+   * rows (e.g. object-prop summaries) and indexer keys with no argument node.
+   */
+  argSpan?: OffsetSpan;
+  /**
    * How the value may be edited from a form:
    *   'string'|'number'|'bool'|'enum' → typed field; 'identifier' → text field;
    *   'raw' → raw-text only (expression/interpolated); 'none' → read-only.
@@ -60,6 +66,14 @@ export interface CwActivityCard extends CwNodeBase {
   args: CwArgSummary[];
   resultBinding?: string;
   icon: string;
+  /**
+   * Char offsets of the INTERIOR of the call's `argument_list` — the range
+   * between `(` and `)` exclusive (so an empty `()` has start === end). An
+   * arg add splices at `argListSpan.end`; a method switch needs the call's
+   * function name span (resolved from the source by the host, not stored).
+   * Absent for indexer matches (no argument_list) and synthesized cards.
+   */
+  argListSpan?: OffsetSpan;
 }
 
 export interface CwPseudoStep extends CwNodeBase {

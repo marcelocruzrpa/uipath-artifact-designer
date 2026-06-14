@@ -64,6 +64,10 @@
                   "value": "midpoint",
                   "kind": "literal",
                   "editableKind": "string",
+                  "argSpan": {
+                    "start": 625,
+                    "end": 635
+                  },
                   "valueSpan": {
                     "start": 625,
                     "end": 635
@@ -71,7 +75,11 @@
                   "valueRaw": "\"midpoint\""
                 }
               ],
-              "icon": "play-circle"
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 625,
+                "end": 635
+              }
             },
             {
               "id": "ChipsFlow#Execute/2",

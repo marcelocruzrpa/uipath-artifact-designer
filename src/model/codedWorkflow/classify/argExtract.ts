@@ -69,7 +69,7 @@ export function extractArgs(
       value !== null
         ? renderValue(value, source, ARG_VALUE_MAX_LEN)
         : { value: '', kind: 'expression', editableKind: 'none' };
-    return finalize(`arg${i + 1}`, rendered, source);
+    return finalize(`arg${i + 1}`, rendered, source, arg);
   });
 }
 
@@ -167,13 +167,21 @@ function editableKindOf(node: Node): CwArgSummary['editableKind'] {
  * When a backing `node` is present, both `valueSpan` and its exact source slice
  * `valueRaw` are emitted from it, so the invariant
  * `valueRaw === source.slice(valueSpan.start, valueSpan.end)` always holds.
+ * The owning `argNode` (the whole `argument`, name + value) records `argSpan`
+ * for structural edits; it is omitted for synthesized rows (indexer keys).
  */
-function finalize(label: string, rendered: Rendered, source: string): CwArgSummary {
+function finalize(
+  label: string,
+  rendered: Rendered,
+  source: string,
+  argNode?: Node
+): CwArgSummary {
   return {
     label,
     value: rendered.value,
     kind: rendered.kind,
     editableKind: rendered.editableKind,
+    ...(argNode !== undefined ? { argSpan: { start: argNode.startIndex, end: argNode.endIndex } } : {}),
     ...(rendered.node !== undefined
       ? {
           valueSpan: { start: rendered.node.startIndex, end: rendered.node.endIndex },
@@ -328,5 +336,5 @@ function renderSpec(
       break;
   }
   if (rendered === null) return null;
-  return finalize(spec.label, rendered, source);
+  return finalize(spec.label, rendered, source, arg);
 }

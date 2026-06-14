@@ -79,7 +79,8 @@ describe('golden models — skeleton fixtures', () => {
         kind: 'literal',
         editableKind: 'string',
         valueRaw: '"ApiEndpoint"',
-        valueSpan: { start: 480, end: 493 }
+        valueSpan: { start: 480, end: 493 },
+        argSpan: { start: 480, end: 493 }
       }
     ]);
     expect(model.stats).toMatchObject({ tier1: 8, tier3: 0 });
@@ -92,7 +93,8 @@ describe('golden models — skeleton fixtures', () => {
       label: 'Options',
       value: 'SaveChanges: true, ReadOnly: false',
       kind: 'expression',
-      editableKind: 'none'
+      editableKind: 'none',
+      argSpan: { start: 471, end: 534 }
     });
     expect((usingC.slots[0].children[1] as CwActivityCard).title).toBe('Read Cell');
   });
