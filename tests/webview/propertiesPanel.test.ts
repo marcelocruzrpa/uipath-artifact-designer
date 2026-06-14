@@ -41,24 +41,26 @@ describe('renderPropertiesPanel', () => {
     expect(root.textContent).toContain('Log');
   });
 
-  it('binds the input to the RAW value, not the display value', () => {
+  it('binds a string input to the unquoted CONTENT, not the raw token', () => {
     const root = document.createElement('div');
     root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
-    // valueRaw ('"hi"'), NOT the unquoted display value ('hi').
-    expect(input.value).toBe('"hi"');
-    expect(input.value).not.toBe('hi');
+    // editableKind 'string' shows the content ('hi'), NOT the raw token ('"hi"');
+    // the host owns the quotes so the user edits the message text only.
+    expect(input.value).toBe('hi');
+    expect(input.value).not.toBe('"hi"');
   });
 
-  it('edits the raw value and emits editValue on change', () => {
+  it('edits a string field and emits its CONTENT as newText on change', () => {
     const onEdit = vi.fn();
     const root = document.createElement('div');
     root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit }));
     const input = root.querySelector('input') as HTMLInputElement;
-    expect(input.value).toBe('"hi"');
-    input.value = '"bye"';
+    expect(input.value).toBe('hi');
+    // The user types the message text with no quotes; the host re-quotes it.
+    input.value = 'bye';
     input.dispatchEvent(new Event('change'));
-    expect(onEdit).toHaveBeenCalledWith({ id: 'W#Execute/0', argIndex: 0, newText: '"bye"' });
+    expect(onEdit).toHaveBeenCalledWith({ id: 'W#Execute/0', argIndex: 0, newText: 'bye' });
   });
 
   it('disables fields in read-only mode', () => {

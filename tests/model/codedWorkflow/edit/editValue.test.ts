@@ -18,11 +18,38 @@ it('edits a Log message literal in place, touching only its span', async () => {
   const source = 'class W : CodedWorkflow { [Workflow] public void Execute() { Log("hi"); } }';
   const model = await modelOf(source);
   const card = model.classes[0].entryPoints[0].body[0] as CwActivityCard;
-  const res = resolveEdit(source, model, { kind: 'editValue', id: card.id, argIndex: 0, newText: '"bye"' });
+  // String fields now carry CONTENT, not the C# token: the host auto-quotes.
+  const res = resolveEdit(source, model, { kind: 'editValue', id: card.id, argIndex: 0, newText: 'bye' });
   expect(res.ok).toBe(true);
   if (!res.ok) return;
   expect(applyPatches(source, res.patches)).toBe(
     'class W : CodedWorkflow { [Workflow] public void Execute() { Log("bye"); } }'
+  );
+});
+
+it('auto-quotes string content so dropped quotes cannot decay a literal', async () => {
+  const source = 'class W : CodedWorkflow { [Workflow] public void Execute() { Log("hi"); } }';
+  const model = await modelOf(source);
+  const card = model.classes[0].entryPoints[0].body[0] as CwActivityCard;
+  // User types bare `oops` (no quotes). The host re-quotes it into a literal.
+  const res = resolveEdit(source, model, { kind: 'editValue', id: card.id, argIndex: 0, newText: 'oops' });
+  expect(res.ok).toBe(true);
+  if (!res.ok) return;
+  expect(applyPatches(source, res.patches)).toBe(
+    'class W : CodedWorkflow { [Workflow] public void Execute() { Log("oops"); } }'
+  );
+});
+
+it('preserves a verbatim delimiter when re-quoting string content', async () => {
+  const source = 'class W : CodedWorkflow { [Workflow] public void Execute() { Log(@"C:\\a"); } }';
+  const model = await modelOf(source);
+  const card = model.classes[0].entryPoints[0].body[0] as CwActivityCard;
+  // Content with a backslash stays literal in a verbatim re-emit (no escaping).
+  const res = resolveEdit(source, model, { kind: 'editValue', id: card.id, argIndex: 0, newText: 'C:\\b' });
+  expect(res.ok).toBe(true);
+  if (!res.ok) return;
+  expect(applyPatches(source, res.patches)).toBe(
+    'class W : CodedWorkflow { [Workflow] public void Execute() { Log(@"C:\\b"); } }'
   );
 });
 
