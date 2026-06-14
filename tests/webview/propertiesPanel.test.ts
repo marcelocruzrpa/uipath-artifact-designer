@@ -37,13 +37,13 @@ function card(): CwActivityCard {
 describe('renderPropertiesPanel', () => {
   it('shows the card title', () => {
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     expect(root.textContent).toContain('Log');
   });
 
   it('binds a string input to the unquoted CONTENT, not the raw token', () => {
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
     // editableKind 'string' shows the content ('hi'), NOT the raw token ('"hi"');
     // the host owns the quotes so the user edits the message text only.
@@ -54,7 +54,7 @@ describe('renderPropertiesPanel', () => {
   it('edits a string field and emits its CONTENT as newText on change', () => {
     const onEdit = vi.fn();
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit }));
+    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit, onArgEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
     expect(input.value).toBe('hi');
     // The user types the message text with no quotes; the host re-quotes it.
@@ -65,14 +65,14 @@ describe('renderPropertiesPanel', () => {
 
   it('disables fields in read-only mode', () => {
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(card(), { editing: false, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(card(), { editing: false, onEdit: () => {}, onArgEdit: () => {} }));
     expect((root.querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
 
   it('does not emit when a disabled (read-only) field receives a change event', () => {
     const onEdit = vi.fn();
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(card(), { editing: false, onEdit }));
+    root.appendChild(renderPropertiesPanel(card(), { editing: false, onEdit, onArgEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
     input.value = '"bye"';
     input.dispatchEvent(new Event('change'));
@@ -91,7 +91,7 @@ describe('renderPropertiesPanel', () => {
       }
     ];
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     expect((root.querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe('renderPropertiesPanel', () => {
       }
     ];
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
     expect(input.disabled).toBe(true);
     // falls back to the display value when there is no raw token
@@ -128,7 +128,7 @@ describe('renderPropertiesPanel', () => {
     ];
     const onEdit = vi.fn();
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit }));
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit, onArgEdit: () => {} }));
     const input = root.querySelector('input') as HTMLInputElement;
     expect(input.disabled).toBe(false);
     expect(input.title).toBe('expression — edited as raw text');
@@ -145,10 +145,29 @@ describe('renderPropertiesPanel', () => {
     const c = card();
     c.args = [];
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {} }));
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     // still shows the title; no input rows
     expect(root.textContent).toContain('Log');
     expect(root.querySelector('input')).toBeNull();
+  });
+
+  it('emits an editArg remove when a row × is clicked', () => {
+    const onArgEdit = vi.fn();
+    const c = card(); // Log card with one Message arg
+    c.args[0].argSpan = { start: 0, end: 4 };
+    const root = document.createElement('div');
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {}, onArgEdit }));
+    const remove = root.querySelector('.cw-arg-remove') as HTMLButtonElement;
+    remove.click();
+    expect(onArgEdit).toHaveBeenCalledWith({ id: 'W#Execute/0', op: 'remove', argIndex: 0 });
+  });
+
+  it('does not show remove buttons in read-only mode', () => {
+    const c = card();
+    c.args[0].argSpan = { start: 0, end: 4 };
+    const root = document.createElement('div');
+    root.appendChild(renderPropertiesPanel(c, { editing: false, onEdit: () => {}, onArgEdit: () => {} }));
+    expect(root.querySelector('.cw-arg-remove')).toBeNull();
   });
 
   it('passes the correct argIndex for the second arg', () => {
@@ -173,7 +192,7 @@ describe('renderPropertiesPanel', () => {
     ];
     const onEdit = vi.fn();
     const root = document.createElement('div');
-    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit }));
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit, onArgEdit: () => {} }));
     const inputs = root.querySelectorAll('input');
     expect(inputs).toHaveLength(2);
     const second = inputs[1] as HTMLInputElement;

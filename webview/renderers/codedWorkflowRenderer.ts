@@ -342,6 +342,16 @@ class CodedWorkflowRenderer implements Renderer {
             argIndex: edit.argIndex,
             newText: edit.newText
           });
+        },
+        onArgEdit: (edit) => {
+          this.host?.post({
+            type: 'editArg',
+            id: edit.id,
+            op: edit.op,
+            ...(edit.argIndex !== undefined ? { argIndex: edit.argIndex } : {}),
+            ...(edit.newText !== undefined ? { newText: edit.newText } : {}),
+            ...(edit.newMethod !== undefined ? { newMethod: edit.newMethod } : {})
+          });
         }
       })
     );
