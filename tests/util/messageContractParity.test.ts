@@ -94,7 +94,9 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
     type: 'caseSetConditions',
     minValid: { scope: 'stage-entry', stageId: 's', conditions: [] }
   },
-  { type: 'caseSetSlaRules', minValid: { stageId: 's', slaRules: [] } }
+  { type: 'caseSetSlaRules', minValid: { stageId: 's', slaRules: [] } },
+  // --- coded workflow canvas ---
+  { type: 'editValue', minValid: { id: 'W#Execute/0', argIndex: 0, newText: '"x"' } }
 ];
 
 describe('message-contract parity', () => {

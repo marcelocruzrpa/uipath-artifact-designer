@@ -143,7 +143,8 @@ function isViewState(v: unknown): v is WebviewViewState {
     isFiniteNumber(v.panY) &&
     (v.selectedId === null || isString(v.selectedId, MAX_ID)) &&
     isOptionalIdArray(v.collapsedIds) &&
-    (v.mode === undefined || v.mode === 'canvas' || v.mode === 'graph')
+    (v.mode === undefined || v.mode === 'canvas' || v.mode === 'graph') &&
+    (v.editing === undefined || typeof v.editing === 'boolean')
   );
 }
 
@@ -308,6 +309,15 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
       }
       return null;
     }
+
+    // --- coded workflow canvas ---
+    case 'editValue':
+      return isString(raw.id, MAX_ID) &&
+        typeof raw.argIndex === 'number' &&
+        Number.isInteger(raw.argIndex) &&
+        typeof raw.newText === 'string'
+        ? { type: 'editValue', id: raw.id, argIndex: raw.argIndex, newText: raw.newText }
+        : null;
 
     default:
       return null;

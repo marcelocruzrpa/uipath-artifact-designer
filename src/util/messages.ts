@@ -106,7 +106,20 @@ export type WebviewToHost =
       /** Required for a stage SLA; omitted for the case-root SLA. */
       stageId?: string;
       slaRules: unknown[];
+    }
+  // --- coded workflow canvas ---
+  | {
+      type: 'editValue';
+      /** The node id of the call whose argument is being edited (e.g. `W#Execute/0`). */
+      id: string;
+      /** Zero-based index of the argument within the call's argument list. */
+      argIndex: number;
+      /** The new value, serialised as the exact text the user typed (a JSON literal). */
+      newText: string;
     };
+
+/** Convenience alias for the `editValue` member of `WebviewToHost`. */
+export type EditValueMessage = Extract<WebviewToHost, { type: 'editValue' }>;
 
 /** Persisted (per-document) view state — zoom, pan, selection and collapse. */
 export interface WebviewViewState {
@@ -118,4 +131,6 @@ export interface WebviewViewState {
   collapsedIds?: string[];
   /** Active coded-workflow view — file canvas or project call graph; absent for other kinds. */
   mode?: 'canvas' | 'graph';
+  /** Whether the canvas is in value-editing mode; absent when not editing. */
+  editing?: boolean;
 }

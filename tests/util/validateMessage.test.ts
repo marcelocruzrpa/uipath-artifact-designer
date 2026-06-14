@@ -233,6 +233,38 @@ describe('validateWebviewMessage — prototype-pollution rejection (H1 regressio
   });
 });
 
+describe('validateWebviewMessage — editValue message', () => {
+  it('accepts a well-formed editValue message', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 0, newText: '"x"' })
+    ).toEqual({ type: 'editValue', id: 'W#Execute/0', argIndex: 0, newText: '"x"' });
+  });
+
+  it('rejects an editValue missing argIndex', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a non-integer argIndex', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 1.5, newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a missing id', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', argIndex: 0, newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a missing newText', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 0 })
+    ).toBeNull();
+  });
+});
+
 describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
   it('rejects an over-cap free-text string', () => {
     const huge = 'a'.repeat(100_001);
