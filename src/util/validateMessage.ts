@@ -73,6 +73,9 @@ function isSafeKey(v: unknown): v is string {
   return typeof v === 'string' && v.length <= MAX_ID && !DANGEROUS_KEYS.has(v);
 }
 
+/** A bare C# identifier — the only shape a switched method name may take. */
+const IDENTIFIER_RE = /^[A-Za-z_]\w*$/;
+
 /** A JSON edit path: a non-empty array of safe object keys. */
 function isSafePath(v: unknown): v is string[] {
   return (
@@ -317,6 +320,25 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
         Number.isInteger(raw.argIndex) &&
         typeof raw.newText === 'string'
         ? { type: 'editValue', id: raw.id, argIndex: raw.argIndex, newText: raw.newText }
+        : null;
+    case 'editArg':
+      return isString(raw.id, MAX_ID) &&
+        (raw.op === 'change' || raw.op === 'add' || raw.op === 'remove' || raw.op === 'method') &&
+        (raw.argIndex === undefined || (typeof raw.argIndex === 'number' && Number.isInteger(raw.argIndex))) &&
+        (raw.newText === undefined || isString(raw.newText, MAX_TEXT)) &&
+        // A method name is written into source as an identifier — require BOTH a
+        // safe key (no prototype pollution) AND a bare-identifier shape (so a
+        // payload like `X(); Evil(` is rejected here, not just at the parse-gate).
+        (raw.newMethod === undefined ||
+          (isSafeKey(raw.newMethod) && IDENTIFIER_RE.test(raw.newMethod)))
+        ? {
+            type: 'editArg',
+            id: raw.id,
+            op: raw.op,
+            ...(raw.argIndex !== undefined ? { argIndex: raw.argIndex } : {}),
+            ...(raw.newText !== undefined ? { newText: raw.newText } : {}),
+            ...(raw.newMethod !== undefined ? { newMethod: raw.newMethod } : {})
+          }
         : null;
 
     default:

@@ -265,6 +265,36 @@ describe('validateWebviewMessage — editValue message', () => {
   });
 });
 
+describe('validateWebviewMessage — editArg message', () => {
+  it('accepts a well-formed editArg change', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'change', argIndex: 1, newText: 'x' })
+    ).not.toBeNull();
+  });
+  it('accepts an editArg method switch', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: 'GetCredential' })
+    ).not.toBeNull();
+  });
+  it('rejects an editArg with an unknown op', () => {
+    expect(validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'nuke' })).toBeNull();
+  });
+  it('rejects an editArg whose newMethod is prototype-polluting', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: '__proto__' })
+    ).toBeNull();
+  });
+  it('rejects an editArg whose newMethod is not a bare identifier (code injection)', () => {
+    // The validator — not just the parse-gate — must reject a non-identifier name.
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: 'X(); Evil(' })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: '1Bad' })
+    ).toBeNull();
+  });
+});
+
 describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
   it('rejects an over-cap free-text string', () => {
     const huge = 'a'.repeat(100_001);

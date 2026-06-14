@@ -116,10 +116,25 @@ export type WebviewToHost =
       argIndex: number;
       /** The new value, serialised as the exact text the user typed (a JSON literal). */
       newText: string;
+    }
+  | {
+      type: 'editArg';
+      /** The activity card whose arguments are edited. */
+      id: string;
+      op: 'change' | 'add' | 'remove' | 'method';
+      /** Required for change/remove. */
+      argIndex?: number;
+      /** Source text of the new/changed argument (change/add). */
+      newText?: string;
+      /** New method name (method switch). */
+      newMethod?: string;
     };
 
 /** Convenience alias for the `editValue` member of `WebviewToHost`. */
 export type EditValueMessage = Extract<WebviewToHost, { type: 'editValue' }>;
+
+/** Convenience alias for the `editArg` member of `WebviewToHost`. */
+export type EditArgMessage = Extract<WebviewToHost, { type: 'editArg' }>;
 
 /** Persisted (per-document) view state — zoom, pan, selection and collapse. */
 export interface WebviewViewState {
