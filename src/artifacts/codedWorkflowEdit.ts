@@ -14,7 +14,7 @@ import { resolveEdit } from '../model/codedWorkflow/edit/resolveEdit';
 import { applyPatches } from '../model/codedWorkflow/edit/applyPatches';
 import { introducesNewError } from '../model/codedWorkflow/edit/parseGate';
 import { findNodeById } from '../model/codedWorkflow/edit/findNode';
-import type { EditValueMessage } from '../util/messages';
+import type { EditArgMessage, EditValueMessage } from '../util/messages';
 
 /** A resolved value-edit: minimal patches plus the full resulting text. */
 export type ComputedEdit =
@@ -74,6 +74,57 @@ export async function computeValueEdit(source: string, message: EditValueMessage
     newNode?.type === 'activity' ? newNode.args[message.argIndex]?.editableKind : undefined;
   if (origKind !== undefined && newKind !== origKind) {
     return { ok: false, error: 'edit changed the value type (e.g. a string lost its quotes)' };
+  }
+  return { ok: true, patches: res.patches, after };
+}
+
+/**
+ * Build the model fresh from `source`, resolve the `editArg`, run the parse-gate
+ * and a structural backstop.
+ *
+ * Structural editing can reshape the statement (add/remove an argument, switch
+ * the method), so on top of the syntax parse-gate this re-builds the model from
+ * the patched text and confirms the SAME node id still resolves and is still an
+ * activity — a cheap, sufficient guard that the edit did not destroy the entry
+ * point or re-shape ids around it. Returns `{ ok: false, error }` on any
+ * rejection; otherwise the minimal `patches` plus the full `after` text.
+ */
+export async function computeArgEdit(source: string, message: EditArgMessage): Promise<ComputedEdit> {
+  const parser = await getCSharpParser();
+  const tree = parser.parse(source);
+  let model;
+  try {
+    model = buildModel(tree, source, { fileName: 'edit.cs', fileUri: 'file:///edit.cs' });
+  } finally {
+    tree.delete();
+  }
+  const res = resolveEdit(source, model, {
+    kind: 'editArg',
+    id: message.id,
+    op: message.op,
+    ...(message.argIndex !== undefined ? { argIndex: message.argIndex } : {}),
+    ...(message.newText !== undefined ? { newText: message.newText } : {}),
+    ...(message.newMethod !== undefined ? { newMethod: message.newMethod } : {})
+  });
+  if (!res.ok) return { ok: false, error: res.error };
+  const after = applyPatches(source, res.patches);
+  if (introducesNewError(parser, source, after)) {
+    return { ok: false, error: 'edit would break the C# syntax' };
+  }
+  // Structural backstop: the patched source must still build a model with the
+  // SAME node id present (an add/remove must not destroy the entry point or
+  // re-shape ids around it). Cheaper + sufficient: assert the node still
+  // resolves and is still an activity.
+  const treeAfter = parser.parse(after);
+  let afterModel;
+  try {
+    afterModel = buildModel(treeAfter, after, { fileName: 'edit.cs', fileUri: 'file:///edit.cs' });
+  } finally {
+    treeAfter.delete();
+  }
+  const stillThere = findNodeById(afterModel, message.id);
+  if (stillThere === null || stillThere.type !== 'activity') {
+    return { ok: false, error: 'edit reshaped the workflow structure unexpectedly' };
   }
   return { ok: true, patches: res.patches, after };
 }

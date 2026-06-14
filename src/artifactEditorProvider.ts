@@ -8,7 +8,7 @@ import type { HostToWebview, WebviewToHost } from './util/messages';
 import { getNonce } from './util/nonce';
 import { validateWebviewMessage } from './util/validateMessage';
 import { logError, logWarn } from './util/log';
-import { computeValueEdit } from './artifacts/codedWorkflowEdit';
+import { computeArgEdit, computeValueEdit } from './artifacts/codedWorkflowEdit';
 
 /**
  * A single, registry-driven CustomTextEditorProvider that renders any
@@ -374,6 +374,29 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         // onDidChangeTextDocument listener's `=== lastWrittenText.get(key)`
         // check skips the self-triggered re-render (native undo reverts in one
         // step). This mirrors the whole-file path in applyFileEdits.
+        this.lastWrittenText.set(this.documentKey(document.uri), computed.after);
+        const edit = new vscode.WorkspaceEdit();
+        for (const p of computed.patches) {
+          edit.replace(
+            document.uri,
+            new vscode.Range(document.positionAt(p.start), document.positionAt(p.end)),
+            p.newText
+          );
+        }
+        await vscode.workspace.applyEdit(edit);
+        break;
+      }
+      case 'editArg': {
+        // Coded-workflow structural arg edit (add/remove/change/method switch).
+        // Mirrors editValue: the model build + resolve + parse-gate + structural
+        // backstop live in the vscode-free helper; here we only translate the
+        // result into a range WorkspaceEdit and prime the echo-guard.
+        const source = document.getText();
+        const computed = await computeArgEdit(source, message);
+        if (!computed.ok) {
+          void vscode.window.showWarningMessage(`Edit rejected: ${computed.error}`);
+          break;
+        }
         this.lastWrittenText.set(this.documentKey(document.uri), computed.after);
         const edit = new vscode.WorkspaceEdit();
         for (const p of computed.patches) {
