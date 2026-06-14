@@ -62,7 +62,12 @@
                         {
                           "label": "arg1",
                           "value": "1",
-                          "kind": "literal"
+                          "kind": "literal",
+                          "editableKind": "number",
+                          "valueSpan": {
+                            "start": 525,
+                            "end": 526
+                          }
                         }
                       ],
                       "icon": "file-media"
@@ -95,7 +100,12 @@
                   {
                     "label": "arg1",
                     "value": "deck.pptx",
-                    "kind": "literal"
+                    "kind": "literal",
+                    "editableKind": "string",
+                    "valueSpan": {
+                      "start": 465,
+                      "end": 476
+                    }
                   }
                 ],
                 "resultBinding": "pow",
@@ -121,7 +131,8 @@
                 {
                   "label": "Options",
                   "value": "JavaPath: C:\\jdk",
-                  "kind": "expression"
+                  "kind": "expression",
+                  "editableKind": "none"
                 }
               ],
               "resultBinding": "js",
@@ -146,7 +157,8 @@
                 {
                   "label": "Options",
                   "value": "Path: C:\\py",
-                  "kind": "expression"
+                  "kind": "expression",
+                  "editableKind": "none"
                 }
               ],
               "resultBinding": "py",
@@ -170,7 +182,12 @@
                 {
                   "label": "arg1",
                   "value": "Addresses",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 771,
+                    "end": 782
+                  }
                 }
               ],
               "resultBinding": "address",
@@ -194,7 +211,12 @@
                 {
                   "label": "Key",
                   "value": "Country",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 822,
+                    "end": 831
+                  }
                 }
               ],
               "resultBinding": "country",

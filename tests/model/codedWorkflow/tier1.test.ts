@@ -77,7 +77,15 @@ describe('tier-1 cards — straight-line sequence', () => {
     expect(card.catalogId).toBe('_base.Log');
     expect(card.title).toBe('Log');
     expect(card.icon).toBe('play-circle');
-    expect(card.args).toEqual([{ label: 'Message', value: 'starting run', kind: 'literal' }]);
+    expect(card.args).toEqual([
+      {
+        label: 'Message',
+        value: 'starting run',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 420, end: 434 }
+      }
+    ]);
     expect(card.resultBinding).toBeUndefined();
   });
 
@@ -88,7 +96,15 @@ describe('tier-1 cards — straight-line sequence', () => {
     expect(card.catalogId).toBe('system.GetAsset');
     expect(card.icon).toBe('gear');
     expect(card.resultBinding).toBe('endpoint');
-    expect(card.args).toEqual([{ label: 'Name', value: 'ApiEndpoint', kind: 'literal' }]);
+    expect(card.args).toEqual([
+      {
+        label: 'Name',
+        value: 'ApiEndpoint',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 480, end: 493 }
+      }
+    ]);
   });
 
   it('titles wildcard workflows calls from the family template with generic args', () => {
@@ -98,8 +114,20 @@ describe('tier-1 cards — straight-line sequence', () => {
     expect(card.catalogId).toBeUndefined();
     expect(card.title).toBe('Invoke Workflow ProcessInvoice');
     expect(card.args).toEqual([
-      { label: 'arg1', value: 'endpoint', kind: 'identifier' },
-      { label: 'arg2', value: '3', kind: 'literal' }
+      {
+        label: 'arg1',
+        value: 'endpoint',
+        kind: 'identifier',
+        editableKind: 'identifier',
+        valueSpan: { start: 649, end: 657 }
+      },
+      {
+        label: 'arg2',
+        value: '3',
+        kind: 'literal',
+        editableKind: 'number',
+        valueSpan: { start: 659, end: 660 }
+      }
     ]);
   });
 
@@ -108,11 +136,19 @@ describe('tier-1 cards — straight-line sequence', () => {
     expect(run.args[0]).toEqual({
       label: 'Workflow',
       value: 'Shared\\Notify.xaml',
-      kind: 'literal'
+      kind: 'literal',
+      editableKind: 'string',
+      valueSpan: { start: 687, end: 708 }
     });
     const log = asCard(sequence.classes[0].entryPoints[0].body[6]);
     expect(log.args).toEqual([
-      { label: 'Message', value: 'done with {endpoint}', kind: 'interpolated' }
+      {
+        label: 'Message',
+        value: 'done with {endpoint}',
+        kind: 'interpolated',
+        editableKind: 'raw',
+        valueSpan: { start: 734, end: 757 }
+      }
     ]);
   });
 
@@ -136,8 +172,19 @@ describe('tier-1 cards — excel handles', () => {
     expect(resource!.title).toBe('Use Excel File');
     expect(resource!.resultBinding).toBe('wb');
     expect(resource!.args).toEqual([
-      { label: 'File', value: 'invoices.xlsx', kind: 'literal' },
-      { label: 'Options', value: 'SaveChanges: true, ReadOnly: false', kind: 'expression' }
+      {
+        label: 'File',
+        value: 'invoices.xlsx',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 454, end: 469 }
+      },
+      {
+        label: 'Options',
+        value: 'SaveChanges: true, ReadOnly: false',
+        kind: 'expression',
+        editableKind: 'none'
+      }
     ]);
 
     const children = usingC.slots[0].children;
@@ -161,8 +208,20 @@ describe('tier-1 cards — excel handles', () => {
     expect(card.title).toBe('Read Cell');
     expect(card.resultBinding).toBe('cellValue');
     expect(card.args).toEqual([
-      { label: 'arg1', value: 'sheet', kind: 'identifier' },
-      { label: 'arg2', value: 'B7', kind: 'literal' }
+      {
+        label: 'arg1',
+        value: 'sheet',
+        kind: 'identifier',
+        editableKind: 'identifier',
+        valueSpan: { start: 653, end: 658 }
+      },
+      {
+        label: 'arg2',
+        value: 'B7',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 660, end: 664 }
+      }
     ]);
   });
 
@@ -205,7 +264,7 @@ describe('tier-1 cards — M0 levers L1/L2 + generic titles', () => {
     expect(java.title).toBe('Use Java Scope');
     expect(java.resultBinding).toBe('js');
     expect(java.args).toEqual([
-      { label: 'Options', value: 'JavaPath: C:\\jdk', kind: 'expression' }
+      { label: 'Options', value: 'JavaPath: C:\\jdk', kind: 'expression', editableKind: 'none' }
     ]);
 
     const python = asCard(body[2]);
@@ -228,7 +287,15 @@ describe('tier-1 cards — M0 levers L1/L2 + generic titles', () => {
     expect(item.catalogId).toBeUndefined();
     expect(item.icon).toBe('beaker');
     expect(item.resultBinding).toBe('country');
-    expect(item.args).toEqual([{ label: 'Key', value: 'Country', kind: 'literal' }]);
+    expect(item.args).toEqual([
+      {
+        label: 'Key',
+        value: 'Country',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 822, end: 831 }
+      }
+    ]);
   });
 
   it('leaves unmatched by tier-1 fall through to the tier-2/tier-3 layers', () => {

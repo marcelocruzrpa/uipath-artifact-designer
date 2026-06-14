@@ -72,7 +72,15 @@ describe('golden models — skeleton fixtures', () => {
     const model = await snapshot('sequence-tier1');
     const card = model.classes[0].entryPoints[0].body[1] as CwActivityCard;
     expect(card.title).toBe('Get Asset');
-    expect(card.args).toEqual([{ label: 'Name', value: 'ApiEndpoint', kind: 'literal' }]);
+    expect(card.args).toEqual([
+      {
+        label: 'Name',
+        value: 'ApiEndpoint',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 480, end: 493 }
+      }
+    ]);
     expect(model.stats).toMatchObject({ tier1: 8, tier3: 0 });
   });
 
@@ -82,7 +90,8 @@ describe('golden models — skeleton fixtures', () => {
     expect(usingC.resourceCard?.args[1]).toEqual({
       label: 'Options',
       value: 'SaveChanges: true, ReadOnly: false',
-      kind: 'expression'
+      kind: 'expression',
+      editableKind: 'none'
     });
     expect((usingC.slots[0].children[1] as CwActivityCard).title).toBe('Read Cell');
   });
@@ -92,7 +101,15 @@ describe('golden models — skeleton fixtures', () => {
     const body = model.classes[0].entryPoints[0].body;
     const indexer = body[4] as CwActivityCard;
     expect(indexer.title).toBe('Get Item');
-    expect(indexer.args).toEqual([{ label: 'Key', value: 'Country', kind: 'literal' }]);
+    expect(indexer.args).toEqual([
+      {
+        label: 'Key',
+        value: 'Country',
+        kind: 'literal',
+        editableKind: 'string',
+        valueSpan: { start: 822, end: 831 }
+      }
+    ]);
     expect((body[1] as CwActivityCard).catalogId).toBe('java.UseJavaScope');
   });
 

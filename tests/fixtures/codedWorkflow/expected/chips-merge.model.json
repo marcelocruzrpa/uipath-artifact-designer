@@ -62,7 +62,12 @@
                 {
                   "label": "Message",
                   "value": "midpoint",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 625,
+                    "end": 635
+                  }
                 }
               ],
               "icon": "play-circle"

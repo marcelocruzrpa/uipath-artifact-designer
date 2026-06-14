@@ -52,7 +52,12 @@
                 {
                   "label": "Message",
                   "value": "before the damage",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 345,
+                    "end": 364
+                  }
                 }
               ],
               "icon": "play-circle"
@@ -76,7 +81,12 @@
                 {
                   "label": "Name",
                   "value": "Key",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 407,
+                    "end": 412
+                  }
                 }
               ],
               "resultBinding": "asset",
@@ -134,7 +144,12 @@
                 {
                   "label": "Message",
                   "value": "untouched by the damage",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 557,
+                    "end": 582
+                  }
                 }
               ],
               "icon": "play-circle"

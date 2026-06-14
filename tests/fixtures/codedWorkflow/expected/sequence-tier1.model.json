@@ -47,7 +47,12 @@
                 {
                   "label": "Message",
                   "value": "starting run",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 420,
+                    "end": 434
+                  }
                 }
               ],
               "icon": "play-circle"
@@ -71,7 +76,12 @@
                 {
                   "label": "Name",
                   "value": "ApiEndpoint",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 480,
+                    "end": 493
+                  }
                 }
               ],
               "resultBinding": "endpoint",
@@ -96,7 +106,12 @@
                 {
                   "label": "Name",
                   "value": "ServiceUser",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 541,
+                    "end": 554
+                  }
                 }
               ],
               "resultBinding": "creds",
@@ -121,7 +136,12 @@
                 {
                   "label": "Queue",
                   "value": "Invoices",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 589,
+                    "end": 599
+                  }
                 }
               ],
               "icon": "gear"
@@ -144,12 +164,22 @@
                 {
                   "label": "arg1",
                   "value": "endpoint",
-                  "kind": "identifier"
+                  "kind": "identifier",
+                  "editableKind": "identifier",
+                  "valueSpan": {
+                    "start": 649,
+                    "end": 657
+                  }
                 },
                 {
                   "label": "arg2",
                   "value": "3",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "number",
+                  "valueSpan": {
+                    "start": 659,
+                    "end": 660
+                  }
                 }
               ],
               "icon": "type-hierarchy"
@@ -173,7 +203,12 @@
                 {
                   "label": "Workflow",
                   "value": "Shared\\Notify.xaml",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 687,
+                    "end": 708
+                  }
                 }
               ],
               "icon": "play-circle"
@@ -197,7 +232,12 @@
                 {
                   "label": "Message",
                   "value": "done with {endpoint}",
-                  "kind": "interpolated"
+                  "kind": "interpolated",
+                  "editableKind": "raw",
+                  "valueSpan": {
+                    "start": 734,
+                    "end": 757
+                  }
                 }
               ],
               "icon": "play-circle"
@@ -221,7 +261,12 @@
                 {
                   "label": "Name",
                   "value": "ReportName",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 795,
+                    "end": 807
+                  }
                 }
               ],
               "icon": "gear"

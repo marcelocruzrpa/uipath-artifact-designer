@@ -18,10 +18,24 @@ export interface SourceSpan {
   endCol: number;
 }
 
+/** Char offsets (0-based, into the file) of the rendered value's exact source. */
+export interface OffsetSpan {
+  start: number;
+  end: number;
+}
+
 export interface CwArgSummary {
   label: string;
   value: string;
   kind: 'literal' | 'interpolated' | 'identifier' | 'target' | 'expression';
+  /** Exact source range of the VALUE token(s); absent when the value is synthesized. */
+  valueSpan?: OffsetSpan;
+  /**
+   * How the value may be edited from a form:
+   *   'string'|'number'|'bool'|'enum' → typed field; 'identifier' → text field;
+   *   'raw' → raw-text only (expression/interpolated); 'none' → read-only.
+   */
+  editableKind: 'string' | 'number' | 'bool' | 'enum' | 'identifier' | 'raw' | 'none';
 }
 
 interface CwNodeBase {

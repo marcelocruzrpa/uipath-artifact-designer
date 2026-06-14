@@ -80,12 +80,22 @@
                         {
                           "label": "arg1",
                           "value": "sheet",
-                          "kind": "identifier"
+                          "kind": "identifier",
+                          "editableKind": "identifier",
+                          "valueSpan": {
+                            "start": 653,
+                            "end": 658
+                          }
                         },
                         {
                           "label": "arg2",
                           "value": "B7",
-                          "kind": "literal"
+                          "kind": "literal",
+                          "editableKind": "string",
+                          "valueSpan": {
+                            "start": 660,
+                            "end": 664
+                          }
                         }
                       ],
                       "resultBinding": "cellValue",
@@ -137,12 +147,18 @@
                   {
                     "label": "File",
                     "value": "invoices.xlsx",
-                    "kind": "literal"
+                    "kind": "literal",
+                    "editableKind": "string",
+                    "valueSpan": {
+                      "start": 454,
+                      "end": 469
+                    }
                   },
                   {
                     "label": "Options",
                     "value": "SaveChanges: true, ReadOnly: false",
-                    "kind": "expression"
+                    "kind": "expression",
+                    "editableKind": "none"
                   }
                 ],
                 "resultBinding": "wb",
@@ -168,7 +184,12 @@
                 {
                   "label": "File",
                   "value": "report.xlsx",
-                  "kind": "literal"
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 768,
+                    "end": 781
+                  }
                 }
               ],
               "resultBinding": "report",
@@ -192,7 +213,12 @@
                 {
                   "label": "arg1",
                   "value": "range",
-                  "kind": "identifier"
+                  "kind": "identifier",
+                  "editableKind": "identifier",
+                  "valueSpan": {
+                    "start": 815,
+                    "end": 820
+                  }
                 }
               ],
               "icon": "table"

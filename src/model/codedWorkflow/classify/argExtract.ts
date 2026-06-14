@@ -65,11 +65,11 @@ export function extractArgs(
   }
   return args.slice(0, GENERIC_ARG_COUNT).map((arg, i) => {
     const value = argValueNode(arg);
-    const rendered =
+    const rendered: Rendered =
       value !== null
         ? renderValue(value, source, ARG_VALUE_MAX_LEN)
-        : { value: '', kind: 'expression' as const };
-    return { label: `arg${i + 1}`, ...rendered };
+        : { value: '', kind: 'expression', editableKind: 'none' };
+    return finalize(`arg${i + 1}`, rendered);
   });
 }
 
@@ -85,7 +85,7 @@ export function extractIndexerKey(
   const arg = subscript.namedChildren.find((c) => c.type === 'argument');
   const value = arg !== undefined ? argValueNode(arg) : null;
   if (value === null) return [];
-  return [{ label: 'Key', ...renderValue(value, source, ARG_VALUE_MAX_LEN) }];
+  return [finalize('Key', renderValue(value, source, ARG_VALUE_MAX_LEN))];
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,57 @@ function findSpecArg(spec: CatalogArgSpec, args: Node[]): Node | null {
 // Rendering
 // ---------------------------------------------------------------------------
 
-type Rendered = Pick<CwArgSummary, 'value' | 'kind'>;
+/**
+ * One rendered value plus its edit metadata.  `node` is the EXACT backing
+ * source token whose range becomes the row's `valueSpan` — set only when the
+ * rendered value faithfully stands for that whole token (so the invariant
+ * `source.slice(valueSpan) === source of node` holds).  Synthesized/derived
+ * renderings (object-prop summaries, truncated member-access tails) carry no
+ * `node` and report `editableKind: 'none'`.
+ */
+interface Rendered {
+  value: string;
+  kind: CwArgSummary['kind'];
+  editableKind: CwArgSummary['editableKind'];
+  /** Backing value token; its [startIndex, endIndex) becomes `valueSpan`. */
+  node?: Node;
+}
+
+/** Map a backing value node's syntactic type to its form-edit affordance. */
+function editableKindOf(node: Node): CwArgSummary['editableKind'] {
+  switch (node.type) {
+    case 'string_literal':
+    case 'verbatim_string_literal':
+    case 'raw_string_literal':
+      return 'string';
+    case 'integer_literal':
+    case 'real_literal':
+      return 'number';
+    case 'boolean_literal':
+      return 'bool';
+    case 'member_access_expression':
+      return 'enum';
+    case 'identifier':
+      return 'identifier';
+    case 'interpolated_string_expression':
+      return 'raw';
+    default:
+      return 'raw';
+  }
+}
+
+/** Build the final summary row from a label + rendered value/edit metadata. */
+function finalize(label: string, rendered: Rendered): CwArgSummary {
+  return {
+    label,
+    value: rendered.value,
+    kind: rendered.kind,
+    editableKind: rendered.editableKind,
+    ...(rendered.node !== undefined
+      ? { valueSpan: { start: rendered.node.startIndex, end: rendered.node.endIndex } }
+      : {})
+  };
+}
 
 function sliceOf(node: Node, source: string): string {
   return source.slice(node.startIndex, node.endIndex);
@@ -144,23 +194,34 @@ function clip(text: string, maxLen: number): string {
 /** Shared value rendering (see module header). */
 function renderValue(node: Node, source: string, maxLen: number): Rendered {
   const value = unwrapExpression(node);
+  const editableKind = editableKindOf(value);
   switch (value.type) {
     case 'string_literal':
     case 'verbatim_string_literal':
     case 'raw_string_literal':
     case 'character_literal':
-      return { value: unquote(sliceOf(value, source)), kind: 'literal' };
+      return { value: unquote(sliceOf(value, source)), kind: 'literal', editableKind, node: value };
     case 'integer_literal':
     case 'real_literal':
     case 'boolean_literal':
     case 'null_literal':
-      return { value: sliceOf(value, source), kind: 'literal' };
+      return { value: sliceOf(value, source), kind: 'literal', editableKind, node: value };
     case 'interpolated_string_expression':
-      return { value: unquote(sliceOf(value, source)), kind: 'interpolated' };
+      return {
+        value: unquote(sliceOf(value, source)),
+        kind: 'interpolated',
+        editableKind,
+        node: value
+      };
     case 'identifier':
-      return { value: sliceOf(value, source), kind: 'identifier' };
+      return { value: sliceOf(value, source), kind: 'identifier', editableKind, node: value };
     default:
-      return { value: clip(sliceOf(value, source), maxLen), kind: 'expression' };
+      return {
+        value: clip(sliceOf(value, source), maxLen),
+        kind: 'expression',
+        editableKind,
+        node: value
+      };
   }
 }
 
@@ -171,8 +232,10 @@ function renderTarget(node: Node, source: string, maxLen: number): Rendered {
     value.type === 'member_access_expression' ||
     value.type === 'conditional_access_expression'
   ) {
+    // Truncated to the last two dotted segments — the displayed value no
+    // longer stands for the whole chain token, so it is not editable inline.
     const segments = sliceOf(value, source).split('.');
-    return { value: segments.slice(-2).join('.'), kind: 'target' };
+    return { value: segments.slice(-2).join('.'), kind: 'target', editableKind: 'none' };
   }
   if (
     value.type === 'object_creation_expression' ||
@@ -180,7 +243,9 @@ function renderTarget(node: Node, source: string, maxLen: number): Rendered {
   ) {
     const literal = findFirstStringLiteral(value);
     if (literal !== null) {
-      return { value: unquote(sliceOf(literal, source)), kind: 'target' };
+      // The surfaced string literal IS a faithful backing token (a `new`
+      // resource name), editable as a string field.
+      return { value: unquote(sliceOf(literal, source)), kind: 'target', editableKind: 'string', node: literal };
     }
   }
   return renderValue(value, source, maxLen);
@@ -225,7 +290,8 @@ function renderObjectProps(
     pairs.push(`${left.text}: ${renderValue(right, source, maxLen).value}`);
   }
   if (pairs.length === 0) return null;
-  return { value: pairs.join(', '), kind: 'expression' };
+  // A multi-property summary has no single backing token — read-only.
+  return { value: pairs.join(', '), kind: 'expression', editableKind: 'none' };
 }
 
 /** Render one catalog arg spec to a summary row, or null when absent. */
@@ -254,5 +320,5 @@ function renderSpec(
       break;
   }
   if (rendered === null) return null;
-  return { label: spec.label, ...rendered };
+  return finalize(spec.label, rendered);
 }
