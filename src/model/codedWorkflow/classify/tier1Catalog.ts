@@ -28,6 +28,36 @@ export interface CatalogArgSpec {
   maxLen?: number;
 }
 
+/** One emittable/addable argument of a cataloged call (the INVERSE of CatalogArgSpec). */
+export interface CatalogEmitArg {
+  /** Label shown in the panel / palette form. */
+  label: string;
+  /**
+   * Typed-input affordance for the value field. Mirrors CwArgSummary.editableKind
+   * minus 'none' (every emit arg is fillable); 'string' content is auto-quoted
+   * by the emitter, the rest are raw source text the parse-gate validates.
+   */
+  kind: 'string' | 'number' | 'bool' | 'identifier' | 'raw';
+  /** false ⇒ optional (offer an add/remove toggle); omitted ⇒ required. */
+  required?: boolean;
+  /** Default source text for a freshly added optional arg (already in source form). */
+  placeholder?: string;
+}
+
+/** How to re-emit (and add args to) a cataloged call. Pure data — no functions. */
+export interface CatalogEmit {
+  /**
+   * The call as a template. `{recv}` ⇒ the service receiver (e.g. `system`) or
+   * '' for a base call; `{args}` ⇒ the comma-joined emitted arguments. Result
+   * binding (`var x = `) is prepended by the emitter, not the template.
+   */
+  template: string;
+  /** Ordered argument schema; positional. Required args come first by convention. */
+  args: CatalogEmitArg[];
+  /** True when the call returns a value worth binding (palette offers a result name). */
+  returnsValue?: boolean;
+}
+
 /** A cataloged service member call. */
 export interface CatalogEntry {
   /** Exact C# method name (e.g. `GetAsset`). */
@@ -38,6 +68,8 @@ export interface CatalogEntry {
   args: CatalogArgSpec[];
   /** Optional per-entry icon override. */
   icon?: string;
+  /** How to re-emit / add args to this call (bidirectional catalog; L1). */
+  emit?: CatalogEmit;
 }
 
 /** A service family — one lowercase service member on `CodedWorkflow`. */
@@ -72,7 +104,12 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
       {
         method: 'GetAsset',
         title: 'Get Asset',
-        args: [{ arg: 0, label: 'Name', render: 'text' }]
+        args: [{ arg: 0, label: 'Name', render: 'text' }],
+        emit: {
+          template: '{recv}.GetAsset({args})',
+          args: [{ label: 'Name', kind: 'string', placeholder: '""' }],
+          returnsValue: true
+        }
       },
       {
         method: 'SetAsset',
@@ -87,7 +124,14 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
       {
         method: 'AddQueueItem',
         title: 'Add Queue Item',
-        args: [{ arg: 0, label: 'Queue', render: 'text' }]
+        args: [{ arg: 0, label: 'Queue', render: 'text' }],
+        emit: {
+          template: '{recv}.AddQueueItem({args})',
+          args: [
+            { label: 'Queue', kind: 'string', placeholder: '""' },
+            { label: 'Item', kind: 'identifier', required: false, placeholder: 'item' }
+          ]
+        }
       },
       {
         method: 'GetTransactionItem',
@@ -231,7 +275,11 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
       {
         method: 'Log',
         title: 'Log',
-        args: [{ arg: 0, label: 'Message', render: 'text' }]
+        args: [{ arg: 0, label: 'Message', render: 'text' }],
+        emit: {
+          template: 'Log({args})',
+          args: [{ label: 'Message', kind: 'string', placeholder: '""' }]
+        }
       },
       {
         method: 'RunWorkflow',
