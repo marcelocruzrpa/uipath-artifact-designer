@@ -59,6 +59,12 @@ export function emitStatement(
     }
     case 'assign': {
       const [name, value] = argValues;
+      // The Value field is a raw C# EXPRESSION (its schema kind is 'raw',
+      // placeholder '0'), emitted verbatim — NOT auto-quoted like a 'string'
+      // arg. So `value === 'hello'` deliberately yields `var x = hello;` (a bare
+      // identifier reference), not `var x = "hello";`. This is by design: Assign
+      // binds to any expression; a low-code dev who wants a string literal types
+      // the quotes. (The parse-gate still rejects a value that won't compile.)
       return `var ${name} = ${value};`;
     }
     case 'add-item': {
