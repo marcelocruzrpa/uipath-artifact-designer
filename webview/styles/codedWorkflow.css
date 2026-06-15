@@ -871,3 +871,200 @@ body.vscode-light {
   border-color: var(--vscode-focusBorder);
   box-shadow: 0 0 0 1px var(--vscode-focusBorder);
 }
+
+/* --- Structural editing (L2): insertion points, handles, palette ----------------------------------- */
+.cw-insert {
+  align-self: center;
+  display: block;
+  width: 22px;
+  height: 18px;
+  margin: 2px 0;
+  line-height: 1;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px dashed var(--vscode-input-border, var(--card-border));
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.cw-insert:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.16));
+  color: var(--vscode-foreground);
+}
+
+.cw-insert:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+  opacity: 1;
+}
+
+.cw-stmt-wrap {
+  position: relative;
+}
+
+.cw-stmt-handles {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: none;
+  gap: 2px;
+  z-index: 1;
+}
+
+.cw-stmt-wrap:hover > .cw-stmt-handles,
+.cw-stmt-wrap:focus-within > .cw-stmt-handles {
+  display: flex;
+}
+
+.cw-stmt-up,
+.cw-stmt-down,
+.cw-stmt-del {
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, var(--card-border));
+  background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.cw-stmt-up:hover,
+.cw-stmt-down:hover,
+.cw-stmt-del:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-foreground);
+}
+
+.cw-stmt-up:focus,
+.cw-stmt-down:focus,
+.cw-stmt-del:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.cw-popover {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-editorWidget-border, var(--card-border));
+  background: var(--vscode-editorWidget-background, #252526);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cw-pal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-pal-search {
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, var(--card-border));
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+}
+
+.cw-pal-search:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.cw-pal-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.cw-pal-item {
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+}
+
+.cw-pal-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.cw-pal-item:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.cw-pal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-pal-form-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.cw-pal-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cw-pal-form-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.cw-pal-form-ok {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+}
+
+.cw-pal-form-ok:hover {
+  background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+.cw-pal-form-cancel {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, var(--card-border));
+  background: var(--vscode-button-secondaryBackground, transparent);
+  color: var(--vscode-button-secondaryForeground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.cw-pal-form-cancel:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+}
+
+.cw-pal-form-ok:focus,
+.cw-pal-form-cancel:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

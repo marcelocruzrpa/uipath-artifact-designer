@@ -17,18 +17,29 @@ import type {
   CodedWorkflowModel,
   CwActivityCard,
   CwEntryPoint,
+  CwHelperMethod,
   CwStatement,
   CwWorkflowClass
 } from '../../src/model/codedWorkflow/cwTypes';
 import type { ArtifactModel } from '../../src/model/types';
 import type { WebviewViewState } from '../../src/util/messages';
+import { emitStatement } from '../../src/model/codedWorkflow/edit/emitStatement';
+import {
+  findPaletteItem,
+  type PaletteItem
+} from '../../src/model/codedWorkflow/edit/editCatalog';
 import type { Transform } from '../interaction';
 import type { Renderer, RendererHost } from '../renderer';
 import { clearChildren, deepEqual, el, note } from '../util';
 import { effectiveCollapsed, toggleId } from './codedWorkflow/collapsePolicy';
-import { renderStatements, type RenderCtx } from './codedWorkflow/containers';
+import {
+  renderStatements,
+  type RenderCtx,
+  type SlotIdentity
+} from './codedWorkflow/containers';
 import { cwIcon } from './codedWorkflow/cwIcons';
 import { createGraphView, type GraphView } from './codedWorkflow/graphView';
+import { renderPalette } from './codedWorkflow/insertionPalette';
 import { renderPropertiesPanel } from './codedWorkflow/propertiesPanel';
 
 const SCROLL_PERSIST_DELAY_MS = 300;
@@ -142,6 +153,10 @@ class CodedWorkflowRenderer implements Renderer {
   private editing = false;
   /** The docked properties-panel region (canvas mode only); re-rendered in place. */
   private dockEl: HTMLElement | null = null;
+  /** The transient insertion-palette popover, if open. */
+  private popoverEl: HTMLElement | null = null;
+  /** Document-level keydown handler closing the popover on Escape, if mounted. */
+  private popoverKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   public mount(container: HTMLElement, host: RendererHost, savedState: WebviewViewState | null): void {
     this.container = container;
@@ -209,6 +224,9 @@ class CodedWorkflowRenderer implements Renderer {
       this.scrollEl.removeEventListener('scroll', this.onScroll);
       this.scrollEl = null;
     }
+    // The popover lives in the canvas DOM being torn down — drop it + its
+    // document-level Escape listener so it never dangles after a re-render.
+    this.closePopover();
     this.dockEl = null;
     if (this.graphView) {
       this.graphTransformStash = this.graphView.getTransform();
@@ -392,10 +410,130 @@ class CodedWorkflowRenderer implements Renderer {
 
   private toggleEditing(): void {
     this.editing = !this.editing;
-    if (this.model) {
-      this.renderDock(this.model);
-    }
+    // Toggling re-renders the canvas (insertion points / handles appear or
+    // vanish), not just the dock — otherwise the affordances would be stale.
+    this.closePopover();
+    this.render();
     this.host?.notifyViewChanged();
+  }
+
+  /**
+   * Opens the searchable palette anchored near a clicked insertion point. On
+   * pick it resolves the item, collects arg values from a tiny inline form,
+   * emits the statement source via the pure `emitStatement`, and posts the
+   * source-based `addStatement` intent (the host stays the sole mutator and
+   * parse-gates it). Closed on pick or Escape.
+   */
+  private openInsertPalette(slot: SlotIdentity, index: number): void {
+    const popover = renderPalette({
+      onPick: (id) => {
+        const item = findPaletteItem(id);
+        if (item === null) {
+          return;
+        }
+        void this.collectArgValues(item).then((filled) => {
+          if (filled === null) {
+            return;
+          }
+          const source = emitStatement(item, filled.values, filled.resultBinding, filled.rawText);
+          this.host?.post({ type: 'addStatement', slot, index, source });
+          this.closePopover();
+        });
+      }
+    });
+    this.mountPopover(popover);
+  }
+
+  /**
+   * Renders a small confirm form for a picked palette item: one labeled input
+   * per `item.args`, a result-name input when `item.returnsValue`, and a single
+   * free-text input for the raw escape (`item.args` empty). Resolves with the
+   * filled values on confirm, or null on cancel. No innerHTML.
+   */
+  private collectArgValues(
+    item: PaletteItem
+  ): Promise<{ values: string[]; resultBinding?: string; rawText?: string } | null> {
+    return new Promise((resolve) => {
+      const form = el('div', { class: 'cw-pal-form' });
+      form.append(el('div', { class: 'cw-pal-form-title', text: item.label }));
+
+      const isRaw = item.kind === 'raw';
+      const inputs: HTMLInputElement[] = [];
+
+      const addField = (labelText: string, placeholder: string | undefined): HTMLInputElement => {
+        const input = document.createElement('input');
+        input.className = 'cw-props-input';
+        input.type = 'text';
+        if (placeholder !== undefined) {
+          input.placeholder = placeholder;
+        }
+        form.append(el('label', { class: 'cw-pal-form-label', text: labelText }, [input]));
+        return input;
+      };
+
+      if (isRaw) {
+        inputs.push(addField('C# statement', 'system.DoSomething();'));
+      } else {
+        for (const arg of item.args) {
+          inputs.push(addField(arg.label, arg.placeholder));
+        }
+      }
+      const resultInput =
+        !isRaw && item.returnsValue === true ? addField('Result name', 'result') : null;
+
+      const confirm = (): void => {
+        const values = inputs.map((i) => i.value);
+        resolve({
+          values: isRaw ? [] : values,
+          ...(resultInput && resultInput.value !== '' ? { resultBinding: resultInput.value } : {}),
+          ...(isRaw ? { rawText: values[0] ?? '' } : {})
+        });
+      };
+
+      const actions = el('div', { class: 'cw-pal-form-actions' });
+      const ok = el('button', { class: 'cw-pal-form-ok', text: 'Add' });
+      ok.type = 'button';
+      ok.addEventListener('click', confirm);
+      const cancel = el('button', { class: 'cw-pal-form-cancel', text: 'Cancel' });
+      cancel.type = 'button';
+      cancel.addEventListener('click', () => resolve(null));
+      actions.append(ok, cancel);
+      form.append(actions);
+
+      // Replace the palette list with the form inside the open popover.
+      if (this.popoverEl) {
+        this.popoverEl.replaceChildren(form);
+        inputs[0]?.focus();
+      } else {
+        // No popover mounted (defensive) — surface the form on its own.
+        this.mountPopover(form);
+      }
+    });
+  }
+
+  /** Mounts a transient popover into the canvas; Escape closes it. */
+  private mountPopover(content: HTMLElement): void {
+    this.closePopover();
+    const popover = el('div', { class: 'cw-popover' }, [content]);
+    this.popoverEl = popover;
+    (this.scrollEl ?? this.container)?.append(popover);
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.closePopover();
+      }
+    };
+    this.popoverKeydown = onKey;
+    document.addEventListener('keydown', onKey);
+  }
+
+  private closePopover(): void {
+    if (this.popoverKeydown) {
+      document.removeEventListener('keydown', this.popoverKeydown);
+      this.popoverKeydown = null;
+    }
+    this.popoverEl?.remove();
+    this.popoverEl = null;
   }
 
   /**
@@ -551,7 +689,7 @@ class CodedWorkflowRenderer implements Renderer {
     }
 
     for (const helper of cls.helperMethods) {
-      sectionChildren.push(this.buildHelperSection(cls.className, helper.name, helper.body));
+      sectionChildren.push(this.buildHelperSection(cls.className, helper));
     }
 
     return el('div', { class: 'cw-class' }, sectionChildren);
@@ -611,25 +749,32 @@ class CodedWorkflowRenderer implements Renderer {
       body.append(strip);
     }
 
-    body.append(this.buildStatementColumn(entry.body));
+    // The entry-point body is a method body: containerId '' + the body's exact
+    // id-prefix so a SlotRef resolves host-side (overload/empty-body safe).
+    body.append(
+      this.buildStatementColumn(
+        entry.body,
+        this.renderCtx({ containerId: '', methodId: entry.bodyId ?? '' })
+      )
+    );
     return body;
   }
 
-  private buildStatementColumn(stmts: CwStatement[]): HTMLElement {
+  private buildStatementColumn(stmts: CwStatement[], ctx: RenderCtx): HTMLElement {
     if (stmts.length === 0) {
       return el('div', { class: 'cw-empty', text: '– no statements –' });
     }
-    return renderStatements(stmts, this.renderCtx());
+    return renderStatements(stmts, ctx);
   }
 
-  private buildHelperSection(className: string, name: string, stmts: CwStatement[]): HTMLElement {
-    const id = helperId(className, name);
+  private buildHelperSection(className: string, helper: CwHelperMethod): HTMLElement {
+    const id = helperId(className, helper.name);
     const collapsed = effectiveCollapsed(id, 'container', true, this.userToggled);
 
     const chevron = el('span', { class: 'cw-ct-chevron' });
     chevron.append(cwIcon(collapsed ? 'chevron-right' : 'chevron-down'));
     const header = el('div', { class: 'cw-helper-header' }, [
-      el('span', { class: 'cw-helper-title', text: `Helper: ${name}()` }),
+      el('span', { class: 'cw-helper-title', text: `Helper: ${helper.name}()` }),
       chevron
     ]);
     header.setAttribute('role', 'button');
@@ -640,17 +785,31 @@ class CodedWorkflowRenderer implements Renderer {
     const node = el('div', { class: 'cw-helper' }, [header]);
     node.dataset.id = id;
     if (!collapsed) {
-      node.append(el('div', { class: 'cw-helper-body' }, [this.buildStatementColumn(stmts)]));
+      // A helper body is a method body too — thread helper.bodyId so an insert /
+      // move / delete in a helper resolves host-side (else methodId '' no-ops).
+      node.append(
+        el('div', { class: 'cw-helper-body' }, [
+          this.buildStatementColumn(
+            helper.body,
+            this.renderCtx({ containerId: '', methodId: helper.bodyId ?? '' })
+          )
+        ])
+      );
     }
     return node;
   }
 
-  private renderCtx(): RenderCtx {
+  private renderCtx(slot: SlotIdentity): RenderCtx {
     return {
       depth: 0,
       isCollapsed: (id, kind, collapsedByDefault) =>
         effectiveCollapsed(id, kind, collapsedByDefault, this.userToggled),
-      onToggle: (id) => this.toggle(id)
+      onToggle: (id) => this.toggle(id),
+      editing: this.editing,
+      onInsert: (s, index) => this.openInsertPalette(s, index),
+      onDelete: (id) => this.host?.post({ type: 'deleteStatement', id }),
+      onMove: (id, direction) => this.host?.post({ type: 'moveStatement', id, direction }),
+      slot
     };
   }
 
@@ -792,6 +951,7 @@ class CodedWorkflowRenderer implements Renderer {
       this.noteTimer = null;
     }
     this.noteEl = null;
+    this.closePopover();
     this.graphView?.dispose();
     this.graphView = null;
     this.canvasScrollStash = null;
