@@ -93,3 +93,16 @@ it('rejects an editArg on a non-activity node', async () => {
   const res = resolveEdit(src, model, { kind: 'editArg', id: node.id, op: 'remove', argIndex: 0 });
   expect(res.ok).toBe(false);
 });
+
+it('rejects change on a NAMED argument (would drop the `name:`)', async () => {
+  // A C# named arg's argSpan covers `name: value`; an op:'change' replaces the
+  // WHOLE span, so it would silently drop the `name:`. Defend against it.
+  // (Unreachable via the panel today — value edits route through editValue's
+  // valueSpan — but the resolver is a public API and must not corrupt source.)
+  const src = wrap('system.DoThing(foo: "x", b);');
+  const { model, card } = await build(src);
+  expect(src.slice(card.args[0].argSpan!.start, card.args[0].argSpan!.end)).toBe('foo: "x"');
+  const res = resolveEdit(src, model, { kind: 'editArg', id: card.id, op: 'change', argIndex: 0, newText: '"y"' });
+  expect(res.ok).toBe(false);
+});
+

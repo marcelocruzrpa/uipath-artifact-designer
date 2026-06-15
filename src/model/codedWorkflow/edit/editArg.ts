@@ -27,6 +27,14 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
         return { ok: false, error: `arg ${intent.argIndex} is not replaceable` };
       }
       if (intent.newText === undefined) return { ok: false, error: 'change requires newText' };
+      // argSpan covers the WHOLE `argument` node, which for a C# named argument
+      // (`name: value`) includes the `name:` prefix. Replacing the whole span
+      // would silently drop the name and re-bind by position. Reject it — value
+      // edits route through editValue's valueSpan, so this op never legitimately
+      // targets a named argument.
+      if (isNamedArgument(source.slice(arg.argSpan.start, arg.argSpan.end))) {
+        return { ok: false, error: 'cannot change a named argument by replacing its whole span (would drop the name)' };
+      }
       return { ok: true, patches: [{ start: arg.argSpan.start, end: arg.argSpan.end, newText: intent.newText }] };
     }
 
@@ -101,6 +109,22 @@ function removalRange(
     end = i;
   }
   return { start: argSpan.start, end };
+}
+
+/**
+ * True when an `argument` slice is a C# NAMED argument (`name: value`). The
+ * slice is exactly one `argument` node, so a named arg always opens with a bare
+ * identifier followed by a single `:` (not `::`, the namespace separator). A
+ * positional arg opens with an expression — a string/number/`(`/member access —
+ * never a bare-identifier-then-colon, and a ternary's `:` is mid-expression
+ * (preceded by `?`), so this prefix-only test cannot misfire on positional args.
+ */
+function isNamedArgument(slice: string): boolean {
+  const m = /^\s*[A-Za-z_]\w*\s*:/.exec(slice);
+  if (m === null) return false;
+  // Reject the namespace separator `::` (e.g. `global::Foo`): the char after the
+  // matched colon must not be another colon.
+  return slice.charAt(m[0].length) !== ':';
 }
 
 /** Char offset of the card's statement start, from its line/col SourceSpan. */
