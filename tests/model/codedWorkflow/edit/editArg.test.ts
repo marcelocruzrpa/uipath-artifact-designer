@@ -106,3 +106,15 @@ it('rejects change on a NAMED argument (would drop the `name:`)', async () => {
   expect(res.ok).toBe(false);
 });
 
+it('removes the TRUE MIDDLE arg of a 3-arg call (general-N comma handling)', async () => {
+  // Uncataloged member call: the generic extractor surfaces only the first two
+  // rows (arg1/arg2), but removing the middle arg (index 1) by its argSpan must
+  // still eat exactly one separating comma and leave `f(a, c)` well-formed.
+  const src = wrap('system.DoThing("Q", b, c);');
+  const { model, card } = await build(src);
+  const res = resolveEdit(src, model, { kind: 'editArg', id: card.id, op: 'remove', argIndex: 1 });
+  expect(res.ok).toBe(true);
+  if (!res.ok) return;
+  expect(applyPatches(src, res.patches)).toBe(wrap('system.DoThing("Q", c);'));
+});
+
