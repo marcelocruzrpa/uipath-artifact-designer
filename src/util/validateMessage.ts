@@ -138,6 +138,29 @@ function isOptionalIdArray(v: unknown): v is string[] | undefined {
   );
 }
 
+/**
+ * A webview-side slot reference (mirrors `SlotRef` / `SlotRefMessage`).
+ *
+ * `methodId`/`containerId` are not written as object keys downstream, but we
+ * still validate them through `isSafeKey` so this validator stays the single
+ * gate (defense in depth — a `__proto__` ref is rejected here, not silently
+ * no-matched in `findSlot`). An empty `containerId` denotes the method body
+ * and is always allowed.
+ */
+function isSlotRef(
+  v: unknown
+): v is { containerId: string; methodId: string; role?: string; roleIndex?: number } {
+  return (
+    isRecord(v) &&
+    // '' (method body) is allowed; any non-empty container id must be a safe key.
+    (v.containerId === '' || isSafeKey(v.containerId)) &&
+    isSafeKey(v.methodId) &&
+    // role is matched against a fixed slot-role set on the host; bound it.
+    (v.role === undefined || isString(v.role, MAX_ID)) &&
+    (v.roleIndex === undefined || (typeof v.roleIndex === 'number' && Number.isInteger(v.roleIndex)))
+  );
+}
+
 function isViewState(v: unknown): v is WebviewViewState {
   return (
     isRecord(v) &&
@@ -339,6 +362,18 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
             ...(raw.newText !== undefined ? { newText: raw.newText } : {}),
             ...(raw.newMethod !== undefined ? { newMethod: raw.newMethod } : {})
           }
+        : null;
+    case 'addStatement':
+      return isSlotRef(raw.slot) &&
+        typeof raw.index === 'number' && Number.isInteger(raw.index) && raw.index >= 0 &&
+        isString(raw.source, MAX_TEXT)
+        ? { type: 'addStatement', slot: raw.slot, index: raw.index, source: raw.source }
+        : null;
+    case 'deleteStatement':
+      return isString(raw.id, MAX_ID) ? { type: 'deleteStatement', id: raw.id } : null;
+    case 'moveStatement':
+      return isString(raw.id, MAX_ID) && (raw.direction === 1 || raw.direction === -1)
+        ? { type: 'moveStatement', id: raw.id, direction: raw.direction }
         : null;
 
     default:

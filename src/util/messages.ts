@@ -22,6 +22,14 @@ export interface ArgProperty {
   description: string;
 }
 
+/** Webview-side slot reference (mirrors edit/editTypes SlotRef). */
+export interface SlotRefMessage {
+  containerId: string;
+  methodId: string;
+  role?: string;
+  roleIndex?: number;
+}
+
 /** A primitive value an edit can write into a JSON field. */
 export type EditValue = string | number | boolean | null;
 
@@ -128,13 +136,25 @@ export type WebviewToHost =
       newText?: string;
       /** New method name (method switch). */
       newMethod?: string;
-    };
+    }
+  | { type: 'addStatement'; slot: SlotRefMessage; index: number; source: string }
+  | { type: 'deleteStatement'; id: string }
+  | { type: 'moveStatement'; id: string; direction: 1 | -1 };
 
 /** Convenience alias for the `editValue` member of `WebviewToHost`. */
 export type EditValueMessage = Extract<WebviewToHost, { type: 'editValue' }>;
 
 /** Convenience alias for the `editArg` member of `WebviewToHost`. */
 export type EditArgMessage = Extract<WebviewToHost, { type: 'editArg' }>;
+
+/** Convenience alias for the `addStatement` member of `WebviewToHost`. */
+export type AddStatementMessage = Extract<WebviewToHost, { type: 'addStatement' }>;
+
+/** Convenience alias for the `deleteStatement` member of `WebviewToHost`. */
+export type DeleteStatementMessage = Extract<WebviewToHost, { type: 'deleteStatement' }>;
+
+/** Convenience alias for the `moveStatement` member of `WebviewToHost`. */
+export type MoveStatementMessage = Extract<WebviewToHost, { type: 'moveStatement' }>;
 
 /** Persisted (per-document) view state — zoom, pan, selection and collapse. */
 export interface WebviewViewState {

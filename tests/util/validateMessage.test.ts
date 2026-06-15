@@ -295,6 +295,31 @@ describe('validateWebviewMessage — editArg message', () => {
   });
 });
 
+describe('validateWebviewMessage — statement messages', () => {
+  it('accepts addStatement with a method-body slot ref', () => {
+    expect(validateWebviewMessage({
+      type: 'addStatement',
+      slot: { containerId: '', methodId: 'W#Execute/' },
+      index: 0,
+      source: 'Log("x");'
+    })).not.toBeNull();
+  });
+  it('rejects addStatement whose slot.methodId is prototype-polluting', () => {
+    expect(validateWebviewMessage({
+      type: 'addStatement', slot: { containerId: '', methodId: '__proto__' }, index: 0, source: 'x;'
+    })).toBeNull();
+  });
+  it('accepts deleteStatement', () => {
+    expect(validateWebviewMessage({ type: 'deleteStatement', id: 'W#Execute/1' })).not.toBeNull();
+  });
+  it('accepts a moveStatement with direction -1', () => {
+    expect(validateWebviewMessage({ type: 'moveStatement', id: 'W#Execute/1', direction: -1 })).not.toBeNull();
+  });
+  it('rejects a moveStatement with a bad direction', () => {
+    expect(validateWebviewMessage({ type: 'moveStatement', id: 'W#Execute/1', direction: 2 })).toBeNull();
+  });
+});
+
 describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
   it('rejects an over-cap free-text string', () => {
     const huge = 'a'.repeat(100_001);
