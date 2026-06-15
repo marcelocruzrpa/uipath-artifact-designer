@@ -151,6 +151,18 @@ describe('renderPropertiesPanel', () => {
     expect(root.querySelector('input')).toBeNull();
   });
 
+  it('shows the read-only empty hint when a no-arg card is not editing', () => {
+    // The empty-hint branch fires ONLY in read-only mode (in edit mode the panel
+    // keeps the add-argument control instead). The no-args test above runs with
+    // editing:true and no longer covers this path, so pin it explicitly.
+    const c = card();
+    c.args = [];
+    const root = document.createElement('div');
+    root.appendChild(renderPropertiesPanel(c, { editing: false, onEdit: () => {}, onArgEdit: () => {} }));
+    expect(root.querySelector('.cw-props-empty')?.textContent).toBe('No editable arguments.');
+    expect(root.querySelector('input')).toBeNull();
+  });
+
   it('emits an editArg remove when a row × is clicked', () => {
     const onArgEdit = vi.fn();
     const c = card(); // Log card with one Message arg
