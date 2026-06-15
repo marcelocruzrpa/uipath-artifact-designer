@@ -14,7 +14,14 @@ import { resolveEdit } from '../model/codedWorkflow/edit/resolveEdit';
 import { applyPatches } from '../model/codedWorkflow/edit/applyPatches';
 import { introducesNewError } from '../model/codedWorkflow/edit/parseGate';
 import { findNodeById } from '../model/codedWorkflow/edit/findNode';
-import type { EditArgMessage, EditValueMessage } from '../util/messages';
+import type { EditIntent } from '../model/codedWorkflow/edit/editTypes';
+import type {
+  AddStatementMessage,
+  DeleteStatementMessage,
+  EditArgMessage,
+  EditValueMessage,
+  MoveStatementMessage
+} from '../util/messages';
 
 /** A resolved value-edit: minimal patches plus the full resulting text. */
 export type ComputedEdit =
@@ -125,6 +132,48 @@ export async function computeArgEdit(source: string, message: EditArgMessage): P
   const stillThere = findNodeById(afterModel, message.id);
   if (stillThere === null || stillThere.type !== 'activity') {
     return { ok: false, error: 'edit reshaped the workflow structure unexpectedly' };
+  }
+  return { ok: true, patches: res.patches, after };
+}
+
+/** Insert a fully-emitted statement into a slot at an index (parse-gated). */
+export async function computeAddStatement(source: string, message: AddStatementMessage): Promise<ComputedEdit> {
+  return computeStatementEdit(source, {
+    kind: 'addStatement', slot: message.slot, index: message.index, source: message.source
+  });
+}
+
+/** Delete a statement by id (parse-gated). */
+export async function computeDeleteStatement(source: string, message: DeleteStatementMessage): Promise<ComputedEdit> {
+  return computeStatementEdit(source, { kind: 'deleteStatement', id: message.id });
+}
+
+/** Move a statement within its slot (parse-gated). */
+export async function computeMoveStatement(source: string, message: MoveStatementMessage): Promise<ComputedEdit> {
+  return computeStatementEdit(source, { kind: 'moveStatement', id: message.id, direction: message.direction });
+}
+
+/**
+ * Shared engine for the three statement intents: build the model fresh, resolve
+ * the intent to minimal patches, and run the syntax parse-gate. Same shape as
+ * {@link computeArgEdit} minus the type/structural backstop — add/delete/move
+ * reshape the statement list by design, so a "same node still resolves" check
+ * would be wrong here; the parse-gate alone guards well-formedness.
+ */
+async function computeStatementEdit(source: string, intent: EditIntent): Promise<ComputedEdit> {
+  const parser = await getCSharpParser();
+  const tree = parser.parse(source);
+  let model;
+  try {
+    model = buildModel(tree, source, { fileName: 'edit.cs', fileUri: 'file:///edit.cs' });
+  } finally {
+    tree.delete();
+  }
+  const res = resolveEdit(source, model, intent);
+  if (!res.ok) return { ok: false, error: res.error };
+  const after = applyPatches(source, res.patches);
+  if (introducesNewError(parser, source, after)) {
+    return { ok: false, error: 'edit would break the C# syntax' };
   }
   return { ok: true, patches: res.patches, after };
 }
