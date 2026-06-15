@@ -32,7 +32,52 @@ export interface EditArgIntent {
   newMethod?: string;
 }
 
-export type EditIntent = EditValueIntent | EditArgIntent; // L2 widens further
+/**
+ * Locates a slot (or a method body) for insertion. A method body is referenced
+ * with an empty `containerId` (the entry-point/helper body itself); a slot is
+ * referenced by its container id + slot role + repeat index.
+ */
+export interface SlotRef {
+  /** Container node id, or '' for the entry-point/helper top-level body. */
+  containerId: string;
+  /** Method body id (the `<class>#<method>/` prefix without trailing index). Used when containerId === ''. */
+  methodId: string;
+  /** Slot role (then/else/body/…); omitted for a method body. */
+  role?: string;
+  /** 0-based occurrence index for repeatable roles (elseif/catch/case). */
+  roleIndex?: number;
+}
+
+/** L2 intent: insert a new statement into a slot at a position. */
+export interface AddStatementIntent {
+  kind: 'addStatement';
+  slot: SlotRef;
+  /** 0-based index within the slot's children to insert BEFORE (length ⇒ append). */
+  index: number;
+  /** The fully-emitted statement source (already through emitStatement). */
+  source: string;
+}
+
+/** L2 intent: delete a statement by id. */
+export interface DeleteStatementIntent {
+  kind: 'deleteStatement';
+  id: string;
+}
+
+/** L2 intent: move a statement within its slot. */
+export interface MoveStatementIntent {
+  kind: 'moveStatement';
+  id: string;
+  /** +1 (down) or -1 (up). Bounds are clamped by the resolver. */
+  direction: 1 | -1;
+}
+
+export type EditIntent =
+  | EditValueIntent
+  | EditArgIntent
+  | AddStatementIntent
+  | DeleteStatementIntent
+  | MoveStatementIntent;
 
 export type EditResult =
   | { ok: true; patches: TextPatch[] }
