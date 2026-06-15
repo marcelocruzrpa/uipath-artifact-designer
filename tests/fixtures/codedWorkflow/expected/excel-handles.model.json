@@ -36,6 +36,10 @@
                 "endLine": 18,
                 "endCol": 13
               },
+              "offsets": {
+                "start": 419,
+                "end": 723
+              },
               "type": "container",
               "kind": "using",
               "header": "Use var wb = excel.UseExcelFile(\"invoices.xlsx\", new ExcelFileOptions() { SaveCh…",
@@ -64,6 +68,10 @@
                       "argListSpan": {
                         "start": 606,
                         "end": 606
+                      },
+                      "offsets": {
+                        "start": 567,
+                        "end": 608
                       }
                     },
                     {
@@ -117,6 +125,10 @@
                       "argListSpan": {
                         "start": 653,
                         "end": 670
+                      },
+                      "offsets": {
+                        "start": 625,
+                        "end": 682
                       }
                     },
                     {
@@ -138,6 +150,10 @@
                       "argListSpan": {
                         "start": 707,
                         "end": 707
+                      },
+                      "offsets": {
+                        "start": 699,
+                        "end": 709
                       }
                     }
                   ],
@@ -146,7 +162,12 @@
                     "startCol": 12,
                     "endLine": 18,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 550,
+                    "end": 722
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false,
@@ -237,6 +258,10 @@
               "argListSpan": {
                 "start": 768,
                 "end": 781
+              },
+              "offsets": {
+                "start": 736,
+                "end": 783
               }
             },
             {
@@ -274,6 +299,10 @@
               "argListSpan": {
                 "start": 815,
                 "end": 820
+              },
+              "offsets": {
+                "start": 796,
+                "end": 822
               }
             }
           ],
@@ -281,7 +310,13 @@
             "tier1": 6,
             "tier2": 0,
             "tier3": 0
-          }
+          },
+          "bodyId": "ExcelFlow#Execute/",
+          "bodySpan": {
+            "start": 406,
+            "end": 831
+          },
+          "indentText": "            "
         }
       ],
       "helperMethods": []

@@ -41,7 +41,11 @@
               "code": "var a = total + 1;\n            var b = a + 2; // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            var c = a + b;",
               "lineCount": 5,
               "statementCount": 3,
-              "codeTruncated": false
+              "codeTruncated": false,
+              "offsets": {
+                "start": 413,
+                "end": 608
+              }
             },
             {
               "id": "ChipsFlow#Execute/1",
@@ -79,6 +83,10 @@
               "argListSpan": {
                 "start": 625,
                 "end": 635
+              },
+              "offsets": {
+                "start": 621,
+                "end": 637
               }
             },
             {
@@ -94,7 +102,11 @@
               "code": "var d = c * 2;\n            var e = d - 1;",
               "lineCount": 2,
               "statementCount": 2,
-              "codeTruncated": false
+              "codeTruncated": false,
+              "offsets": {
+                "start": 650,
+                "end": 691
+              }
             },
             {
               "id": "ChipsFlow#Execute/3",
@@ -103,6 +115,10 @@
                 "startCol": 12,
                 "endLine": 24,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 704,
+                "end": 781
               },
               "type": "container",
               "kind": "if",
@@ -120,6 +136,10 @@
                         "endLine": 23,
                         "endCol": 34
                       },
+                      "offsets": {
+                        "start": 749,
+                        "end": 767
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "total = total - 1;",
@@ -133,7 +153,12 @@
                     "startCol": 12,
                     "endLine": 24,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 732,
+                    "end": 780
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -145,6 +170,10 @@
                 "startCol": 12,
                 "endLine": 25,
                 "endCol": 30
+              },
+              "offsets": {
+                "start": 794,
+                "end": 812
               },
               "type": "raw",
               "tier": 3,
@@ -158,7 +187,13 @@
             "tier1": 1,
             "tier2": 0,
             "tier3": 7
-          }
+          },
+          "bodyId": "ChipsFlow#Execute/",
+          "bodySpan": {
+            "start": 400,
+            "end": 821
+          },
+          "indentText": "            "
         },
         {
           "name": "Big",
@@ -184,14 +219,24 @@
               "code": "big = big + 1;\n            big = big + 2;\n            big = big + 3;\n            big = big + 4;\n            big = big + 5;\n            big = big + 6;\n            big = big + 7;\n            big = big + 8;\n            big = big + 9;\n            big = big + 10;\n            big = big + 11;\n            big = big + 12;\n            big = big + 13;\n            big = big + 14;\n            big = big + 15;\n            big = big + 16;\n            big = big + 17;\n            big = big + 18;\n            big = big + 19;\n            big = big + 20;\n            big = big + 21;\n            big = big + 22;\n            big = big + 23;\n            big = big + 24;\n            big = big + 25;\n            big = big + 26;\n            big = big + 27;\n            big = big + 28;\n            big = big + 29;\n            big = big + 30;\n            big = big + 31;\n            big = big + 32;\n            big = big + 33;\n            big = big + 34;\n            big = big + 35;\n            big = big + 36;\n            big = big + 37;\n            big = big + 38;\n            big = big + 39;\n            big = big + 40;",
               "lineCount": 50,
               "statementCount": 50,
-              "codeTruncated": true
+              "codeTruncated": true,
+              "offsets": {
+                "start": 891,
+                "end": 2269
+              }
             }
           ],
           "tierCounts": {
             "tier1": 0,
             "tier2": 0,
             "tier3": 50
-          }
+          },
+          "bodyId": "ChipsFlow#Big/",
+          "bodySpan": {
+            "start": 878,
+            "end": 2278
+          },
+          "indentText": "            "
         }
       ],
       "helperMethods": []

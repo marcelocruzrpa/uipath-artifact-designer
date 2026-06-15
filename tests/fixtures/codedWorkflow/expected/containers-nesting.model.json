@@ -36,6 +36,10 @@
                 "endLine": 17,
                 "endCol": 28
               },
+              "offsets": {
+                "start": 657,
+                "end": 673
+              },
               "type": "raw",
               "tier": 3,
               "code": "var seed = mode;",
@@ -50,6 +54,10 @@
                 "startCol": 12,
                 "endLine": 44,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 686,
+                "end": 1367
               },
               "type": "container",
               "kind": "if",
@@ -67,6 +75,10 @@
                         "endLine": 20,
                         "endCol": 32
                       },
+                      "offsets": {
+                        "start": 737,
+                        "end": 753
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "seed = seed + 1;",
@@ -81,6 +93,10 @@
                         "startCol": 16,
                         "endLine": 31,
                         "endCol": 17
+                      },
+                      "offsets": {
+                        "start": 770,
+                        "end": 1086
                       },
                       "type": "container",
                       "kind": "foreach",
@@ -98,6 +114,10 @@
                                 "endLine": 30,
                                 "endCol": 21
                               },
+                              "offsets": {
+                                "start": 832,
+                                "end": 1068
+                              },
                               "type": "container",
                               "kind": "while",
                               "header": "While mode > 0",
@@ -113,6 +133,10 @@
                                         "startCol": 24,
                                         "endLine": 28,
                                         "endCol": 25
+                                      },
+                                      "offsets": {
+                                        "start": 895,
+                                        "end": 1005
                                       },
                                       "type": "container",
                                       "kind": "if",
@@ -130,6 +154,10 @@
                                                 "endLine": 27,
                                                 "endCol": 44
                                               },
+                                              "offsets": {
+                                                "start": 963,
+                                                "end": 979
+                                              },
                                               "type": "raw",
                                               "tier": 3,
                                               "code": "deep = deep + 1;",
@@ -143,7 +171,12 @@
                                             "startCol": 24,
                                             "endLine": 28,
                                             "endCol": 25
-                                          }
+                                          },
+                                          "bodySpan": {
+                                            "start": 934,
+                                            "end": 1004
+                                          },
+                                          "indentText": "                            "
                                         }
                                       ],
                                       "collapsedByDefault": false
@@ -155,6 +188,10 @@
                                         "startCol": 24,
                                         "endLine": 29,
                                         "endCol": 40
+                                      },
+                                      "offsets": {
+                                        "start": 1030,
+                                        "end": 1046
                                       },
                                       "type": "raw",
                                       "tier": 3,
@@ -169,7 +206,12 @@
                                     "startCol": 20,
                                     "endLine": 30,
                                     "endCol": 21
-                                  }
+                                  },
+                                  "bodySpan": {
+                                    "start": 870,
+                                    "end": 1067
+                                  },
+                                  "indentText": "                        "
                                 }
                               ],
                               "collapsedByDefault": false
@@ -180,7 +222,12 @@
                             "startCol": 16,
                             "endLine": 31,
                             "endCol": 17
-                          }
+                          },
+                          "bodySpan": {
+                            "start": 811,
+                            "end": 1085
+                          },
+                          "indentText": "                    "
                         }
                       ],
                       "collapsedByDefault": false
@@ -191,7 +238,12 @@
                     "startCol": 12,
                     "endLine": 32,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 720,
+                    "end": 1099
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "elseif",
@@ -204,6 +256,10 @@
                         "startCol": 16,
                         "endLine": 35,
                         "endCol": 33
+                      },
+                      "offsets": {
+                        "start": 1163,
+                        "end": 1180
                       },
                       "type": "raw",
                       "tier": 3,
@@ -218,7 +274,12 @@
                     "startCol": 12,
                     "endLine": 36,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1146,
+                    "end": 1193
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "elseif",
@@ -231,6 +292,10 @@
                         "startCol": 16,
                         "endLine": 39,
                         "endCol": 33
+                      },
+                      "offsets": {
+                        "start": 1257,
+                        "end": 1274
                       },
                       "type": "raw",
                       "tier": 3,
@@ -245,7 +310,12 @@
                     "startCol": 12,
                     "endLine": 40,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1240,
+                    "end": 1287
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "else",
@@ -258,6 +328,10 @@
                         "startCol": 16,
                         "endLine": 43,
                         "endCol": 33
+                      },
+                      "offsets": {
+                        "start": 1336,
+                        "end": 1353
                       },
                       "type": "raw",
                       "tier": 3,
@@ -272,7 +346,12 @@
                     "startCol": 12,
                     "endLine": 44,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1319,
+                    "end": 1366
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -284,6 +363,10 @@
                 "startCol": 12,
                 "endLine": 48,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 1380,
+                "end": 1471
               },
               "type": "container",
               "kind": "for",
@@ -301,6 +384,10 @@
                         "endLine": 47,
                         "endCol": 32
                       },
+                      "offsets": {
+                        "start": 1441,
+                        "end": 1457
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "seed = seed + i;",
@@ -314,7 +401,12 @@
                     "startCol": 12,
                     "endLine": 48,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1424,
+                    "end": 1470
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -326,6 +418,10 @@
                 "startCol": 12,
                 "endLine": 52,
                 "endCol": 31
+              },
+              "offsets": {
+                "start": 1484,
+                "end": 1565
               },
               "type": "container",
               "kind": "do",
@@ -343,6 +439,10 @@
                         "endLine": 51,
                         "endCol": 32
                       },
+                      "offsets": {
+                        "start": 1517,
+                        "end": 1533
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "mode = mode + 1;",
@@ -356,7 +456,12 @@
                     "startCol": 12,
                     "endLine": 52,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1500,
+                    "end": 1546
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -368,6 +473,10 @@
                 "startCol": 12,
                 "endLine": 68,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 1578,
+                "end": 1908
               },
               "type": "container",
               "kind": "try",
@@ -385,6 +494,10 @@
                         "endLine": 55,
                         "endCol": 26
                       },
+                      "offsets": {
+                        "start": 1612,
+                        "end": 1622
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "Process();",
@@ -398,7 +511,12 @@
                     "startCol": 12,
                     "endLine": 56,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1595,
+                    "end": 1635
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "catch",
@@ -411,6 +529,10 @@
                         "startCol": 16,
                         "endLine": 59,
                         "endCol": 40
+                      },
+                      "offsets": {
+                        "start": 1702,
+                        "end": 1726
                       },
                       "type": "raw",
                       "tier": 3,
@@ -425,7 +547,12 @@
                     "startCol": 12,
                     "endLine": 60,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1685,
+                    "end": 1739
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "catch",
@@ -438,6 +565,10 @@
                         "startCol": 16,
                         "endLine": 63,
                         "endCol": 40
+                      },
+                      "offsets": {
+                        "start": 1789,
+                        "end": 1813
                       },
                       "type": "raw",
                       "tier": 3,
@@ -452,7 +583,12 @@
                     "startCol": 12,
                     "endLine": 64,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1772,
+                    "end": 1826
+                  },
+                  "indentText": "                "
                 },
                 {
                   "role": "finally",
@@ -465,6 +601,10 @@
                         "startCol": 16,
                         "endLine": 67,
                         "endCol": 32
+                      },
+                      "offsets": {
+                        "start": 1878,
+                        "end": 1894
                       },
                       "type": "raw",
                       "tier": 3,
@@ -479,7 +619,12 @@
                     "startCol": 12,
                     "endLine": 68,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 1861,
+                    "end": 1907
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -491,6 +636,10 @@
                 "startCol": 12,
                 "endLine": 78,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 1921,
+                "end": 2164
               },
               "type": "container",
               "kind": "switch",
@@ -507,6 +656,10 @@
                         "startCol": 20,
                         "endLine": 72,
                         "endCol": 27
+                      },
+                      "offsets": {
+                        "start": 1993,
+                        "end": 2000
                       },
                       "type": "raw",
                       "tier": 3,
@@ -546,6 +699,10 @@
                         "endLine": 75,
                         "endCol": 48
                       },
+                      "offsets": {
+                        "start": 2069,
+                        "end": 2097
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "throw new Exception(\"boom\");",
@@ -573,6 +730,10 @@
                         "endLine": 77,
                         "endCol": 27
                       },
+                      "offsets": {
+                        "start": 2143,
+                        "end": 2150
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "return;",
@@ -599,6 +760,10 @@
                 "endLine": 82,
                 "endCol": 13
               },
+              "offsets": {
+                "start": 2177,
+                "end": 2277
+              },
               "type": "container",
               "kind": "using",
               "header": "Use var file = OpenFile(name)",
@@ -615,6 +780,10 @@
                         "endLine": 81,
                         "endCol": 38
                       },
+                      "offsets": {
+                        "start": 2241,
+                        "end": 2263
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "touched = touched + 1;",
@@ -628,7 +797,12 @@
                     "startCol": 12,
                     "endLine": 82,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 2224,
+                    "end": 2276
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -640,6 +814,10 @@
                 "startCol": 12,
                 "endLine": 83,
                 "endCol": 43
+              },
+              "offsets": {
+                "start": 2290,
+                "end": 2321
               },
               "type": "container",
               "kind": "if",
@@ -656,6 +834,10 @@
                         "startCol": 26,
                         "endLine": 83,
                         "endCol": 43
+                      },
+                      "offsets": {
+                        "start": 2304,
+                        "end": 2321
                       },
                       "type": "raw",
                       "tier": 3,
@@ -683,6 +865,10 @@
                 "endLine": 87,
                 "endCol": 13
               },
+              "offsets": {
+                "start": 2334,
+                "end": 2502
+              },
               "type": "container",
               "kind": "if",
               "header": "If name.Contains(\"alpha\") && name.Contains(\"bravo\") && name.Contains(\"charlie\") …",
@@ -699,6 +885,10 @@
                         "endLine": 86,
                         "endCol": 32
                       },
+                      "offsets": {
+                        "start": 2472,
+                        "end": 2488
+                      },
                       "type": "raw",
                       "tier": 3,
                       "code": "seed = mode + 2;",
@@ -712,7 +902,12 @@
                     "startCol": 12,
                     "endLine": 87,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 2455,
+                    "end": 2501
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false
@@ -724,6 +919,10 @@
                 "startCol": 12,
                 "endLine": 91,
                 "endCol": 13
+              },
+              "offsets": {
+                "start": 2515,
+                "end": 2589
               },
               "type": "raw",
               "tier": 3,
@@ -737,7 +936,13 @@
             "tier1": 0,
             "tier2": 0,
             "tier3": 20
-          }
+          },
+          "bodyId": "ContainerFlow#Execute/",
+          "bodySpan": {
+            "start": 644,
+            "end": 2598
+          },
+          "indentText": "            "
         }
       ],
       "helperMethods": [
@@ -758,6 +963,10 @@
                 "endLine": 96,
                 "endCol": 30
               },
+              "offsets": {
+                "start": 2654,
+                "end": 2672
+              },
               "type": "raw",
               "tier": 3,
               "code": "count = count + 1;",
@@ -770,7 +979,13 @@
             "tier1": 0,
             "tier2": 0,
             "tier3": 1
-          }
+          },
+          "bodyId": "ContainerFlow#Process/",
+          "bodySpan": {
+            "start": 2641,
+            "end": 2681
+          },
+          "indentText": "            "
         },
         {
           "name": "OpenFile",
@@ -789,6 +1004,10 @@
                 "endLine": 101,
                 "endCol": 24
               },
+              "offsets": {
+                "start": 2751,
+                "end": 2763
+              },
               "type": "raw",
               "tier": 3,
               "code": "return null;",
@@ -801,7 +1020,13 @@
             "tier1": 0,
             "tier2": 0,
             "tier3": 1
-          }
+          },
+          "bodyId": "ContainerFlow#OpenFile/",
+          "bodySpan": {
+            "start": 2738,
+            "end": 2772
+          },
+          "indentText": "            "
         }
       ]
     }

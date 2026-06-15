@@ -46,7 +46,7 @@ export function mergeAdjacentChips(children: CwStatement[], source: string): CwS
 
 /** Merge a run of >=2 chips into one re-sliced chip. */
 function mergeRun(run: CwRawChip[], source: string): CwRawChip {
-  return chipFromSpan(
+  const merged = chipFromSpan(
     {
       startLine: run[0].span.startLine,
       startCol: run[0].span.startCol,
@@ -56,6 +56,15 @@ function mergeRun(run: CwRawChip[], source: string): CwRawChip {
     source,
     run.reduce((sum, chip) => sum + chip.statementCount, 0)
   );
+  // Fence F: the merged chip spans run[0].start … run[last].end in char offsets,
+  // so it deletes/moves as a unit. Inputs always have offsets (set in classifyLeaf
+  // before this merge post-pass); fall back to span-only (undefined) only if not.
+  const first = run[0].offsets;
+  const last = run[run.length - 1].offsets;
+  if (first !== undefined && last !== undefined) {
+    merged.offsets = { start: first.start, end: last.end };
+  }
+  return merged;
 }
 
 /**

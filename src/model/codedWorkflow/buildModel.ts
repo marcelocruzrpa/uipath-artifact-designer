@@ -122,7 +122,7 @@ export interface BuildModelInput {
   parseMs?: number;
   /**
    * TEST SEAM: override the tier-2 rule registry.  Production callers leave
-   * this unset and get the shipped `TIER2_RULES` (currently empty).
+   * this unset and get the shipped `TIER2_RULES` (the 9 shipped tier-2 rules).
    */
   tier2Rules?: readonly Tier2Rule[];
 }
@@ -180,7 +180,9 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       totals.tier3 += tierCounts.tier3;
       const { body, didTruncate } = truncateStatements(classified, source);
       truncated = truncated || didTruncate;
-      assignIds(body, `${className}#${methodSegment}/`);
+      const bodyId = `${className}#${methodSegment}/`;
+      assignIds(body, bodyId);
+      const interior = methodBodyInterior(method, source);
       const attribute = entryPointAttribute(method);
       if (attribute !== null) {
         entryPoints.push({
@@ -189,10 +191,12 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
           span: toSpan(method),
           signatureSummary: signatureSummary(method),
           body,
-          tierCounts
+          tierCounts,
+          bodyId,
+          ...interior
         });
       } else {
-        helperMethods.push({ name, span: toSpan(method), body, tierCounts });
+        helperMethods.push({ name, span: toSpan(method), body, tierCounts, bodyId, ...interior });
       }
     }
 
@@ -408,6 +412,13 @@ function classifyStatement(stmt: Node, ctx: ClassifyContext): CwStatement {
  */
 function classifyLeaf(stmt: Node, ctx: ClassifyContext): CwStatement {
   trackHandle(ctx.handles, stmt);
+  const node = leafNode(stmt, ctx);
+  // Every leaf carries its whole-statement char offsets (for delete/move).
+  node.offsets = offsetSpan(stmt);
+  return node;
+}
+
+function leafNode(stmt: Node, ctx: ClassifyContext): CwStatement {
   const match = matchTier1(stmt, ctx.handles);
   if (match !== null) {
     return makeCard(match, toSpan(stmt), ctx);
@@ -497,7 +508,13 @@ function slotFrom(
     body.type === 'block'
       ? classifyStatements(blockStatements(body), ctx)
       : classifyStatements([body], ctx);
-  return { role, label: capHeader(label), children, span: toSpan(body) };
+  return {
+    role,
+    label: capHeader(label),
+    children,
+    span: toSpan(body),
+    ...bodyInterior(body.type === 'block' ? body : null, ctx.source)
+  };
 }
 
 function makeContainer(
@@ -509,6 +526,7 @@ function makeContainer(
   return {
     id: '',
     span: toSpan(stmt),
+    offsets: offsetSpan(stmt),
     type: 'container',
     kind,
     header: capHeader(header),
@@ -697,6 +715,7 @@ function makeChip(stmt: Node, ctx: ClassifyContext): CwRawChip {
   return {
     id: '',
     span,
+    offsets: offsetSpan(stmt),
     type: 'raw',
     tier: 3,
     code: slice(stmt, ctx),
@@ -862,6 +881,47 @@ function toSpan(node: Node): SourceSpan {
     endLine: node.endPosition.row,
     endCol: node.endPosition.column
   };
+}
+
+/** Char-offset span (for surgical edits) from tree-sitter indices. */
+function offsetSpan(node: Node): OffsetSpan {
+  return { start: node.startIndex, end: node.endIndex };
+}
+
+/**
+ * Interior offsets of a block (`{ … }`) and the leading indent of its 1st
+ * statement (for placement arithmetic).  Returns `{}` for a non-block body.
+ */
+function bodyInterior(
+  block: Node | null,
+  source: string
+): { bodySpan?: OffsetSpan; indentText?: string } {
+  if (block === null || block.type !== 'block') return {};
+  let open: Node | null = null;
+  let close: Node | null = null;
+  for (let i = 0; i < block.childCount; i += 1) {
+    const c = block.child(i);
+    if (c === null) continue;
+    if (c.type === '{' && open === null) open = c;
+    if (c.type === '}') close = c;
+  }
+  if (open === null || close === null) return {};
+  const firstStmt = block.namedChildren.find((c) => c.type !== 'comment') ?? null;
+  let indentText = '    ';
+  if (firstStmt !== null) {
+    const lineStart = source.lastIndexOf('\n', firstStmt.startIndex - 1) + 1;
+    indentText = source.slice(lineStart, firstStmt.startIndex).replace(/[^ \t]/g, '');
+  }
+  return { bodySpan: { start: open.endIndex, end: close.startIndex }, indentText };
+}
+
+/** Body interior + indent for a method (or local function) node. */
+function methodBodyInterior(
+  method: Node,
+  source: string
+): { bodySpan?: OffsetSpan; indentText?: string } {
+  const body = method.childForFieldName('body');
+  return bodyInterior(body, source);
 }
 
 /**

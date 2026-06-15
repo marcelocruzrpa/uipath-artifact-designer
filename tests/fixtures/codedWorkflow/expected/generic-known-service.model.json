@@ -36,6 +36,10 @@
                 "endLine": 16,
                 "endCol": 13
               },
+              "offsets": {
+                "start": 411,
+                "end": 542
+              },
               "type": "container",
               "kind": "using",
               "header": "Use var pow = powerpoint.UsePowerPointPresentation(\"deck.pptx\")",
@@ -79,6 +83,10 @@
                       "argListSpan": {
                         "start": 525,
                         "end": 526
+                      },
+                      "offsets": {
+                        "start": 509,
+                        "end": 528
                       }
                     }
                   ],
@@ -87,7 +95,12 @@
                     "startCol": 12,
                     "endLine": 16,
                     "endCol": 13
-                  }
+                  },
+                  "bodySpan": {
+                    "start": 492,
+                    "end": 541
+                  },
+                  "indentText": "                "
                 }
               ],
               "collapsedByDefault": false,
@@ -162,6 +175,10 @@
               "argListSpan": {
                 "start": 582,
                 "end": 629
+              },
+              "offsets": {
+                "start": 555,
+                "end": 631
               }
             },
             {
@@ -196,6 +213,10 @@
               "argListSpan": {
                 "start": 675,
                 "end": 719
+              },
+              "offsets": {
+                "start": 644,
+                "end": 721
               }
             },
             {
@@ -234,6 +255,10 @@
               "argListSpan": {
                 "start": 771,
                 "end": 782
+              },
+              "offsets": {
+                "start": 734,
+                "end": 784
               }
             },
             {
@@ -264,7 +289,11 @@
                 }
               ],
               "resultBinding": "country",
-              "icon": "beaker"
+              "icon": "beaker",
+              "offsets": {
+                "start": 797,
+                "end": 833
+              }
             },
             {
               "id": "GenericFlow#Execute/5",
@@ -279,14 +308,24 @@
               "ruleId": "assign-from-call",
               "title": "Assign",
               "text": "compact = string.Join(\",\", parts)",
-              "icon": "arrow-right"
+              "icon": "arrow-right",
+              "offsets": {
+                "start": 846,
+                "end": 884
+              }
             }
           ],
           "tierCounts": {
             "tier1": 6,
             "tier2": 1,
             "tier3": 0
-          }
+          },
+          "bodyId": "GenericFlow#Execute/",
+          "bodySpan": {
+            "start": 398,
+            "end": 893
+          },
+          "indentText": "            "
         }
       ],
       "helperMethods": []

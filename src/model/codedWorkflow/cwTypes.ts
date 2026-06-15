@@ -53,6 +53,8 @@ export interface CwArgSummary {
 interface CwNodeBase {
   id: string;
   span: SourceSpan;
+  /** Char offsets of the whole statement node (for delete/move ranges). */
+  offsets?: OffsetSpan;
 }
 
 export interface CwActivityCard extends CwNodeBase {
@@ -112,6 +114,14 @@ export interface CwSlot {
   label: string;
   children: CwStatement[];
   span: SourceSpan;
+  /**
+   * Char offsets of the slot BODY interior — the range inside the `{ }` block
+   * (or the single block-less statement). An insert at the top of an empty
+   * slot targets `bodySpan.start`; an append targets `bodySpan.end`.
+   */
+  bodySpan?: OffsetSpan;
+  /** Leading whitespace of statements in this slot (inferred indentation). */
+  indentText?: string;
 }
 
 export interface CwContainer extends CwNodeBase {
@@ -138,6 +148,21 @@ export interface CwEntryPoint {
   signatureSummary: string;
   body: CwStatement[];
   tierCounts: CwTierCounts;
+  /**
+   * Char offsets of the method body interior (inside the `{ }`); an insert at
+   * the top of an empty body targets `bodySpan.start`, an append `bodySpan.end`.
+   */
+  bodySpan?: OffsetSpan;
+  /** Leading whitespace of the body's statements (inferred indentation). */
+  indentText?: string;
+  /**
+   * The exact id-prefix `buildModel` assigned this body's statements
+   * (`<class>#<methodSegment>/`, e.g. `W#Execute/` or, for an overload,
+   * `W#Run@2/`). A SlotRef's `methodId` is matched against THIS, so insertion
+   * is unambiguous even for overloaded methods and empty bodies. (Reconstructing
+   * `<class>#<name>/` from `name` would mis-target the 2nd+ overload.)
+   */
+  bodyId?: string;
 }
 
 export interface CwHelperMethod {
@@ -145,6 +170,12 @@ export interface CwHelperMethod {
   span: SourceSpan;
   body: CwStatement[];
   tierCounts: CwTierCounts;
+  /** Char offsets of the method body interior (see CwEntryPoint.bodySpan). */
+  bodySpan?: OffsetSpan;
+  /** Leading whitespace of the body's statements (inferred indentation). */
+  indentText?: string;
+  /** The exact id-prefix assigned this body's statements (see CwEntryPoint.bodyId). */
+  bodyId?: string;
 }
 
 export interface CwWorkflowClass {
