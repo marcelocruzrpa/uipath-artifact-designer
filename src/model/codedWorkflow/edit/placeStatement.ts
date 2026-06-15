@@ -7,20 +7,33 @@ import type { SlotTarget } from './findNode';
 /**
  * Patch that inserts `statementSource` into a slot at `index` (insert-before;
  * index === children.length ⇒ append). Indentation = the slot's inferred
- * `indentText`; `eol` is the document's line ending.
+ * `indentText`; `eol` is the document's line ending. `source` is the full
+ * document — only the EMPTY-slot path reads it, to reuse the existing close-brace
+ * line instead of synthesizing one (which left a trailing-whitespace blank line).
  */
 export function insertionPatch(
   target: SlotTarget,
   index: number,
   statementSource: string,
-  eol: string
+  eol: string,
+  source = ''
 ): TextPatch {
   const indent = target.indentText ?? '    ';
   const kids = target.children;
   if (kids.length === 0) {
-    // Empty slot: drop the statement on its own line inside the body interior.
+    // Empty slot: drop the statement on its own indented line. A pretty-printed
+    // empty block already carries `\n<closeIndent>` before its `}`, so inserting
+    // the statement line right after `{` lets that existing tail close the block
+    // — no synthesized trailing line, no trailing whitespace. A degenerate `{}`
+    // (empty interior) instead needs BOTH the statement line and a fresh close
+    // line at the block's own indent (one step shallower than the statement).
     const at = target.bodySpan?.start ?? 0;
-    return { start: at, end: at, newText: `${eol}${indent}${statementSource}${eol}${indent}` };
+    const interior = source.slice(at, target.bodySpan?.end ?? at);
+    if (/\n/.test(interior)) {
+      return { start: at, end: at, newText: `${eol}${indent}${statementSource}` };
+    }
+    const closeIndent = closeIndentFrom(indent);
+    return { start: at, end: at, newText: `${eol}${indent}${statementSource}${eol}${closeIndent}` };
   }
   if (index >= kids.length) {
     // Append after the last child with an offset.
@@ -32,6 +45,18 @@ export function insertionPatch(
   const ref = firstWithOffsetsFrom(kids, index);
   const at = ref?.offsets?.start ?? target.bodySpan?.start ?? 0;
   return { start: at, end: at, newText: `${statementSource}${eol}${indent}` };
+}
+
+/**
+ * Best-effort close-brace indent for a degenerate `{}` slot: the statement
+ * indent minus one step. We only reach this when the block had NO interior
+ * whitespace to copy, so we strip a trailing tab (tab-indented) or the trailing
+ * spaces of a 2-space step. Cosmetic for the rare single-line-empty-block case;
+ * the multi-line path (which reuses the real close line) never calls this.
+ */
+function closeIndentFrom(indent: string): string {
+  if (indent.endsWith('\t')) return indent.slice(0, -1);
+  return indent.replace(/ {1,2}$/, '');
 }
 
 function lastWithOffsets(kids: CwStatement[]): CwStatement | undefined {

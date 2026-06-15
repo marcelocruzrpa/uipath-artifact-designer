@@ -15,7 +15,7 @@ export function resolveEdit(
       const target = findSlot(model, intent.slot);
       if (target === null) return { ok: false, error: 'insertion slot not found' };
       const eol = source.includes('\r\n') ? '\r\n' : '\n';
-      return { ok: true, patches: [insertionPatch(target, intent.index, intent.source, eol)] };
+      return { ok: true, patches: [insertionPatch(target, intent.index, intent.source, eol, source)] };
     }
     case 'deleteStatement': {
       const node = findNodeById(model, intent.id);

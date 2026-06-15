@@ -907,12 +907,51 @@ function bodyInterior(
   }
   if (open === null || close === null) return {};
   const firstStmt = block.namedChildren.find((c) => c.type !== 'comment') ?? null;
-  let indentText = '    ';
+  let indentText: string;
   if (firstStmt !== null) {
+    // Copy the first statement's actual leading indent verbatim.
     const lineStart = source.lastIndexOf('\n', firstStmt.startIndex - 1) + 1;
-    indentText = source.slice(lineStart, firstStmt.startIndex).replace(/[^ \t]/g, '');
+    indentText = leadingWhitespace(source, lineStart);
+  } else {
+    // EMPTY block: no statement to copy from. Derive the indent from the block's
+    // OWN line indent (the line that opens it) + one indentation step, so a first
+    // insertion nests correctly instead of landing at the method-body column.
+    const openLineStart = source.lastIndexOf('\n', open.startIndex - 1) + 1;
+    // LEADING whitespace of the opening line only (the `{` sits mid-line, so a
+    // strip-non-whitespace pass would also collect interior spaces — match the
+    // leading run instead).
+    const blockIndent = leadingWhitespace(source, openLineStart);
+    indentText = blockIndent + indentStep(source, blockIndent);
   }
   return { bodySpan: { start: open.endIndex, end: close.startIndex }, indentText };
+}
+
+/** The leading whitespace run of the line beginning at `lineStart`. */
+function leadingWhitespace(source: string, lineStart: number): string {
+  let i = lineStart;
+  while (i < source.length && (source[i] === ' ' || source[i] === '\t')) i += 1;
+  return source.slice(lineStart, i);
+}
+
+/**
+ * One indentation step for the document. Tab-indented files step by a tab;
+ * space-indented files step by the smallest positive indent increment seen
+ * between consecutive lines (the file's unit), defaulting to two spaces.
+ */
+function indentStep(source: string, blockIndent: string): string {
+  if (blockIndent.includes('\t')) return '\t';
+  let unit = 0;
+  let prev = 0;
+  for (const line of source.split('\n')) {
+    const m = /^[ ]*/.exec(line);
+    const width = m ? m[0].length : 0;
+    if (line.trim() !== '') {
+      const delta = width - prev;
+      if (delta > 0 && (unit === 0 || delta < unit)) unit = delta;
+      prev = width;
+    }
+  }
+  return ' '.repeat(unit > 0 ? unit : 2);
 }
 
 /** Body interior + indent for a method (or local function) node. */

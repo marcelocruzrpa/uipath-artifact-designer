@@ -64,3 +64,43 @@ it('inserts a statement before the first', async () => {
     '}'
   ].join('\n'));
 });
+
+it('inserts into an EMPTY nested slot at the block indent + one step, no trailing-ws', async () => {
+  // An empty `if (x) { }` body has no first statement to copy indent from. The
+  // inserted line must sit at the block's own indent (4sp) + one step (here 2sp,
+  // the file's unit) = 6sp, and must NOT leave a trailing-whitespace blank line.
+  const src = [
+    'class W : CodedWorkflow {',
+    '  [Workflow] public void Execute() {',
+    '    if (x) {',
+    '    }',
+    '  }',
+    '}'
+  ].join('\n');
+  const model = await modelOf(src);
+  const ifc = model.classes[0].entryPoints[0].body[0];
+  if (ifc.type !== 'container') throw new Error('expected an if container');
+  const res = resolveEdit(src, model, {
+    kind: 'addStatement',
+    slot: { containerId: ifc.id, methodId: '', role: 'then' },
+    index: 0,
+    source: 'Log("z");'
+  });
+  expect(res.ok).toBe(true);
+  if (!res.ok) return;
+  const after = applyPatches(src, res.patches);
+  expect(after).toBe([
+    'class W : CodedWorkflow {',
+    '  [Workflow] public void Execute() {',
+    '    if (x) {',
+    '      Log("z");',
+    '    }',
+    '  }',
+    '}'
+  ].join('\n'));
+  // No line may carry trailing whitespace.
+  expect(after.split('\n').every((l) => l === l.replace(/[ \t]+$/, ''))).toBe(true);
+  // And it must reparse without introducing a syntax error.
+  const tree = (await getCSharpParser()).parse(after);
+  try { expect(tree.rootNode.hasError).toBe(false); } finally { tree.delete(); }
+});
