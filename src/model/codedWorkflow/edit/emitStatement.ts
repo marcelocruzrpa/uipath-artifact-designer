@@ -4,6 +4,25 @@ import type { PaletteItem } from './editCatalog';
 import type { CatalogEmitArg } from '../classify/tier1Catalog';
 import { requoteString } from './quoting';
 
+/**
+ * Whether a trailing `;` should be appended to a raw statement. A bare
+ * expression/statement needs one; these do NOT:
+ *   - already terminated (`;`),
+ *   - a block delimiter (`{` / `}`) — a `;` would be stray/malformed,
+ *   - a block-comment close (star-slash),
+ *   - a line comment (`//…`) — the `;` would just extend the comment text.
+ */
+function needsSemicolon(text: string): boolean {
+  if (text === '') return false;
+  if (text.startsWith('//')) return false;
+  return !(
+    text.endsWith(';') ||
+    text.endsWith('{') ||
+    text.endsWith('}') ||
+    text.endsWith('*/')
+  );
+}
+
 /** Render one arg value to source per its schema kind (strings auto-quoted). */
 function renderArg(schema: CatalogEmitArg, value: string): string {
   if (schema.kind === 'string') {
@@ -32,7 +51,11 @@ export function emitStatement(
   switch (item.kind) {
     case 'raw': {
       const text = (rawText ?? '').trim();
-      return text.endsWith(';') || text.endsWith('}') ? text : `${text};`;
+      // Append a terminating `;` ONLY when the text is a bare statement/expression
+      // missing one. Skip it for: an existing `;`; a block delimiter (`{`/`}`) —
+      // `if (x) {;` is malformed; a block-comment close (`*/`); and a line
+      // comment (`//…`), where a trailing `;` would just be more comment text.
+      return needsSemicolon(text) ? `${text};` : text;
     }
     case 'assign': {
       const [name, value] = argValues;

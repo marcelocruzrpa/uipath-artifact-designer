@@ -33,6 +33,16 @@ it('passes raw code through, adding a trailing semicolon when missing', () => {
   expect(emitStatement(item, [], undefined, 'DoThing(x);')).toBe('DoThing(x);');
 });
 
+it('does not append a semicolon to raw text that should not have one', () => {
+  const item = findPaletteItem('raw')!;
+  // A block opener / closer / block-comment close / line comment must NOT gain
+  // a stray `;` (`if (x) {;` and `// note;` are wrong / change meaning).
+  expect(emitStatement(item, [], undefined, 'if (x) {')).toBe('if (x) {');
+  expect(emitStatement(item, [], undefined, '}')).toBe('}');
+  expect(emitStatement(item, [], undefined, '/* block */')).toBe('/* block */');
+  expect(emitStatement(item, [], undefined, '// note')).toBe('// note');
+});
+
 it('does not double-quote a string value that is already a literal', () => {
   const item = findPaletteItem('catalog:_base.Log')!;
   // A user who types an explicit quoted literal keeps it (still one literal).
