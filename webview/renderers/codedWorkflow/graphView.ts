@@ -45,6 +45,25 @@ const KIND_ICONS: Record<GraphNodeKind, string> = {
   unresolved: 'unresolved'
 };
 
+/**
+ * Allowlists for model-derived class-name suffixes — defense in depth so an
+ * unexpected value collapses to a safe default rather than being interpolated
+ * verbatim. Mirrors the existing KIND_ICONS map pattern.
+ */
+const ALLOWED_NODE_KINDS = new Set<string>([
+  'coded-workflow', 'xaml-workflow', 'helper-class', 'unresolved'
+]);
+const ALLOWED_EDGE_KINDS = new Set<string>([
+  'invoke-workflow', 'run-xaml', 'call-helper'
+]);
+
+function safeNodeKind(kind: string): string {
+  return ALLOWED_NODE_KINDS.has(kind) ? kind : 'unknown';
+}
+function safeEdgeKind(kind: string): string {
+  return ALLOWED_EDGE_KINDS.has(kind) ? kind : 'unknown';
+}
+
 export interface GraphViewOptions {
   post(message: WebviewToHost): void;
   onViewChange(): void;
@@ -222,7 +241,7 @@ class CodedGraphView implements GraphView {
 
   private drawEdge(routed: RoutedEdge): void {
     const { edge, points } = routed;
-    const classes = ['cwg-edge', `cwg-edge--${edge.kind}`];
+    const classes = ['cwg-edge', `cwg-edge--${safeEdgeKind(edge.kind)}`];
     if (!edge.resolved) {
       classes.push('cwg-edge--unresolved');
     }
@@ -254,7 +273,7 @@ class CodedGraphView implements GraphView {
 
   private placeCard(placed: PositionedNode): void {
     const node = placed.node;
-    const classes = ['cwg-node', `cwg-node--${node.kind}`];
+    const classes = ['cwg-node', `cwg-node--${safeNodeKind(node.kind)}`];
     if (node.uri) {
       classes.push('cwg-node--link');
     }

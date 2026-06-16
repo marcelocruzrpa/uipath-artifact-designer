@@ -56,6 +56,29 @@ const CONTAINER_GLYPHS: Record<CwContainerKind, string> = {
   using: 'using'
 };
 
+/**
+ * Allowlists for model-derived class-name suffixes — defense in depth so an
+ * unexpected value collapses to a safe default rather than being interpolated
+ * verbatim. Mirror the existing CONTAINER_GLYPHS / icon-map pattern.
+ */
+const ALLOWED_CONTAINER_KINDS = new Set<string>([
+  'if', 'foreach', 'for', 'while', 'do', 'try', 'switch', 'using'
+]);
+const ALLOWED_BRANCH_ROLES = new Set<string>([
+  'then', 'elseif', 'else', 'body', 'try', 'catch', 'finally', 'case', 'default'
+]);
+const ALLOWED_SECTION_ROLES = ALLOWED_BRANCH_ROLES;
+
+function safeContainerKind(kind: string): string {
+  return ALLOWED_CONTAINER_KINDS.has(kind) ? kind : 'unknown';
+}
+function safeBranchRole(role: string): string {
+  return ALLOWED_BRANCH_ROLES.has(role) ? role : 'unknown';
+}
+function safeSectionRole(role: string): string {
+  return ALLOWED_SECTION_ROLES.has(role) ? role : 'unknown';
+}
+
 function emptySlotNote(): HTMLElement {
   return el('div', { class: 'cw-empty', text: '– empty –' });
 }
@@ -135,7 +158,29 @@ function withHandles(node: HTMLElement, id: string, ctx: RenderCtx): HTMLElement
   return wrap;
 }
 
+/**
+ * Returns a non-interactive note explaining why a block-less slot is read-only,
+ * so the user understands the affordance is intentionally absent.
+ */
+function unbracedNote(): HTMLElement {
+  return el('div', { class: 'cw-unbraced-note', text: 'single-statement body — convert to { } to edit' });
+}
+
 function slotChildren(slot: CwSlot, ctx: RenderCtx): HTMLElement {
+  // A slot with `braced === false` is a block-less single-statement body
+  // (e.g. `if (ok) Foo();`).  Agent E rejects inserts into these at the host
+  // level; suppress ALL edit affordances here so the user is never offered an
+  // action that will be rejected.  Braced slots (braced !== false) keep full
+  // affordances.
+  if (ctx.editing && slot.braced === false) {
+    const unbracedCtx: RenderCtx = { ...ctx, editing: false };
+    const seq =
+      slot.children.length > 0
+        ? renderStatements(slot.children, unbracedCtx)
+        : emptySlotNote();
+    const wrap = el('div', { class: 'cw-slot-unbraced' }, [seq, unbracedNote()]);
+    return wrap;
+  }
   return slot.children.length > 0 ? renderStatements(slot.children, ctx) : emptySlotNote();
 }
 
@@ -153,7 +198,7 @@ function onActivate(node: HTMLElement, handler: () => void): void {
 export function buildContainer(c: CwContainer, ctx: RenderCtx): HTMLElement {
   const collapsed = ctx.isCollapsed(c.id, 'container', c.collapsedByDefault);
   const node = el('div', {
-    class: `cw-container cw-container--${c.kind}${collapsed ? ' cw-container--collapsed' : ''}`
+    class: `cw-container cw-container--${safeContainerKind(c.kind)}${collapsed ? ' cw-container--collapsed' : ''}`
   });
   node.dataset.id = c.id;
   node.dataset.kind = c.kind;
@@ -220,7 +265,7 @@ export function buildContainer(c: CwContainer, ctx: RenderCtx): HTMLElement {
         ? (roleCounts[slot.role] = (roleCounts[slot.role] ?? -1) + 1)
         : undefined;
       branches.append(
-        el('div', { class: `cw-branch cw-branch--${slot.role}` }, [
+        el('div', { class: `cw-branch cw-branch--${safeBranchRole(slot.role)}` }, [
           el('div', { class: 'cw-branch-label', text: slot.label }),
           slotChildren(slot, slotCtx(slot.role, ri))
         ])
@@ -235,7 +280,7 @@ export function buildContainer(c: CwContainer, ctx: RenderCtx): HTMLElement {
         ? (roleCounts[slot.role] = (roleCounts[slot.role] ?? -1) + 1)
         : undefined;
       node.append(
-        el('div', { class: `cw-section cw-section--${slot.role}` }, [
+        el('div', { class: `cw-section cw-section--${safeSectionRole(slot.role)}` }, [
           el('div', { class: 'cw-section-label', text: slot.label }),
           slotChildren(slot, slotCtx(slot.role, ri))
         ])

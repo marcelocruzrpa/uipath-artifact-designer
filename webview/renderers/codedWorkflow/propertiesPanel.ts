@@ -192,10 +192,15 @@ function buildMethodSelect(
  */
 function buildAddArg(card: CwActivityCard, opts: PropertiesPanelOptions): HTMLElement | null {
   const emitArgs = emitArgsFor(card);
-  // Optional args beyond the count the card already renders are "addable".
+  // Match by IDENTITY: an emit arg is "present" if the card already renders a
+  // rendered arg whose label matches the emit arg's label at the same position.
+  // Positional count matching (`position >= card.args.length`) misfires when a
+  // call omits an earlier optional arg but supplies a later one, so we compare
+  // each slot by its label instead.
+  const renderedLabels = new Set(card.args.map((a) => a.label));
   const addable = emitArgs
     .map((spec, position) => ({ spec, position }))
-    .filter(({ spec, position }) => spec.required === false && position >= card.args.length);
+    .filter(({ spec }) => spec.required === false && !renderedLabels.has(spec.label));
   if (addable.length === 0) {
     return null;
   }

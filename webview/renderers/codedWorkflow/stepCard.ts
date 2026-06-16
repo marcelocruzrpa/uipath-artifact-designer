@@ -16,6 +16,18 @@ function spanAttr(span: SourceSpan): string {
   return `${span.startLine}:${span.startCol}-${span.endLine}:${span.endCol}`;
 }
 
+/**
+ * Allowlist for arg kind class suffixes — mirrors the CwArgSummary `kind` union.
+ * An unexpected value collapses to 'unknown' rather than being interpolated verbatim.
+ */
+const ALLOWED_ARG_KINDS = new Set<string>([
+  'literal', 'interpolated', 'identifier', 'target', 'expression'
+]);
+
+function safeArgKind(kind: string): string {
+  return ALLOWED_ARG_KINDS.has(kind) ? kind : 'unknown';
+}
+
 function applyDataAttrs(node: HTMLElement, id: string, span: SourceSpan, tier: number): void {
   node.dataset.id = id;
   node.dataset.span = spanAttr(span);
@@ -51,7 +63,7 @@ export function buildActivityCard(card: CwActivityCard): HTMLElement {
     const argLine = el('div', { class: 'cw-card-args', title: argText(card) });
     for (const arg of card.args) {
       argLine.append(
-        el('span', { class: `cw-arg cw-arg--${arg.kind}` }, [
+        el('span', { class: `cw-arg cw-arg--${safeArgKind(arg.kind)}` }, [
           el('span', { class: 'cw-arg-label', text: `${arg.label}: ` }),
           el('span', { class: 'cw-arg-value', text: arg.value })
         ])

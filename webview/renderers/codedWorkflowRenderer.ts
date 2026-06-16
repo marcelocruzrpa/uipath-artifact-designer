@@ -587,10 +587,17 @@ class CodedWorkflowRenderer implements Renderer {
       );
       titleRow.append(pill);
     } else if (model.parseHealth === 'partial') {
-      const pill = el('span', { class: 'cw-pill cw-pill--partial' });
+      const errorCount = model.parseErrorCount;
+      const pill = el('span', {
+        class: 'cw-pill cw-pill--partial',
+        title: `${errorCount} ${errorCount === 1 ? 'region' : 'regions'} could not be parsed`
+      });
+      pill.setAttribute('aria-live', 'polite');
       pill.append(
         el('span', { class: 'cw-pill-dot' }),
-        document.createTextNode('Partial — some code could not be parsed')
+        document.createTextNode(
+          `Partial — ${errorCount} ${errorCount === 1 ? 'region' : 'regions'} could not be parsed`
+        )
       );
       titleRow.append(pill);
     }
