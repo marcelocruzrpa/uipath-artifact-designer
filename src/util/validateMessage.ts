@@ -59,6 +59,15 @@ const MAX_XML = 2_000_000;
 const MAX_ARRAY = 10_000;
 /** Cap for the depth of a JSON edit path. */
 const MAX_PATH_DEPTH = 64;
+/**
+ * Caps for an opaquely round-tripped condition / SLA tree (see
+ * {@link isPlainObjectArray}). Real DNF condition sets and SLA rules nest only
+ * a handful of levels and hold tens of nodes; these bounds leave generous
+ * headroom while keeping a crafted artifact from forcing a pathological
+ * recursive walk — or smuggling an unbounded string — to disk.
+ */
+const MAX_NESTED_DEPTH = 16;
+const MAX_NESTED_NODES = 50_000;
 
 function isString(v: unknown, max: number): v is string {
   return typeof v === 'string' && v.length <= max;
@@ -121,13 +130,63 @@ function isActionSchemaSectionName(v: unknown): v is ActionSchemaSectionName {
 }
 
 /**
+ * Recursively validates one node of an opaquely round-tripped value tree:
+ *  - every object key is a {@link isSafeKey} (no `__proto__` / `constructor`
+ *    / over-long key at ANY depth, not just the top level),
+ *  - every string is within {@link MAX_TEXT} (no unbounded nested string),
+ *  - nesting never exceeds {@link MAX_NESTED_DEPTH}, and
+ *  - the whole tree holds at most {@link MAX_NESTED_NODES} nodes.
+ *
+ * `counter.n` is shared across the walk so the node budget is global, not
+ * per-branch. Returns false the moment any bound is violated.
+ */
+function isSafeNestedValue(v: unknown, depth: number, counter: { n: number }): boolean {
+  if (++counter.n > MAX_NESTED_NODES) {
+    return false;
+  }
+  if (v === null || typeof v === 'boolean' || v === undefined) {
+    return true;
+  }
+  if (typeof v === 'number') {
+    return Number.isFinite(v);
+  }
+  if (typeof v === 'string') {
+    return v.length <= MAX_TEXT;
+  }
+  if (depth >= MAX_NESTED_DEPTH) {
+    return false;
+  }
+  if (Array.isArray(v)) {
+    return v.length <= MAX_ARRAY && v.every((item) => isSafeNestedValue(item, depth + 1, counter));
+  }
+  if (isRecord(v)) {
+    for (const key of Object.keys(v)) {
+      // A dangerous or over-long key anywhere in the tree reaches disk verbatim
+      // when the value is round-tripped; reject it here (not just at the top).
+      if (!isSafeKey(key) || !isSafeNestedValue(v[key], depth + 1, counter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  // Functions, symbols, bigint — never present in a postMessage-decoded value.
+  return false;
+}
+
+/**
  * A bounded array whose entries are all plain objects. Used for condition /
- * SLA arrays that are round-tripped opaquely into `caseplan.json` — the
- * parser drops malformed entries silently, so the validator's job here is
- * just to keep primitives, nulls and nested arrays out of disk.
+ * SLA arrays that are round-tripped opaquely into `caseplan.json`. The parser
+ * drops malformed entries silently, so this gate's job is to keep primitives,
+ * nulls and bare nested arrays out of the top level AND — recursively — to
+ * reject prototype-polluting keys and unbounded strings buried anywhere in a
+ * nested object, plus cap nesting depth and total node count.
  */
 function isPlainObjectArray(v: unknown): v is Record<string, unknown>[] {
-  return Array.isArray(v) && v.length <= MAX_ARRAY && v.every((entry) => isRecord(entry));
+  if (!Array.isArray(v) || v.length > MAX_ARRAY) {
+    return false;
+  }
+  const counter = { n: 0 };
+  return v.every((entry) => isRecord(entry) && isSafeNestedValue(entry, 0, counter));
 }
 
 /** An optional id array: absent, or a bounded array of bounded strings. */
@@ -341,7 +400,7 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
       return isString(raw.id, MAX_ID) &&
         typeof raw.argIndex === 'number' &&
         Number.isInteger(raw.argIndex) &&
-        typeof raw.newText === 'string'
+        isString(raw.newText, MAX_TEXT)
         ? { type: 'editValue', id: raw.id, argIndex: raw.argIndex, newText: raw.newText }
         : null;
     case 'editArg':

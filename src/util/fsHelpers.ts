@@ -83,9 +83,12 @@ function normalizeUriPathForCompare(uri: vscode.Uri): string | null {
  * compares case-insensitively on Windows for file-scheme URIs (NTFS is
  * case-insensitive — a case-sensitive guard would be unsound there).
  *
- * Note: this does not call `fs.realpath`, so a symlink inside `parent`
- * pointing outside still passes. Symlink resolution is a larger change;
- * for now we rely on workspace conventions plus VS Code's own URI handling.
+ * Note: this is a PURE lexical check — it does not resolve symlinks (this
+ * module is bundled into the webview, so it cannot import `fs`). A symlink
+ * inside `parent` pointing outside would pass here. WRITE sinks must therefore
+ * layer a real-path/symlink gate on top in the host (see
+ * `ArtifactEditorProvider.isSafeWriteTarget`); this function stays the cheap
+ * first-pass containment check.
  */
 export function isInside(parent: vscode.Uri, child: vscode.Uri): boolean {
   if (parent.scheme !== child.scheme || parent.authority !== child.authority) {

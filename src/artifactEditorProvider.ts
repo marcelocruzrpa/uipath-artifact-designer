@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fsp from 'node:fs/promises';
+import * as nodePath from 'node:path';
 import { VIEW_TYPES } from './constants';
 import type { ArtifactDescriptor, EditContext, FileEdit } from './model/artifactDescriptor';
 import { descriptorForUri } from './model/registry';
@@ -16,6 +18,7 @@ import {
   computeValueEdit,
   type ComputedEdit
 } from './artifacts/codedWorkflowEdit';
+import { forgetLastGood } from './artifacts/codedWorkflowDescriptor';
 
 /**
  * A single, registry-driven CustomTextEditorProvider that renders any
@@ -310,6 +313,11 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       if (this.activePanelKey === key) {
         this.activePanelKey = undefined;
       }
+      // Evict this document's coded-workflow last-good model so a closed editor
+      // does not pin it in the module-level cache. A no-op for other kinds.
+      if (descriptor?.kind === 'coded-workflow') {
+        forgetLastGood(key);
+      }
     });
   }
 
@@ -367,25 +375,67 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       case 'log':
         break;
       case 'editValue':
-        // Coded-workflow value edit. The model build + resolve + parse-gate
-        // live in a vscode-free helper so they stay unit-testable; here we
-        // only translate the result into a range WorkspaceEdit.
-        await this.applyComputedEdit(document, await computeValueEdit(document.getText(), message));
-        break;
       case 'editArg':
-        // Coded-workflow structural arg edit (add/remove/change/method switch);
-        // same vscode-free helper path as editValue.
-        await this.applyComputedEdit(document, await computeArgEdit(document.getText(), message));
-        break;
       case 'addStatement':
-        await this.applyComputedEdit(document, await computeAddStatement(document.getText(), message));
-        break;
       case 'deleteStatement':
-        await this.applyComputedEdit(document, await computeDeleteStatement(document.getText(), message));
+      case 'moveStatement': {
+        // These five cases write to the open `.cs` through the coded-workflow
+        // edit engine. Gate them on the document actually being a coded
+        // workflow — the same descriptor isolation the JSON `applyEdit` path
+        // has — so a message crafted for one artifact kind cannot drive an
+        // edit on a different open document.
+        if (descriptor?.kind !== 'coded-workflow') {
+          logWarn(`ignored coded-workflow ${message.type} on a ${descriptor?.kind ?? 'unknown'} document`);
+          break;
+        }
+        // The model build + resolve + parse-gate live in vscode-free helpers so
+        // they stay unit-testable; here we only translate the result into a
+        // range WorkspaceEdit.
+        const text = document.getText();
+        const computed =
+          message.type === 'editValue'
+            ? await computeValueEdit(text, message)
+            : message.type === 'editArg'
+              ? await computeArgEdit(text, message)
+              : message.type === 'addStatement'
+                ? await computeAddStatement(text, message)
+                : message.type === 'deleteStatement'
+                  ? await computeDeleteStatement(text, message)
+                  : await computeMoveStatement(text, message);
+        await this.applyComputedEdit(document, computed, render);
         break;
-      case 'moveStatement':
-        await this.applyComputedEdit(document, await computeMoveStatement(document.getText(), message));
+      }
+      case 'editResourceField': {
+        // WRITE sink: the descriptor writes JSON back to `message.uri`. Its own
+        // `isInside` gate is a pure LEXICAL prefix check that does not resolve
+        // symlinks — a link inside the project pointing outside would pass. Add
+        // a host-side realpath/symlink gate here (where Node fs is allowed)
+        // BEFORE delegating, so a crafted target cannot redirect the write out
+        // of the project. The descriptor keeps its own lexical check too
+        // (defense in depth).
+        let root: vscode.Uri | undefined;
+        try {
+          root = await descriptor?.resourceRoot?.(document);
+        } catch {
+          root = undefined;
+        }
+        const ok = await this.isSafeWriteTarget(
+          message.uri,
+          root ?? uriDirname(document.uri),
+          document.uri
+        );
+        if (!ok) {
+          void vscode.window.showWarningMessage(
+            'UiPath Designer: refused to write to a file outside the project.'
+          );
+          break;
+        }
+        if (descriptor) {
+          await descriptor.applyEdit(message, document, this.editContext);
+          await render();
+        }
         break;
+      }
       default:
         if (descriptor) {
           await descriptor.applyEdit(message, document, this.editContext);
@@ -396,6 +446,85 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   /**
+   * Containment gate for a WRITE target, stronger than the pure-lexical
+   * {@link isInside}. Returns false (reject the write) unless ALL hold:
+   *  - the URI parses and shares the document's scheme,
+   *  - it passes the lexical `isInside` check against `root`,
+   *  - and, for `file:` targets, neither the target nor any ancestor is a
+   *    symlink that escapes `root` once real paths are resolved.
+   *
+   * Symlink resolution only applies to `file:` URIs (the only scheme Node's
+   * `fs.realpath` understands); other schemes fall back to the lexical check,
+   * which is all the descriptor had before. A target that does not yet exist is
+   * resolved through its nearest existing ancestor, so a brand-new file inside a
+   * symlinked-out directory is still rejected. Never throws.
+   */
+  private async isSafeWriteTarget(
+    rawUri: string,
+    root: vscode.Uri,
+    documentUri: vscode.Uri
+  ): Promise<boolean> {
+    let target: vscode.Uri;
+    try {
+      target = vscode.Uri.parse(rawUri, true);
+    } catch {
+      return false;
+    }
+    if (target.scheme !== documentUri.scheme || !isInside(root, target)) {
+      return false;
+    }
+    if (target.scheme !== 'file' || root.scheme !== 'file') {
+      // No real-path layer for non-file schemes; the lexical check stands.
+      return true;
+    }
+    try {
+      const realRoot = await fsp.realpath(root.fsPath);
+      // Resolve the target through its nearest existing ancestor so a
+      // not-yet-created file is still checked against resolved directories.
+      const realTarget = await this.realpathThroughAncestors(target.fsPath);
+      const rootUri = vscode.Uri.file(realRoot);
+      const targetUri = vscode.Uri.file(realTarget);
+      // Reject when the target itself is a symbolic link, regardless of where
+      // it resolves — a write sink should never follow a link.
+      const lst = await fsp.lstat(target.fsPath).catch(() => undefined);
+      if (lst?.isSymbolicLink()) {
+        return false;
+      }
+      return isInside(rootUri, targetUri);
+    } catch {
+      // realpath failure (permission, race) — fail closed.
+      return false;
+    }
+  }
+
+  /**
+   * Resolve `fsPath` to a real path, tolerating a target that does not exist
+   * yet: walk up to the nearest existing ancestor, realpath THAT, then re-append
+   * the not-yet-created trailing segments. So a write to a new file inside a
+   * symlinked directory resolves through the link and is caught by containment.
+   */
+  private async realpathThroughAncestors(fsPath: string): Promise<string> {
+    let current = nodePath.resolve(fsPath);
+    const trailing: string[] = [];
+    // Bounded walk: stop at the filesystem root.
+    for (let i = 0; i < 4096; i++) {
+      try {
+        const real = await fsp.realpath(current);
+        return trailing.length === 0 ? real : nodePath.join(real, ...trailing.reverse());
+      } catch {
+        const parent = nodePath.dirname(current);
+        if (parent === current) {
+          // Reached the root without an existing ancestor; return as-is.
+          return nodePath.join(current, ...trailing.reverse());
+        }
+        trailing.push(nodePath.basename(current));
+        current = parent;
+      }
+    }
+    return nodePath.resolve(fsPath);
+  }
+
+  /**
    * Applies a {@link ComputedEdit} from one of the coded-workflow `compute*`
    * helpers: surface a rejection, otherwise prime the echo-guard with the FULL
    * resulting text BEFORE applying the range edit (so after the edit
@@ -403,16 +532,25 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
    * listener's `=== lastWrittenText.get(key)` check skips the self-triggered
    * re-render; native undo reverts in one step). Shared by editValue / editArg /
    * addStatement / deleteStatement / moveStatement so all four take one path.
+   *
+   * `applyEdit` can REJECT (the document changed under us, or VS Code refused
+   * the edit). On rejection we must not leave the echo-guard primed with text
+   * that was never written — the next genuine external change would then be
+   * mistaken for our own echo and silently dropped. So we clear the guard, warn
+   * the user, and force a re-render to resync the webview to the document's
+   * actual content. Mirrors {@link applyFileEdits}.
    */
   private async applyComputedEdit(
     document: vscode.TextDocument,
-    computed: ComputedEdit
+    computed: ComputedEdit,
+    render: () => Promise<void>
   ): Promise<void> {
     if (!computed.ok) {
       void vscode.window.showWarningMessage(`Edit rejected: ${computed.error}`);
       return;
     }
-    this.lastWrittenText.set(this.documentKey(document.uri), computed.after);
+    const key = this.documentKey(document.uri);
+    this.lastWrittenText.set(key, computed.after);
     const edit = new vscode.WorkspaceEdit();
     for (const p of computed.patches) {
       edit.replace(
@@ -421,7 +559,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         p.newText
       );
     }
-    await vscode.workspace.applyEdit(edit);
+    const applied = await vscode.workspace.applyEdit(edit);
+    if (!applied) {
+      // The edit was rejected and the document is unchanged. Drop the primed
+      // echo-guard text (we never wrote it) so a later real edit is not skipped,
+      // tell the user, and resync the webview to disk.
+      this.lastWrittenText.delete(key);
+      void vscode.window.showWarningMessage(
+        'UiPath Designer: could not apply your change — the file may have been ' +
+          'modified outside the designer. The view has been refreshed.'
+      );
+      await render();
+    }
   }
 
   /** Reads and parses a JSON file via the document model (dirty-aware). */

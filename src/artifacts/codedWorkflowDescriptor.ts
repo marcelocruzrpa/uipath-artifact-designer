@@ -66,6 +66,23 @@ function rememberLastGood(key: string, model: CodedWorkflowModel): void {
   }
 }
 
+/**
+ * Drop a single document's last-good model — call when its editor closes so a
+ * closed document does not pin its model in the module-level cache.
+ */
+export function forgetLastGood(documentUri: string): void {
+  lastGoodModels.delete(documentUri);
+}
+
+/**
+ * Drop every retained last-good model. Mirrors
+ * {@link CodedProjectIndex.disposeAll}; wire it to extension deactivate so the
+ * module-level cache is cleared on teardown.
+ */
+export function clearLastGoodModels(): void {
+  lastGoodModels.clear();
+}
+
 // ---------------------------------------------------------------------------
 // loadModel
 // ---------------------------------------------------------------------------

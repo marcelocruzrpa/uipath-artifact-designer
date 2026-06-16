@@ -33,12 +33,37 @@ const EXCLUDE_GLOB =
 interface CachedFileFacts {
   mtimeMs: number;
   size: number;
+  /**
+   * FNV-1a fingerprint of the decoded source (see {@link fingerprint}). The
+   * authoritative validity key: `mtimeMs`/`size` alone are unsound — a
+   * same-length external edit, or a git checkout that restores a file's mtime
+   * AND size, would otherwise serve stale call-graph facts for OTHER documents.
+   */
+  hash: number;
   facts: FileFacts;
 }
 
 /** On Windows file systems path comparison must be case-insensitive. */
 function normalizeForCompare(p: string): string {
   return process.platform === 'win32' ? p.toLowerCase() : p;
+}
+
+/**
+ * 32-bit FNV-1a hash of a string — a cheap, non-cryptographic content
+ * fingerprint used to validate the per-file fact cache. A collision would at
+ * worst serve stale facts for one file (the exact failure the mtime+size check
+ * already had); FNV-1a's distribution makes that astronomically unlikely for
+ * source files, and computing it is far cheaper than the tree-sitter parse it
+ * lets us skip.
+ */
+function fingerprint(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    // h * 16777619, kept in 32-bit range via Math.imul.
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }
 
 export class CodedProjectIndex {
@@ -163,9 +188,16 @@ export class CodedProjectIndex {
   }
 
   /**
-   * Facts for one on-disk file: served from the cache when mtime+size are
-   * unchanged, otherwise re-read and re-parsed. Returns `undefined` when the
-   * file vanished or could not be read (it simply drops out of this build).
+   * Facts for one on-disk file: served from the cache when the source content
+   * fingerprint is unchanged, otherwise re-read and re-parsed. Returns
+   * `undefined` when the file vanished or could not be read (it simply drops
+   * out of this build).
+   *
+   * The file is read on every call so the cache is validated against actual
+   * content, not just `mtime`/`size` — those can collide (a same-length edit,
+   * or a git checkout restoring both) and would serve stale facts. Reading is
+   * cheap relative to the tree-sitter parse the fingerprint match lets us skip,
+   * so only a genuine content change pays for a re-parse.
    */
   private async factsFor(
     fileUri: vscode.Uri,
@@ -180,11 +212,6 @@ export class CodedProjectIndex {
       return undefined;
     }
 
-    const cached = this.fileCache.get(cacheKey);
-    if (cached !== undefined && cached.mtimeMs === stat.mtime && cached.size === stat.size) {
-      return cached.facts;
-    }
-
     let source: string;
     try {
       source = stripBom(new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(fileUri)));
@@ -194,6 +221,17 @@ export class CodedProjectIndex {
       );
       this.fileCache.delete(cacheKey);
       return undefined;
+    }
+
+    const hash = fingerprint(source);
+    const cached = this.fileCache.get(cacheKey);
+    if (
+      cached !== undefined &&
+      cached.hash === hash &&
+      cached.mtimeMs === stat.mtime &&
+      cached.size === stat.size
+    ) {
+      return cached.facts;
     }
 
     const handle = await getCSharpParser();
@@ -206,7 +244,7 @@ export class CodedProjectIndex {
     } finally {
       tree.delete();
     }
-    this.fileCache.set(cacheKey, { mtimeMs: stat.mtime, size: stat.size, facts });
+    this.fileCache.set(cacheKey, { mtimeMs: stat.mtime, size: stat.size, hash, facts });
     return facts;
   }
 }

@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
 import { findProjectRoot } from './artifacts/codedProject';
 import { CodedProjectIndex } from './artifacts/codedProjectIndex';
+import { clearLastGoodModels } from './artifacts/codedWorkflowDescriptor';
 import { VIEW_TYPES } from './constants';
 import { artifactRegistry, descriptorForUri } from './model/registry';
 import { isCodedWorkflowSource } from './model/codedWorkflow/detectSource';
@@ -246,7 +247,10 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     // Drop the per-project graph indexes (and their parsed-fact caches) when
     // the extension is deactivated.
-    { dispose: () => CodedProjectIndex.disposeAll() }
+    { dispose: () => CodedProjectIndex.disposeAll() },
+    // Drop the coded-workflow last-good model cache on deactivate (per-document
+    // eviction is wired in the provider's dispose; this is the teardown sweep).
+    { dispose: () => clearLastGoodModels() }
   );
 }
 
