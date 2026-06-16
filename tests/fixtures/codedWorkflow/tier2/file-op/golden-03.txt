@@ -1,1 +1,1 @@
-Combine path | fullPath = outputDir + "report.pdf"
+Combine path | fullPath = Path.Combine(outputDir, "report.pdf")

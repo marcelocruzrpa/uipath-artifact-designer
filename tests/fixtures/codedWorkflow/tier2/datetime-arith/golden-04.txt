@@ -1,1 +1,1 @@
-Calculate date | expiry = now + graceHours hours
+Calculate time | expiry = now + graceHours hours

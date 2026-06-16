@@ -122,6 +122,13 @@ export interface CwSlot {
   bodySpan?: OffsetSpan;
   /** Leading whitespace of statements in this slot (inferred indentation). */
   indentText?: string;
+  /**
+   * Whether the slot body is a real `{ }` block.  `true` for a block body,
+   * `false` for a block-less single statement (`if (x) Foo();`) and for a
+   * null/empty body.  The edit engine reads this to decide whether an insert
+   * can splice into existing braces or must first wrap the body in `{ }`.
+   */
+  braced?: boolean;
 }
 
 export interface CwContainer extends CwNodeBase {

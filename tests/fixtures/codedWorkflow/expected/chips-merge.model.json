@@ -154,6 +154,7 @@
                     "endLine": 24,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 732,
                     "end": 780

@@ -96,6 +96,7 @@
                     "endLine": 16,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 492,
                     "end": 541

@@ -41,3 +41,12 @@ export const COLLAPSE_CONTAINER_LINES = 150;
 
 /** Per-method render budget before the remainder folds into one chip. */
 export const MAX_RENDER_STATEMENTS = 600;
+
+/**
+ * Max container-nesting depth the body walk recurses before folding the
+ * remaining subtree into ONE tier-3 raw chip (honest — the raw code is still
+ * shown).  Bounds JS recursion so pathologically deep input cannot overflow
+ * the stack and violate the never-throws contract.  Real coded workflows nest
+ * far shallower than this; the cap only fires on adversarial/generated input.
+ */
+export const MAX_NESTING_DEPTH = 100;

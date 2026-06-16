@@ -30,6 +30,12 @@
  *   that matches tier-1 becomes the container's `resourceCard` (counted as a
  *   tier-1 leaf) and its handle still tracks.
  *
+ *   DEPTH CAP (never-throws): the body walk recurses at most
+ *   `MAX_NESTING_DEPTH` container levels; beyond that the remaining subtree
+ *   folds into ONE raw chip (honest — the code is still shown) instead of
+ *   overflowing the stack.  As a final backstop, a method body whose walk
+ *   still throws `RangeError` degrades to a single raw chip of the whole body.
+ *
  * IDS
  *   Hierarchical and stable: `<className>#<methodName>/<path>` where the path
  *   joins child indices and slot roles with '.', e.g.
@@ -104,6 +110,7 @@ import {
   COLLAPSE_STATEMENT_THRESHOLD,
   COLLAPSE_TOTAL_LINES,
   HEADER_MAX_CHARS,
+  MAX_NESTING_DEPTH,
   MAX_RENDER_STATEMENTS
 } from './limits';
 
@@ -257,7 +264,10 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
 /**
  * One-line signature summary: comma-joined parameters with their modifiers
  * (`in string name, out int count`), with ` → <type>` appended for non-void
- * returns.  A void method with no parameters summarizes to ''.
+ * returns.  Generic methods prepend their `<T, U>` type-parameter list and
+ * append any ` where …` constraint clauses verbatim, so a generic signature is
+ * not silently shown as if it were non-generic.  A void, non-generic,
+ * unconstrained method with no parameters summarizes to ''.
  */
 function signatureSummary(method: Node): string {
   const params: string[] = [];
@@ -276,8 +286,18 @@ function signatureSummary(method: Node): string {
   }
   const joined = params.join(', ');
   const returns = method.childForFieldName('returns')?.text ?? 'void';
-  if (returns === 'void') return joined;
-  return joined === '' ? `→ ${returns}` : `${joined} → ${returns}`;
+
+  // Generic type parameters (`<T, U>`) and `where` constraint clauses.
+  const typeParams = method.childForFieldName('type_parameters');
+  const prefix = typeParams !== null ? `${typeParams.text} ` : '';
+  const constraints = method.namedChildren
+    .filter((c) => c.type === 'type_parameter_constraints_clause')
+    .map((c) => c.text.replace(/\s+/g, ' '))
+    .join(' ');
+  const suffix = constraints !== '' ? ` ${constraints}` : '';
+
+  const core = returns === 'void' ? joined : joined === '' ? `→ ${returns}` : `${joined} → ${returns}`;
+  return `${prefix}${core}${suffix}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,7 +356,16 @@ function classifyMethodBody(method: Node, ctx: ClassifyContext): CwStatement[] {
   const body = method.childForFieldName('body');
   if (body === null) return [];
   if (body.type === 'block') {
-    return classifyStatements(blockStatements(body), ctx);
+    // Backstop the never-throws contract: the explicit MAX_NESTING_DEPTH cap
+    // bounds the classify recursion, but if any walk still overflows the stack
+    // (a RangeError), degrade the whole body to one honest raw chip rather than
+    // throwing.  This catches recursion outside the depth-threaded path too.
+    try {
+      return classifyStatements(blockStatements(body), ctx, 0);
+    } catch (err) {
+      if (err instanceof RangeError) return [makeChip(body, ctx)];
+      throw err;
+    }
   }
   if (body.type === 'arrow_expression_clause') {
     // Expression-bodied member: counted as one leaf.
@@ -356,46 +385,52 @@ function blockStatements(block: Node): Node[] {
  * post-pass (spliced sub-lists re-merge in the parent — the re-slice from
  * source keeps that associative).
  */
-function classifyStatements(stmts: Node[], ctx: ClassifyContext): CwStatement[] {
+function classifyStatements(stmts: Node[], ctx: ClassifyContext, depth: number): CwStatement[] {
   const out: CwStatement[] = [];
   for (const stmt of stmts) {
     if (stmt.type === 'comment') continue;
     if (stmt.type === 'block') {
-      out.push(...classifyStatements(blockStatements(stmt), ctx));
+      out.push(...classifyStatements(blockStatements(stmt), ctx, depth));
       continue;
     }
-    out.push(classifyStatement(stmt, ctx));
+    out.push(classifyStatement(stmt, ctx, depth));
   }
   return mergeAdjacentChips(out, ctx.source);
 }
 
-/** Classify one (non-block, non-comment) statement node. */
-function classifyStatement(stmt: Node, ctx: ClassifyContext): CwStatement {
+/**
+ * Classify one (non-block, non-comment) statement node.  Beyond
+ * `MAX_NESTING_DEPTH` container levels the statement is folded into a single
+ * raw chip WITHOUT recursing into it — bounding stack depth on pathologically
+ * nested input while still showing the raw code (honest).
+ */
+function classifyStatement(stmt: Node, ctx: ClassifyContext, depth: number): CwStatement {
+  if (depth >= MAX_NESTING_DEPTH) return makeChip(stmt, ctx);
   switch (stmt.type) {
     case 'if_statement':
-      return buildIf(stmt, ctx);
+      return buildIf(stmt, ctx, depth);
     case 'foreach_statement': {
       const left = stmt.childForFieldName('left');
       const right = stmt.childForFieldName('right');
       const header = `For Each ${left !== null ? slice(left, ctx) : '?'} in ${right !== null ? slice(right, ctx) : '?'}`;
-      return buildLoop(stmt, 'foreach', header, ctx);
+      return buildLoop(stmt, 'foreach', header, ctx, depth);
     }
     case 'for_statement':
-      return buildLoop(stmt, 'for', `For ${parenContent(stmt, ctx)}`, ctx);
+      return buildLoop(stmt, 'for', `For ${parenContent(stmt, ctx)}`, ctx, depth);
     case 'while_statement': {
       const cond = stmt.childForFieldName('condition');
-      return buildLoop(stmt, 'while', `While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx);
+      return buildLoop(stmt, 'while', `While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx, depth);
     }
     case 'do_statement': {
       const cond = stmt.childForFieldName('condition');
-      return buildLoop(stmt, 'do', `Do … While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx);
+      return buildLoop(stmt, 'do', `Do … While ${cond !== null ? slice(cond, ctx) : '?'}`, ctx, depth);
     }
     case 'try_statement':
-      return buildTry(stmt, ctx);
+      return buildTry(stmt, ctx, depth);
     case 'switch_statement':
-      return buildSwitch(stmt, ctx);
+      return buildSwitch(stmt, ctx, depth);
     case 'using_statement':
-      return buildUsing(stmt, ctx);
+      return buildUsing(stmt, ctx, depth);
     case 'local_function_statement':
       // ONE chip, no recursion — helpers get no canvas (see module header).
       return makeChip(stmt, ctx);
@@ -499,21 +534,25 @@ function slotFrom(
   label: string,
   body: Node | null,
   fallbackSpanNode: Node,
-  ctx: ClassifyContext
+  ctx: ClassifyContext,
+  depth: number
 ): CwSlot {
   if (body === null) {
-    return { role, label: capHeader(label), children: [], span: toSpan(fallbackSpanNode) };
+    return { role, label: capHeader(label), children: [], span: toSpan(fallbackSpanNode), braced: false };
   }
-  const children =
-    body.type === 'block'
-      ? classifyStatements(blockStatements(body), ctx)
-      : classifyStatements([body], ctx);
+  const isBlock = body.type === 'block';
+  // A slot's statements live one nesting level deeper than the container.
+  const childDepth = depth + 1;
+  const children = isBlock
+    ? classifyStatements(blockStatements(body), ctx, childDepth)
+    : classifyStatements([body], ctx, childDepth);
   return {
     role,
     label: capHeader(label),
     children,
     span: toSpan(body),
-    ...bodyInterior(body.type === 'block' ? body : null, ctx.source)
+    braced: isBlock,
+    ...bodyInterior(isBlock ? body : null, ctx.source)
   };
 }
 
@@ -536,10 +575,10 @@ function makeContainer(
 }
 
 /** `if` / `else if` / `else` — chains flattened into sibling slots. */
-function buildIf(stmt: Node, ctx: ClassifyContext): CwContainer {
+function buildIf(stmt: Node, ctx: ClassifyContext, depth: number): CwContainer {
   const condition = stmt.childForFieldName('condition');
   const slots: CwSlot[] = [
-    slotFrom('then', 'Then', stmt.childForFieldName('consequence'), stmt, ctx)
+    slotFrom('then', 'Then', stmt.childForFieldName('consequence'), stmt, ctx, depth)
   ];
 
   let alternative = stmt.childForFieldName('alternative');
@@ -551,13 +590,14 @@ function buildIf(stmt: Node, ctx: ClassifyContext): CwContainer {
         `Else If ${cond !== null ? slice(cond, ctx) : '?'}`,
         alternative.childForFieldName('consequence'),
         alternative,
-        ctx
+        ctx,
+        depth
       )
     );
     alternative = alternative.childForFieldName('alternative');
   }
   if (alternative !== null) {
-    slots.push(slotFrom('else', 'Else', alternative, stmt, ctx));
+    slots.push(slotFrom('else', 'Else', alternative, stmt, ctx, depth));
   }
 
   return makeContainer(
@@ -573,10 +613,11 @@ function buildLoop(
   stmt: Node,
   kind: 'for' | 'foreach' | 'while' | 'do',
   header: string,
-  ctx: ClassifyContext
+  ctx: ClassifyContext,
+  depth: number
 ): CwContainer {
   return makeContainer(stmt, kind, header, [
-    slotFrom('body', 'Body', stmt.childForFieldName('body'), stmt, ctx)
+    slotFrom('body', 'Body', stmt.childForFieldName('body'), stmt, ctx, depth)
   ]);
 }
 
@@ -597,36 +638,45 @@ function parenContent(stmt: Node, ctx: ClassifyContext): string {
   return ctx.source.slice(open.endIndex, close.startIndex).trim();
 }
 
-function buildTry(stmt: Node, ctx: ClassifyContext): CwContainer {
+function buildTry(stmt: Node, ctx: ClassifyContext, depth: number): CwContainer {
   const slots: CwSlot[] = [
-    slotFrom('try', 'Try', stmt.childForFieldName('body'), stmt, ctx)
+    slotFrom('try', 'Try', stmt.childForFieldName('body'), stmt, ctx, depth)
   ];
   for (const clause of stmt.namedChildren) {
     if (clause.type === 'catch_clause') {
       slots.push(
-        slotFrom('catch', catchLabel(clause), clause.childForFieldName('body'), clause, ctx)
+        slotFrom('catch', catchLabel(clause, ctx), clause.childForFieldName('body'), clause, ctx, depth)
       );
     } else if (clause.type === 'finally_clause') {
       const block = clause.namedChildren.find((c) => c.type === 'block') ?? null;
-      slots.push(slotFrom('finally', 'Finally', block, clause, ctx));
+      slots.push(slotFrom('finally', 'Finally', block, clause, ctx, depth));
     }
   }
   return makeContainer(stmt, 'try', 'Try / Catch', slots);
 }
 
-/** `Catch` / `Catch IOException` / `Catch IOException ex` from the declaration. */
-function catchLabel(clause: Node): string {
+/**
+ * `Catch` / `Catch IOException` / `Catch IOException ex`, plus the exact source
+ * of any `catch_filter_clause` (`when (cond)`) appended verbatim — a filtered
+ * handler is CONDITIONAL, so dropping the filter would read as unconditional
+ * (HONESTY).  A bare `catch when (cond)` (filter, no declaration) keeps the
+ * filter too.  The filter slice mirrors `buildSwitch`'s `when_clause` handling.
+ */
+function catchLabel(clause: Node, ctx: ClassifyContext): string {
   const decl = clause.namedChildren.find((c) => c.type === 'catch_declaration');
-  if (decl === undefined) return 'Catch';
-  const type = decl.childForFieldName('type');
-  const name = decl.childForFieldName('name');
   let label = 'Catch';
-  if (type !== null) label += ` ${type.text}`;
-  if (name !== null) label += ` ${name.text}`;
+  if (decl !== undefined) {
+    const type = decl.childForFieldName('type');
+    const name = decl.childForFieldName('name');
+    if (type !== null) label += ` ${type.text}`;
+    if (name !== null) label += ` ${name.text}`;
+  }
+  const filter = clause.namedChildren.find((c) => c.type === 'catch_filter_clause');
+  if (filter !== undefined) label += ` ${slice(filter, ctx)}`;
   return label;
 }
 
-function buildSwitch(stmt: Node, ctx: ClassifyContext): CwContainer {
+function buildSwitch(stmt: Node, ctx: ClassifyContext, depth: number): CwContainer {
   const value = stmt.childForFieldName('value');
   const slots: CwSlot[] = [];
   const body = stmt.childForFieldName('body');
@@ -651,8 +701,12 @@ function buildSwitch(stmt: Node, ctx: ClassifyContext): CwContainer {
     slots.push({
       role: isDefault ? 'default' : 'case',
       label: capHeader(label),
-      children: classifyStatements(stmts, ctx),
-      span: toSpan(section)
+      children: classifyStatements(stmts, ctx, depth + 1),
+      span: toSpan(section),
+      // A switch_section's statements sit directly under it (the grammar has
+      // no `{ }` wrapper unless the author writes one as a bare block, which is
+      // spliced in) — so the slot is not itself braced.
+      braced: false
     });
   }
   return makeContainer(
@@ -663,7 +717,7 @@ function buildSwitch(stmt: Node, ctx: ClassifyContext): CwContainer {
   );
 }
 
-function buildUsing(stmt: Node, ctx: ClassifyContext): CwContainer {
+function buildUsing(stmt: Node, ctx: ClassifyContext, depth: number): CwContainer {
   // Track the resource handle BEFORE classifying the body so member calls on
   // it resolve to the originating family.
   trackHandle(ctx.handles, stmt);
@@ -677,7 +731,7 @@ function buildUsing(stmt: Node, ctx: ClassifyContext): CwContainer {
 
   const resourceCard = resource !== null ? usingResourceCard(resource, ctx) : undefined;
   const container = makeContainer(stmt, 'using', header, [
-    slotFrom('body', 'Body', body, stmt, ctx)
+    slotFrom('body', 'Body', body, stmt, ctx, depth)
   ]);
   if (resourceCard !== undefined) container.resourceCard = resourceCard;
   return container;

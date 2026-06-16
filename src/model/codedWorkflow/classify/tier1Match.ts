@@ -122,23 +122,70 @@ type ChainWalk =
   | { kind: 'bare'; method: string }
   | { kind: 'rooted'; rootText: string; method: string };
 
+/** A subscript argument list is trivial when every key is a literal or bare identifier. */
+function isTrivialSubscript(subscript: Node | null): boolean {
+  if (subscript === null) return true;
+  for (const arg of subscript.namedChildren) {
+    if (arg.type !== 'argument') continue;
+    const value = arg.namedChildren.find((c) => c.type !== 'comment') ?? null;
+    if (value === null) return false;
+    if (!LITERAL_NODE_TYPES.has(value.type) && value.type !== 'identifier') {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Literal node types accepted as trivial element-access keys. */
+const LITERAL_NODE_TYPES: ReadonlySet<string> = new Set([
+  'string_literal',
+  'verbatim_string_literal',
+  'raw_string_literal',
+  'character_literal',
+  'integer_literal',
+  'real_literal',
+  'boolean_literal',
+  'null_literal'
+]);
+
 /**
  * Walk from an `invocation_expression` down to the root of its receiver
  * chain. Element access and chained invocations are transparent; a leading
  * `this.` is skipped (so `this.Log(...)` is a bare call and
  * `this.system.GetAsset(...)` roots at `system`).
  * Returns null when the chain has an unresolvable shape.
+ *
+ * HONESTY: only the OUTERMOST invocation's arguments are rendered on the card.
+ * An INTERMEDIATE call traversed in the chain (`wb.GetSheet(BuildName(idx++))
+ * .ReadRange()`) would hide `GetSheet(...)` and its side-effecting argument, so
+ * a traversed intermediate invocation with a NON-EMPTY argument list returns
+ * null (→ the statement falls to a tier-3 chip).  Likewise a traversed
+ * element-access subscript that is NON-TRIVIAL (anything other than a literal
+ * or bare identifier) returns null.  A zero-arg intermediate call and a
+ * literal/identifier subscript stay transparent.
  */
 function walkInvocationChain(invocation: Node): ChainWalk | null {
   /** name segments, outermost (the called method) first */
   const segments: string[] = [];
   let cur: Node | null = invocation;
+  /** False until we step past the outermost invocation (whose args ARE shown). */
+  let sawOutermost = false;
 
   while (cur !== null) {
     switch (cur.type) {
-      case 'invocation_expression':
+      case 'invocation_expression': {
+        if (sawOutermost) {
+          // Intermediate call: its args are NOT rendered, so a non-empty arg
+          // list would hide work. Demote the whole statement to a chip.
+          const argList = cur.childForFieldName('arguments');
+          const hasArgs =
+            argList !== null && argList.namedChildren.some((c) => c.type === 'argument');
+          if (hasArgs) return null;
+        }
+        sawOutermost = true;
         cur = cur.childForFieldName('function');
         break;
+      }
       case 'member_access_expression': {
         const name = cur.childForFieldName('name');
         if (name === null) return null;
@@ -147,7 +194,9 @@ function walkInvocationChain(invocation: Node): ChainWalk | null {
         break;
       }
       case 'element_access_expression':
-        // Indexers are transparent: wb.Sheet["S1"].ReadRange() walks through.
+        // Indexers are transparent ONLY when the key is trivial: a non-trivial
+        // subscript (a call / arithmetic) hides work, so demote to a chip.
+        if (!isTrivialSubscript(cur.childForFieldName('subscript'))) return null;
         cur = cur.childForFieldName('expression');
         break;
       case 'conditional_access_expression': {

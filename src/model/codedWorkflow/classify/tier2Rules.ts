@@ -118,6 +118,32 @@ const ESCAPE_HATCH_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * NESTED-CALL POLICY (uniform across the "show the verbatim arg" card rules —
+ * console-write and collection-add): a nested INVOCATION inside the rendered
+ * argument is the real action and must not be characterized by a title for the
+ * OUTER op (`Console.WriteLine(GetTableRange())` is not a log; `list.Add(
+ * Compute())` is not just an add).  Both rules demote such a statement to a
+ * tier-3 raw chip, where the whole statement — nested call included — is shown
+ * as code.  Object creations / element-access reads are values, not calls, and
+ * stay allowed.  A call inside an INTERPOLATION HOLE (`$"{x.Compute()}"`) is
+ * deliberately NOT counted — it is string composition that renders verbatim,
+ * the established convention shared with string-op.
+ */
+function argsHaveNestedCall(argList: Node): boolean {
+  return hasNestedCallOutsideInterpolation(argList);
+}
+
+function hasNestedCallOutsideInterpolation(node: Node): boolean {
+  if (node.type === 'interpolated_string_expression') return false; // string composition
+  if (node.type === 'invocation_expression') return true;
+  for (let i = 0; i < node.namedChildCount; i += 1) {
+    const child = node.namedChild(i);
+    if (child !== null && hasNestedCallOutsideInterpolation(child)) return true;
+  }
+  return false;
+}
+
+/**
  * A statement's single bound value: `var x = <value>;` / `T x = <value>;`
  * (exactly ONE declarator), `x = <value>;`, or `x += <value>;`.
  * Returns null for anything else (multi-declarators, other compound ops,
@@ -235,12 +261,13 @@ const CONSOLE_WRITE: Tier2Rule = {
     'Bare `Console.WriteLine(<arg>)` with exactly one argument that is a ' +
     'literal, an interpolated string, or an identifier → "Write line" card ' +
     'showing the arg verbatim. Receiver must be the identifier `Console`, ' +
-    'method `WriteLine`. A nested call in the argument ' +
-    '(`Console.WriteLine(wb.GetTableRange(...))`) stays tier-3 — the call ' +
-    'inside is the real action and must not hide in a log card — as does any ' +
-    'await/lambda/query anywhere in the arg (interpolation holes included); a ' +
-    'plain sync call inside an interpolation hole renders verbatim. WriteLine ' +
-    'returns void, so only the bare expression statement matches.',
+    'method `WriteLine`. A nested call as the argument ' +
+    '(`Console.WriteLine(wb.GetTableRange(...))`) stays tier-3 per the uniform ' +
+    'NESTED-CALL POLICY (shared with collection-add) — the call inside is the ' +
+    'real action and must not hide in a log card — as does any await/lambda/' +
+    'query anywhere in the arg (interpolation holes included); a plain sync ' +
+    'call inside an interpolation hole renders verbatim. WriteLine returns ' +
+    'void, so only the bare expression statement matches.',
   match: matchConsoleWrite,
   titleTemplate: 'Write line',
   textTemplate: '{arg}'
@@ -345,6 +372,10 @@ function matchCollectionAdd(
   // await/lambda/query anywhere in the args is hidden work — shared fence.
   const args = value.childForFieldName('arguments');
   if (args === null || containsType(args, ESCAPE_HATCH_TYPES)) return null;
+  // A nested call in the args is the real action — uniform NESTED-CALL POLICY
+  // (see argsHaveNestedCall): `list.Add(Compute())` stays tier-3, matching
+  // console-write, instead of reading as a plain "Add item".
+  if (argsHaveNestedCall(args)) return null;
   // Args must be a well-formed list (no named-arg/odd shapes); the title never
   // drops an argument because the whole `recv.Add(args)` slice is shown.
   if (argumentValues(args) === null) return null;
@@ -367,8 +398,10 @@ const COLLECTION_ADD: Tier2Rule = {
     'receiver.Add(args) call>` so no argument is ever dropped. Computed ' +
     'receivers — `.Add` on a method-call result (`GetList().Add(x)`) or an ' +
     'element-access (`map[k].Add(x)`) — stay tier-3, as does any await/lambda/' +
-    'query in the args. Only the bare expression statement matches; a bound ' +
-    '`var r = x.Add(...)` falls to assign-from-call.',
+    'query in the args AND a nested call in the args (`list.Add(Compute())`) ' +
+    'per the uniform NESTED-CALL POLICY shared with console-write. Only the ' +
+    'bare expression statement matches; a bound `var r = x.Add(...)` falls to ' +
+    'assign-from-call.',
   match: matchCollectionAdd,
   titleTemplate: '{title}',
   textTemplate: '{call}'
@@ -487,9 +520,14 @@ function simpleLambdaBody(node: Node): Node | null {
   return body;
 }
 
-/** True when `node` is an identifier or a pure identifier property path. */
+/**
+ * True when `node` is an identifier, a `this` receiver, or a pure property
+ * path rooted at either (`items`, `this.items`, `this.data.Rows`).  A `this.`
+ * root is just as side-effect-free as a bare identifier path, so it must not
+ * force an otherwise-clean `this.list.Add(x)` down to tier-3.
+ */
 function isIdentifierPath(node: Node): boolean {
-  if (node.type === 'identifier') return true;
+  if (node.type === 'identifier' || node.type === 'this') return true;
   if (node.type !== 'member_access_expression') return false;
   const expr = node.childForFieldName('expression');
   return expr !== null && isIdentifierPath(expr);
@@ -537,8 +575,10 @@ function matchLinqSingleChain(
   }
   const links = reversed.reverse();
 
-  // Title by dominance: the last aggregate wins; else Where > Select > the
-  // terminal conversion (named for what it actually produces).
+  // Title: a terminal aggregate wins (it is the produced value); otherwise the
+  // title names EVERY shaping op present so a mixed Where+Select chain is not
+  // under-described as a bare "Filter" — the full per-link text still shows
+  // each step verbatim below.
   let title = links[links.length - 1].name === 'ToArray' ? 'To array' : 'To list';
   const lastAggregate = [...links].reverse().find((l) => LINQ_AGGREGATES.has(l.name));
   if (lastAggregate !== undefined) {
@@ -548,10 +588,12 @@ function matchLinqSingleChain(
         : lastAggregate.name === 'Count'
           ? 'Count'
           : 'Take first';
-  } else if (links.some((l) => l.name === 'Where')) {
-    title = 'Filter';
-  } else if (links.some((l) => l.name === 'Select')) {
-    title = 'Transform';
+  } else {
+    const hasWhere = links.some((l) => l.name === 'Where');
+    const hasSelect = links.some((l) => l.name === 'Select');
+    if (hasWhere && hasSelect) title = 'Filter and transform';
+    else if (hasWhere) title = 'Filter';
+    else if (hasSelect) title = 'Transform';
   }
 
   const segments = links.map((link) => {
@@ -594,9 +636,11 @@ const LINQ_SINGLE_CHAIN: Tier2Rule = {
     'property path. Where/Select/Sum take exactly one single-param ' +
     'expression-bodied lambda with no nested call, object creation, or await; ' +
     'Count/First/FirstOrDefault/ToList/ToArray take zero args (predicate ' +
-    'overloads stay tier-3). Title by dominance: last aggregate > Where ' +
-    '(Filter) > Select (Transform) > To list / To array. FirstOrDefault links ' +
-    'render "first or default"; ToArray renders "to array".',
+    'overloads stay tier-3). Title: a terminal aggregate wins (Sum/Count/Take ' +
+    'first); otherwise the title names every shaping op present — "Filter and ' +
+    'transform" for Where+Select, else "Filter" / "Transform" — falling back to ' +
+    '"To list" / "To array". FirstOrDefault links render "first or default"; ' +
+    'ToArray renders "to array". Each link is also shown verbatim in the text.',
   match: matchLinqSingleChain,
   titleTemplate: '{title}',
   textTemplate: '{x} = {chain}'
@@ -664,7 +708,11 @@ const FILE_OP_ARITIES: ReadonlyMap<string, readonly [number, number]> = new Map<
  *                                            (matchFileOp guarantees a third
  *                                            arg is a boolean literal)
  *   - Directory.GetFiles (bound, 1 arg)    → `{x} = files in {a0}`
- *   - Path.Combine (bound, ≥2 args)        → `{x} = {a0} + {a1} + …`
+ *   - Path.Combine (bound, ≥2 args)        → `{x} = {call}` (the verbatim
+ *                                            `Path.Combine(...)` call — a `+`
+ *                                            join would LIE when a later arg is
+ *                                            rooted/absolute, since
+ *                                            `Path.Combine("/a","/b") == "/b"`)
  *   - everything else / shape fallback     → `{x} = {call}` when bound,
  *                                            else the exact `{call}` source
  */
@@ -703,9 +751,9 @@ function fileOpText(
       }
       break;
     case 'Path.Combine':
-      if (binding !== null && argSrc.length >= 2) {
-        return `${binding} = ${argSrc.join(' + ')}`;
-      }
+      // No synthesized `+` join: `Path.Combine` discards earlier segments once
+      // a later arg is rooted/absolute, so `a + b` would be false.  Render the
+      // verbatim call (every arg still shown) via the shape fallback below.
       break;
     default:
       break;
@@ -790,14 +838,28 @@ const NOW_WORDS: ReadonlyMap<string, string> = new Map([
   ['UtcNow', 'now (UTC)']
 ]);
 
-/** `Add*` method → singular unit word. */
-const ADD_UNITS: ReadonlyMap<string, string> = new Map([
-  ['AddDays', 'day'],
-  ['AddMonths', 'month'],
-  ['AddYears', 'year'],
-  ['AddHours', 'hour'],
-  ['AddMinutes', 'minute']
+/** `Add*` method → singular unit word + whether it is a clock-TIME unit. */
+const ADD_UNITS: ReadonlyMap<string, { unit: string; time: boolean }> = new Map([
+  ['AddDays', { unit: 'day', time: false }],
+  ['AddMonths', { unit: 'month', time: false }],
+  ['AddYears', { unit: 'year', time: false }],
+  ['AddHours', { unit: 'hour', time: true }],
+  ['AddMinutes', { unit: 'minute', time: true }]
 ]);
+
+/**
+ * Parse a C# integer literal's magnitude, honoring `0x`/`0b`/`0o` radix
+ * prefixes, digit separators (`_`), and `lLuU` suffixes — so `0b1`, `0x1`,
+ * `1_000`, and `1L` all read as their true value (`Number('0b1')` is NaN, which
+ * would wrongly pluralize a "1").  Returns NaN only for genuinely unparseable text.
+ */
+function integerLiteralValue(text: string): number {
+  const cleaned = text.replace(/[_]/g, '').replace(/[lLuU]+$/, '');
+  if (/^0[xX]/.test(cleaned)) return Number.parseInt(cleaned.slice(2), 16);
+  if (/^0[bB]/.test(cleaned)) return Number.parseInt(cleaned.slice(2), 2);
+  if (/^0[oO]/.test(cleaned)) return Number.parseInt(cleaned.slice(2), 8);
+  return Number(cleaned);
+}
 
 /** `DateTime.{Now,Today,UtcNow}` member access → its now-word, else null. */
 function nowWordOf(node: Node): string | null {
@@ -834,9 +896,9 @@ function matchDatetimeArith(
   const recv = fn.childForFieldName('expression');
   const name = fn.childForFieldName('name');
   if (recv === null || name === null || name.type !== 'identifier') return null;
-  const unit = ADD_UNITS.get(name.text);
+  const unitSpec = ADD_UNITS.get(name.text);
   const nowWord = nowWordOf(recv);
-  if (unit === undefined || nowWord === null) return null;
+  if (unitSpec === undefined || nowWord === null) return null;
   const args = argumentValues(value.childForFieldName('arguments'));
   if (args === null || args.length !== 1) return null;
   const arg = args[0];
@@ -847,14 +909,14 @@ function matchDatetimeArith(
   let singular = false;
   if (arg.type === 'integer_literal') {
     amount = arg.text;
-    singular = Number(arg.text.replace(/[_lLuU]/g, '')) === 1;
+    singular = integerLiteralValue(arg.text) === 1;
   } else if (arg.type === 'prefix_unary_expression') {
     const op = arg.child(0);
     const inner = arg.namedChildren.find((c) => c.type === 'integer_literal');
     if (op === null || op.type !== '-' || inner === undefined) return null;
     sign = '−'; // U+2212, rendered with the absolute value
     amount = inner.text;
-    singular = Number(inner.text.replace(/[_lLuU]/g, '')) === 1;
+    singular = integerLiteralValue(inner.text) === 1;
   } else if (arg.type === 'identifier') {
     amount = arg.text; // identifiers always render plural
   } else {
@@ -863,9 +925,11 @@ function matchDatetimeArith(
 
   return {
     captures: {
-      title: 'Calculate date',
+      // Adding hours/minutes produces a clock time, not just a date — title
+      // by the unit so "Calculate time" is not mislabeled "Calculate date".
+      title: unitSpec.time ? 'Calculate time' : 'Calculate date',
       x: bound.binding,
-      value: `${nowWord} ${sign} ${amount} ${unit}${singular ? '' : 's'}`
+      value: `${nowWord} ${sign} ${amount} ${unitSpec.unit}${singular ? '' : 's'}`
     }
   };
 }
@@ -879,10 +943,13 @@ const DATETIME_ARITH: Tier2Rule = {
     '`DateTime.{Now,Today,UtcNow}` bare reads (`Read clock | t = now`) and a ' +
     'single `Add{Days,Months,Years,Hours,Minutes}(n)` call on such a read ' +
     'with n an integer literal, unary-minus literal, or identifier ' +
-    '(`Calculate date | dueDate = today + 30 days`; negative literals render ' +
-    'as U+2212 with the absolute value; the unit is singular only for ' +
-    'literal ±1). DateTimeOffset/TimeSpan property reads and general +/− ' +
-    'date arithmetic need type inference and stay tier-3.',
+    '(`Calculate date | dueDate = today + 30 days`). Day/Month/Year arithmetic ' +
+    'titles "Calculate date"; Hour/Minute arithmetic produces a clock time and ' +
+    'titles "Calculate time". Negative literals render as U+2212 with the ' +
+    'absolute value; the unit is singular only for a literal magnitude of 1 ' +
+    '(decimal, hex `0x1`, binary `0b1`, with `_` separators / `lLuU` suffixes ' +
+    'all parsed). DateTimeOffset/TimeSpan property reads and general +/− date ' +
+    'arithmetic need type inference and stay tier-3.',
   match: matchDatetimeArith,
   titleTemplate: '{title}',
   textTemplate: '{x} = {value}'

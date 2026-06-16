@@ -118,6 +118,12 @@
                             "end": 664
                           },
                           "valueRaw": "\"B7\""
+                        },
+                        {
+                          "label": "+1 more",
+                          "value": "true",
+                          "kind": "expression",
+                          "editableKind": "none"
                         }
                       ],
                       "resultBinding": "cellValue",
@@ -163,6 +169,7 @@
                     "endLine": 18,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 550,
                     "end": 722

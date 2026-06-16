@@ -103,7 +103,23 @@ describe('assembleGraph — workflows.* resolution', () => {
     ]);
   });
 
-  it('resolves a unique public-method match to a solid edge', () => {
+  it('resolves a unique CLASS-name match to a solid edge', () => {
+    const graph = assemble({
+      files: [
+        file('Main.cs', [decl('Main')], [inv('workflows-member', 'Other', 'Main')]),
+        file('Other.cs', [decl('Other', { workflowMethods: ['Execute', 'DoThing'] })])
+      ]
+    });
+    expect(graph.edges).toEqual([
+      expect.objectContaining({ target: 'cs:Other.cs#Other', resolved: true })
+    ]);
+  });
+
+  it('does NOT fabricate an edge from a public-method name (class-name resolution only)', () => {
+    // `workflows.DoThing` matches no CLASS named DoThing — the `workflows`
+    // proxy exposes one member per workflow CLASS, not per method, so this must
+    // be an unresolved no-match, never a solid edge to a class that merely HAS
+    // a method DoThing.
     const graph = assemble({
       files: [
         file('Main.cs', [decl('Main')], [inv('workflows-member', 'DoThing', 'Main')]),
@@ -111,7 +127,12 @@ describe('assembleGraph — workflows.* resolution', () => {
       ]
     });
     expect(graph.edges).toEqual([
-      expect.objectContaining({ target: 'cs:Other.cs#Other', resolved: true })
+      expect.objectContaining({
+        target: 'unresolved:DoThing',
+        kind: 'invoke-workflow',
+        resolved: false,
+        unresolvedReason: 'no-match'
+      })
     ]);
   });
 
@@ -137,16 +158,18 @@ describe('assembleGraph — workflows.* resolution', () => {
     ]);
   });
 
-  it('fans ambiguous calls out as dashed edges to EACH candidate', () => {
+  it('fans ambiguous calls out as dashed edges to EACH candidate (same CLASS name in two files)', () => {
+    // Two distinct files each declare a class named `Shared` — `workflows.Shared`
+    // cannot pick one, so it fans out to both as dashed 'ambiguous' edges.
     const graph = assemble({
       files: [
         file('Main.cs', [decl('Main')], [inv('workflows-member', 'Shared', 'Main')]),
-        file('A.cs', [decl('Ambig1', { workflowMethods: ['Execute', 'Shared'] })]),
-        file('B.cs', [decl('Ambig2', { workflowMethods: ['Execute', 'Shared'] })])
+        file('A.cs', [decl('Shared', { workflowMethods: ['Execute'] })]),
+        file('B.cs', [decl('Shared', { workflowMethods: ['Execute'] })])
       ]
     });
     const ambiguous = graph.edges.filter((e) => e.unresolvedReason === 'ambiguous');
-    expect(ambiguous.map((e) => e.target).sort()).toEqual(['cs:A.cs#Ambig1', 'cs:B.cs#Ambig2']);
+    expect(ambiguous.map((e) => e.target).sort()).toEqual(['cs:A.cs#Shared', 'cs:B.cs#Shared']);
     expect(ambiguous.every((e) => !e.resolved && e.kind === 'invoke-workflow')).toBe(true);
   });
 
@@ -490,6 +513,10 @@ describe('assembleGraph — sampleProject fixture end-to-end', () => {
     const graph = await buildFixtureGraph();
 
     expect(graph.truncated).toBe(false);
+    // `Shared` exists only as a METHOD on Ambig1/Ambig2, never as a workflow
+    // CLASS, so `workflows.Shared` resolves to NO class — a single dashed
+    // `unresolved:Shared` no-match edge, NOT fabricated ambiguous edges to the
+    // two classes that merely declare a method of that name (HONESTY-6).
     expect(graph.nodes.map((n) => n.id)).toEqual([
       'cs:Workflows/Ambig1.cs#Ambig1',
       'cs:Workflows/Ambig2.cs#Ambig2',
@@ -498,7 +525,8 @@ describe('assembleGraph — sampleProject fixture end-to-end', () => {
       'xaml:Legacy/Old.xaml',
       'cs:Helpers/MathHelper.cs#MathHelper',
       `unresolved:${DYNAMIC_WORKFLOW_NAME}`,
-      'unresolved:Missing'
+      'unresolved:Missing',
+      'unresolved:Shared'
     ]);
 
     const main = 'cs:Workflows/Main.cs#Main';
@@ -506,16 +534,6 @@ describe('assembleGraph — sampleProject fixture end-to-end', () => {
       expect.objectContaining({
         id: `${main}->cs:Helpers/MathHelper.cs#MathHelper:call-helper`,
         resolved: true
-      }),
-      expect.objectContaining({
-        id: `${main}->cs:Workflows/Ambig1.cs#Ambig1:invoke-workflow`,
-        resolved: false,
-        unresolvedReason: 'ambiguous'
-      }),
-      expect.objectContaining({
-        id: `${main}->cs:Workflows/Ambig2.cs#Ambig2:invoke-workflow`,
-        resolved: false,
-        unresolvedReason: 'ambiguous'
       }),
       expect.objectContaining({
         id: `${main}->cs:Workflows/SubFlow.cs#SubFlow:invoke-workflow`,
@@ -528,6 +546,11 @@ describe('assembleGraph — sampleProject fixture end-to-end', () => {
       }),
       expect.objectContaining({
         id: `${main}->unresolved:Missing:invoke-workflow`,
+        resolved: false,
+        unresolvedReason: 'no-match'
+      }),
+      expect.objectContaining({
+        id: `${main}->unresolved:Shared:invoke-workflow`,
         resolved: false,
         unresolvedReason: 'no-match'
       }),

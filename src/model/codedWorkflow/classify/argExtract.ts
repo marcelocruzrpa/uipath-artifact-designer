@@ -17,8 +17,10 @@
  * SPEC-SPECIFIC RENDERING
  *   - 'text' / 'path' / 'enum' → the shared value rendering above.
  *   - 'target' → member-access chains render their LAST TWO dotted segments;
- *     object creations render the first string literal found inside; both
- *     kind 'target'.  Other shapes fall back to the shared rendering.
+ *     object creations render the string literal of a RECOGNIZED selector
+ *     property (`Selector`/`FullSelector`/`FuzzySelector`/`Target`) — never a
+ *     guessed first-string-anywhere — both kind 'target'.  With no recognized
+ *     selector, the whole `new …` falls back to read-only shared rendering.
  *   - 'objectProps' → `Prop: value` pairs (shared rendering per value) for
  *     the spec'd property names found in the object initializer, joined by
  *     ', ', kind 'expression'.  No matching props → no row.
@@ -47,6 +49,11 @@ const GENERIC_ARG_COUNT = 2;
  * Extract card arg summaries from a tier-1 matched invocation.
  * With a catalog entry, rows follow the entry's `args` specs; without one,
  * the generic extractor surfaces the first two args as `arg1`/`arg2`.
+ *
+ * HONESTY: a card must never present a strict prefix of the call's arguments
+ * as the whole call.  Any `argument` node not faithfully rendered by a row is
+ * folded into ONE read-only overflow row (`+N more`) carrying the remaining
+ * args' verbatim source — never editable, never dropped.
  */
 export function extractArgs(
   invocation: Node | undefined,
@@ -55,22 +62,54 @@ export function extractArgs(
 ): CwArgSummary[] {
   if (invocation === undefined) return [];
   const args = argumentNodes(invocation);
+  const out: CwArgSummary[] = [];
+  /** `argument` nodes faithfully rendered by a row — by node id. */
+  const covered = new Set<number>();
+
   if (entry !== undefined) {
-    const out: CwArgSummary[] = [];
     for (const spec of entry.args) {
-      const row = renderSpec(spec, args, source);
-      if (row !== null) out.push(row);
+      const resolved = renderSpec(spec, args, source);
+      if (resolved === null) continue;
+      out.push(resolved.row);
+      if (resolved.argNode !== null) covered.add(resolved.argNode.id);
     }
-    return out;
+  } else {
+    for (const arg of args.slice(0, GENERIC_ARG_COUNT)) {
+      const value = argValueNode(arg);
+      const rendered: Rendered =
+        value !== null
+          ? renderValue(value, source, ARG_VALUE_MAX_LEN)
+          : { value: '', kind: 'expression', editableKind: 'none' };
+      out.push(finalize(`arg${out.length + 1}`, rendered, source, arg));
+      covered.add(arg.id);
+    }
   }
-  return args.slice(0, GENERIC_ARG_COUNT).map((arg, i) => {
-    const value = argValueNode(arg);
-    const rendered: Rendered =
-      value !== null
-        ? renderValue(value, source, ARG_VALUE_MAX_LEN)
-        : { value: '', kind: 'expression', editableKind: 'none' };
-    return finalize(`arg${i + 1}`, rendered, source, arg);
-  });
+
+  const overflow = overflowRow(args, covered, source);
+  if (overflow !== null) out.push(overflow);
+  return out;
+}
+
+/**
+ * Fold every `argument` not in `covered` into one read-only `+N more` row whose
+ * value is the clipped verbatim source of those args, joined in source order.
+ * Carries NO valueSpan/argSpan so the edit engine never treats it as editable.
+ * Returns null when every argument is already covered.
+ */
+function overflowRow(
+  args: Node[],
+  covered: ReadonlySet<number>,
+  source: string
+): CwArgSummary | null {
+  const remaining = args.filter((a) => !covered.has(a.id));
+  if (remaining.length === 0) return null;
+  const joined = remaining.map((a) => sliceOf(a, source)).join(', ');
+  return {
+    label: `+${remaining.length} more`,
+    value: clip(joined, ARG_VALUE_MAX_LEN),
+    kind: 'expression',
+    editableKind: 'none'
+  };
 }
 
 /**
@@ -82,10 +121,21 @@ export function extractIndexerKey(
   source: string
 ): CwArgSummary[] {
   if (subscript === undefined) return [];
-  const arg = subscript.namedChildren.find((c) => c.type === 'argument');
-  const value = arg !== undefined ? argValueNode(arg) : null;
-  if (value === null) return [];
-  return [finalize('Key', renderValue(value, source, ARG_VALUE_MAX_LEN), source)];
+  const args = subscript.namedChildren.filter((c) => c.type === 'argument');
+  if (args.length === 0) return [];
+  // Render EVERY subscript key so a multi-key indexer (`matrix[row, col]`) is
+  // not silently reduced to its first key.  A single key keeps the bare `Key`
+  // label; multiple keys are `Key1`, `Key2`, … in source order.
+  const out: CwArgSummary[] = [];
+  args.forEach((arg, i) => {
+    const value = argValueNode(arg);
+    if (value === null) return;
+    const label = args.length === 1 ? 'Key' : `Key${i + 1}`;
+    // No argSpan for indexer keys (parity with the single-key form): a
+    // subscript key has no `argument`-node delete/replace contract.
+    out.push(finalize(label, renderValue(value, source, ARG_VALUE_MAX_LEN), source));
+  });
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,15 +158,29 @@ function argValueNode(arg: Node): Node | null {
   return values.length > 0 ? values[values.length - 1] : null;
 }
 
-/** Resolve a spec to its argument node: Nth unnamed, or named by name. */
+/** The `name:` of an `argument` node, or null when it is positional. */
+function argName(arg: Node): string | null {
+  return arg.childForFieldName('name')?.text ?? null;
+}
+
+/**
+ * Resolve a spec to its argument node.  For a numeric spec: if any argument is
+ * passed BY NAME matching the spec's known C# parameter name
+ * (`GetAsset(name: "x")`), that explicit binding wins; otherwise the Nth
+ * UNNAMED argument is selected positionally.  A string spec selects the named
+ * argument with that name.  Resolving named positionals keeps an explicitly
+ * named arg from being dropped (and then surfaced as raw overflow).
+ */
 function findSpecArg(spec: CatalogArgSpec, args: Node[]): Node | null {
   if (typeof spec.arg === 'number') {
-    const unnamed = args.filter((a) => a.childForFieldName('name') === null);
+    if (spec.paramName !== undefined) {
+      const named = args.find((a) => argName(a) === spec.paramName);
+      if (named !== undefined) return named;
+    }
+    const unnamed = args.filter((a) => argName(a) === null);
     return unnamed[spec.arg] ?? null;
   }
-  return (
-    args.find((a) => a.childForFieldName('name')?.text === spec.arg) ?? null
-  );
+  return args.find((a) => argName(a) === spec.arg) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,20 +203,41 @@ interface Rendered {
   node?: Node;
 }
 
+/**
+ * A member access that plausibly names an enum CONSTANT: `Type.Member` where
+ * the receiver is a bare PascalCase identifier (a type name, not `this` or a
+ * lowercase variable) and the member is PascalCase.  This excludes ordinary
+ * property reads (`obj.Length`, `this.Foo`, `config.timeout`), which are NOT
+ * enum constants and must not be offered as an enum dropdown.
+ */
+function isPlausibleEnumRef(node: Node): boolean {
+  if (node.type !== 'member_access_expression') return false;
+  const expr = node.childForFieldName('expression');
+  const name = node.childForFieldName('name');
+  if (expr === null || name === null) return false;
+  if (expr.type !== 'identifier' || name.type !== 'identifier') return false;
+  return /^[A-Z]/.test(expr.text) && /^[A-Z]/.test(name.text);
+}
+
 /** Map a backing value node's syntactic type to its form-edit affordance. */
 function editableKindOf(node: Node): CwArgSummary['editableKind'] {
   switch (node.type) {
     case 'string_literal':
     case 'verbatim_string_literal':
-    case 'raw_string_literal':
       return 'string';
+    case 'raw_string_literal':
+      // Raw strings round-trip the whole `"""…"""` token verbatim through the
+      // edit engine, so they are edited as raw text, not a plain string field.
+      return 'raw';
     case 'integer_literal':
     case 'real_literal':
       return 'number';
     case 'boolean_literal':
       return 'bool';
     case 'member_access_expression':
-      return 'enum';
+      // Only a plausible enum constant (`Type.Member`) gets the enum
+      // affordance; a property read (`obj.Length`) is raw, not an enum.
+      return isPlausibleEnumRef(node) ? 'enum' : 'raw';
     case 'identifier':
       return 'identifier';
     case 'interpolated_string_expression':
@@ -241,7 +326,15 @@ function renderValue(node: Node, source: string, maxLen: number): Rendered {
   }
 }
 
-/** 'target' rendering: dotted-chain tail or first string inside `new ...`. */
+/**
+ * Property names on a UiPath target object whose string value IS the selector
+ * — the only initializer properties whose literal may be surfaced as the
+ * automation target (and edited as a string).  Any other string anywhere in
+ * the object (a timeout message, an activity name) is NOT the target.
+ */
+const SELECTOR_PROPS: readonly string[] = ['Selector', 'FullSelector', 'FuzzySelector', 'Target'];
+
+/** 'target' rendering: dotted-chain tail or the recognized selector property. */
 function renderTarget(node: Node, source: string, maxLen: number): Rendered {
   const value = unwrapExpression(node);
   if (
@@ -257,24 +350,39 @@ function renderTarget(node: Node, source: string, maxLen: number): Rendered {
     value.type === 'object_creation_expression' ||
     value.type === 'implicit_object_creation_expression'
   ) {
-    const literal = findFirstStringLiteral(value);
-    if (literal !== null) {
-      // The surfaced string literal IS a faithful backing token (a `new`
-      // resource name), editable as a string field.
-      return { value: unquote(sliceOf(literal, source)), kind: 'target', editableKind: 'string', node: literal };
+    // Surface ONLY a recognized selector property's string literal — never a
+    // guessed first-string-anywhere (which could be a message/name and would
+    // be mislabeled the target AND wrongly marked editable).
+    const selector = findSelectorLiteral(value);
+    if (selector !== null) {
+      return { value: unquote(sliceOf(selector, source)), kind: 'target', editableKind: 'string', node: selector };
     }
+    // No recognized selector → fall back to read-only shared rendering rather
+    // than guessing; the whole `new …` is shown as a non-editable expression.
   }
   return renderValue(value, source, maxLen);
 }
 
-/** Depth-first search for the first string literal descendant. */
-function findFirstStringLiteral(node: Node): Node | null {
-  if (node.type === 'string_literal' || node.type === 'verbatim_string_literal') {
-    return node;
-  }
-  for (const child of node.namedChildren) {
-    const found = findFirstStringLiteral(child);
-    if (found !== null) return found;
+/**
+ * The string literal assigned to a recognized selector property in an object
+ * initializer (`new TargetAnchorable { Selector = "<wnd .../>" }`), or null
+ * when none is present.  Only direct `Prop = "literal"` assignments qualify.
+ */
+function findSelectorLiteral(creation: Node): Node | null {
+  const initializer =
+    creation.childForFieldName('initializer') ??
+    creation.namedChildren.find((c) => c.type === 'initializer_expression') ??
+    null;
+  if (initializer === null) return null;
+  for (const assignment of initializer.namedChildren) {
+    if (assignment.type !== 'assignment_expression') continue;
+    const left = assignment.childForFieldName('left');
+    const right = assignment.childForFieldName('right');
+    if (left === null || right === null) continue;
+    if (!SELECTOR_PROPS.includes(left.text)) continue;
+    if (right.type === 'string_literal' || right.type === 'verbatim_string_literal') {
+      return right;
+    }
   }
   return null;
 }
@@ -310,12 +418,19 @@ function renderObjectProps(
   return { value: pairs.join(', '), kind: 'expression', editableKind: 'none' };
 }
 
-/** Render one catalog arg spec to a summary row, or null when absent. */
+/** A rendered catalog row plus the `argument` node it consumed (for overflow accounting). */
+interface ResolvedSpec {
+  row: CwArgSummary;
+  /** The `argument` node this row faithfully renders, or null if synthesized. */
+  argNode: Node | null;
+}
+
+/** Render one catalog arg spec to a summary row + its source arg, or null when absent. */
 function renderSpec(
   spec: CatalogArgSpec,
   args: Node[],
   source: string
-): CwArgSummary | null {
+): ResolvedSpec | null {
   const arg = findSpecArg(spec, args);
   if (arg === null) return null;
   const value = argValueNode(arg);
@@ -336,5 +451,8 @@ function renderSpec(
       break;
   }
   if (rendered === null) return null;
-  return finalize(spec.label, rendered, source, arg);
+  // The whole `argument` is consumed by this row even when the rendered value
+  // is a synthesized summary (objectProps / truncated target) — so it must not
+  // also appear in the `+N more` overflow.
+  return { row: finalize(spec.label, rendered, source, arg), argNode: arg };
 }

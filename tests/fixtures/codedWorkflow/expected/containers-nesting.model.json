@@ -172,6 +172,7 @@
                                             "endLine": 28,
                                             "endCol": 25
                                           },
+                                          "braced": true,
                                           "bodySpan": {
                                             "start": 934,
                                             "end": 1004
@@ -207,6 +208,7 @@
                                     "endLine": 30,
                                     "endCol": 21
                                   },
+                                  "braced": true,
                                   "bodySpan": {
                                     "start": 870,
                                     "end": 1067
@@ -223,6 +225,7 @@
                             "endLine": 31,
                             "endCol": 17
                           },
+                          "braced": true,
                           "bodySpan": {
                             "start": 811,
                             "end": 1085
@@ -239,6 +242,7 @@
                     "endLine": 32,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 720,
                     "end": 1099
@@ -275,6 +279,7 @@
                     "endLine": 36,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1146,
                     "end": 1193
@@ -311,6 +316,7 @@
                     "endLine": 40,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1240,
                     "end": 1287
@@ -347,6 +353,7 @@
                     "endLine": 44,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1319,
                     "end": 1366
@@ -402,6 +409,7 @@
                     "endLine": 48,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1424,
                     "end": 1470
@@ -457,6 +465,7 @@
                     "endLine": 52,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1500,
                     "end": 1546
@@ -512,6 +521,7 @@
                     "endLine": 56,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1595,
                     "end": 1635
@@ -548,6 +558,7 @@
                     "endLine": 60,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1685,
                     "end": 1739
@@ -584,6 +595,7 @@
                     "endLine": 64,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1772,
                     "end": 1826
@@ -620,6 +632,7 @@
                     "endLine": 68,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 1861,
                     "end": 1907
@@ -674,7 +687,8 @@
                     "startCol": 16,
                     "endLine": 72,
                     "endCol": 27
-                  }
+                  },
+                  "braced": false
                 },
                 {
                   "role": "case",
@@ -685,7 +699,8 @@
                     "startCol": 16,
                     "endLine": 73,
                     "endCol": 23
-                  }
+                  },
+                  "braced": false
                 },
                 {
                   "role": "case",
@@ -716,7 +731,8 @@
                     "startCol": 16,
                     "endLine": 75,
                     "endCol": 48
-                  }
+                  },
+                  "braced": false
                 },
                 {
                   "role": "default",
@@ -747,7 +763,8 @@
                     "startCol": 16,
                     "endLine": 77,
                     "endCol": 27
-                  }
+                  },
+                  "braced": false
                 }
               ],
               "collapsedByDefault": false
@@ -798,6 +815,7 @@
                     "endLine": 82,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 2224,
                     "end": 2276
@@ -852,7 +870,8 @@
                     "startCol": 26,
                     "endLine": 83,
                     "endCol": 43
-                  }
+                  },
+                  "braced": false
                 }
               ],
               "collapsedByDefault": false
@@ -903,6 +922,7 @@
                     "endLine": 87,
                     "endCol": 13
                   },
+                  "braced": true,
                   "bodySpan": {
                     "start": 2455,
                     "end": 2501

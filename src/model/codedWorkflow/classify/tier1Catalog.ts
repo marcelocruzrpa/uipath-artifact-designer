@@ -18,6 +18,13 @@
 export interface CatalogArgSpec {
   /** Positional index (0-based) or the name of a named argument. */
   arg: number | string;
+  /**
+   * The C# parameter name this positional spec also matches when the call
+   * passes it by name (`GetAsset(name: "x")`).  Only meaningful for a numeric
+   * `arg`; lets a NAMED positional argument still resolve to its row instead of
+   * being dropped (and then surfaced verbatim as overflow).
+   */
+  paramName?: string;
   /** Human label shown next to the rendered value. */
   label: string;
   /** Rendering strategy for the argument value. */
@@ -104,7 +111,7 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
       {
         method: 'GetAsset',
         title: 'Get Asset',
-        args: [{ arg: 0, label: 'Name', render: 'text' }],
+        args: [{ arg: 0, paramName: 'name', label: 'Name', render: 'text' }],
         emit: {
           template: '{recv}.GetAsset({args})',
           args: [{ label: 'Name', kind: 'string', placeholder: '""' }],
@@ -114,17 +121,17 @@ export const TIER1_CATALOG: readonly ServiceFamily[] = [
       {
         method: 'SetAsset',
         title: 'Set Asset',
-        args: [{ arg: 0, label: 'Name', render: 'text' }]
+        args: [{ arg: 0, paramName: 'name', label: 'Name', render: 'text' }]
       },
       {
         method: 'GetCredential',
         title: 'Get Credential',
-        args: [{ arg: 0, label: 'Name', render: 'text' }]
+        args: [{ arg: 0, paramName: 'name', label: 'Name', render: 'text' }]
       },
       {
         method: 'AddQueueItem',
         title: 'Add Queue Item',
-        args: [{ arg: 0, label: 'Queue', render: 'text' }],
+        args: [{ arg: 0, paramName: 'queueName', label: 'Queue', render: 'text' }],
         emit: {
           template: '{recv}.AddQueueItem({args})',
           args: [

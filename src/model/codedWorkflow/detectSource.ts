@@ -17,6 +17,14 @@ const WORKFLOW_PATTERN =
 /**
  * Return true when `text` looks like a coded-workflow source file.
  * Only the first 2 MB are scanned to bound worst-case cost on huge files.
+ *
+ * DELIBERATE OVER-ACCEPT: this is a CHEAP regex pre-gate, not the authority.
+ * It can false-positive on `CodedWorkflow` / `[Workflow]` appearing inside a
+ * comment or string (e.g. `// : CodedWorkflow`), because tightening toward a
+ * strict class-header shape risks UNDER-matching real partial classes whose
+ * base list lives in another file.  A false positive is harmless: `buildModel`
+ * re-parses and, finding no actual workflow class, yields an empty result —
+ * the model builder, not this gate, is the real decision.
  */
 export function isCodedWorkflowSource(text: string): boolean {
   return WORKFLOW_PATTERN.test(text.slice(0, 2_000_000));

@@ -222,6 +222,9 @@ describe('tier-1 cards — excel handles', () => {
     expect(card.method).toBe('ReadCell');
     expect(card.title).toBe('Read Cell');
     expect(card.resultBinding).toBe('cellValue');
+    // The generic extractor renders the first two args; the third (`true`)
+    // would otherwise be silently dropped, so it is surfaced verbatim as a
+    // read-only `+N more` overflow row (no valueSpan/argSpan ⇒ not editable).
     expect(card.args).toEqual([
       {
         label: 'arg1',
@@ -240,6 +243,12 @@ describe('tier-1 cards — excel handles', () => {
         valueRaw: '"B7"',
         valueSpan: { start: 660, end: 664 },
         argSpan: { start: 660, end: 664 }
+      },
+      {
+        label: '+1 more',
+        value: 'true',
+        kind: 'expression',
+        editableKind: 'none'
       }
     ]);
   });

@@ -26,8 +26,11 @@
  *   noise.  Hence only the patterns above produce facts at all.
  *
  * Class discovery reuses the shared `classDiscovery.ts` rules (the same ones
- * `buildModel.ts` uses) — `workflowMethods` lists ALL public method names
- * because entry resolution in the assembler needs the full set.
+ * `buildModel.ts` uses) — `workflowMethods` lists ALL public method names of
+ * each class.  (The assembler resolves `workflows.Foo` against CLASS NAMES
+ * only — the `workflows` proxy has one member per workflow class, not per
+ * method — so this list is reported for diagnostics/future use, not member
+ * resolution.)
  *
  * PURITY RULE: imports only types from `web-tree-sitter` and the shared
  * class-discovery module.  No `vscode`, `fs`, `path`, or `node:*` imports —
@@ -49,7 +52,10 @@ export interface WorkflowDecl {
   className: string;
   /** WORKFLOW-CLASS RULE: `CodedWorkflow` base OR an entry-attribute method. */
   isCodedWorkflow: boolean;
-  /** ALL public method names, in source order (entry resolution needs them). */
+  /**
+   * ALL public method names, in source order.  Reported for diagnostics; the
+   * assembler resolves `workflows.Foo` against CLASS names only, never these.
+   */
   workflowMethods: string[];
   /** Any method carries `[Workflow]` / `[TestCase]`. */
   hasWorkflowAttribute: boolean;

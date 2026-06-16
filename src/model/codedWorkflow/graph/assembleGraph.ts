@@ -12,13 +12,12 @@
  *   are NOT edged: edging every C# call would bury the orchestration signal.
  *
  * `workflows.Foo` RESOLUTION
- *   Foo is matched against the union of {className} ∪ public method names of
- *   every coded-workflow class.  Class names participate because UiPath's
+ *   Foo is matched against coded-workflow CLASS NAMES only.  UiPath's
  *   generated `workflows` proxy exposes one member per workflow FILE, named
- *   after its class (`workflows.ValidateInvoice(...)` runs
- *   ValidateInvoice.cs) — and C# forbids a method named after its own class,
- *   so the two namespaces cannot collide within one class.  Exactly one
- *   owner → solid edge; zero → `unresolved:<Foo>` node + dashed 'no-match';
+ *   after its class (`workflows.ValidateInvoice(...)` runs ValidateInvoice.cs);
+ *   the proxy has NO member per public method, so indexing method names would
+ *   fabricate edges to any class that merely declares a method `Foo`.  Exactly
+ *   one owner → solid edge; zero → `unresolved:<Foo>` node + dashed 'no-match';
  *   two+ → dashed edge to EACH candidate, 'ambiguous'.  Self-edges are kept
  *   when real.
  *
@@ -82,10 +81,18 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
   const edges = new Map<string, CodedGraphEdge>();
 
   // -- Pass 1: coded-workflow nodes + resolution indexes --------------------
-  /** workflows.Foo name (class name or public method) → candidate node ids. */
-  const nameIndex = new Map<string, Set<string>>();
+  /**
+   * workflows.Foo CLASS name → candidate node ids.  UiPath's generated
+   * `workflows` proxy exposes one member per workflow CLASS (named after the
+   * class that owns the file), so `workflows.Foo` resolves against class names
+   * ONLY — indexing public method names here would fabricate edges to any
+   * class that merely HAS a method `Foo`.
+   */
+  const classNameIndex = new Map<string, Set<string>>();
   /** Non-workflow class name → node seed from its first declaring file. */
   const helperSeeds = new Map<string, Omit<CodedGraphNode, 'kind' | 'label' | 'isEntryPoint'>>();
+  /** Class names already claimed by a coded-workflow node (partial-class guard). */
+  const codedClassNames = new Set<string>();
   /** Ids of coded-workflow nodes — the only legal edge sources. */
   const codedIds = new Set<string>();
   const codedDecls: Array<{ node: CodedGraphNode; relPath: string; decl: WorkflowDecl }> = [];
@@ -110,8 +117,8 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
           codedDecls.push({ node, relPath: rel, decl });
         }
         codedIds.add(id);
-        addCandidate(nameIndex, decl.className, id);
-        for (const method of decl.workflowMethods) addCandidate(nameIndex, method, id);
+        codedClassNames.add(decl.className);
+        addCandidate(classNameIndex, decl.className, id);
         if (decl.hasWorkflowAttribute) anyAttributeEntry = true;
       } else if (!helperSeeds.has(decl.className)) {
         helperSeeds.set(decl.className, {
@@ -124,13 +131,26 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
     }
   }
 
+  // A class that is coded-workflow in one file and plain in another (partial
+  // class) must not also seed a helper node — the coded-workflow node already
+  // claims that className.
+  for (const className of codedClassNames) helperSeeds.delete(className);
+
   // -- Entry-point badging ---------------------------------------------------
   if (entrySet.size > 0) {
     for (const e of codedDecls) e.node.isEntryPoint = entrySet.has(e.relPath);
   } else if (anyAttributeEntry) {
     for (const e of codedDecls) e.node.isEntryPoint = e.decl.hasWorkflowAttribute;
   } else {
-    for (const e of codedDecls) e.node.isEntryPoint = e.decl.className === 'Main';
+    // Last-resort heuristic: badge at most ONE class named `Main` (the first in
+    // sorted relPath order — `files`/`codedDecls` are already relPath-sorted),
+    // not every Main in the project, which would badge several entry points.
+    let badgedMain = false;
+    for (const e of codedDecls) {
+      const isFirstMain = e.decl.className === 'Main' && !badgedMain;
+      e.node.isEntryPoint = isFirstMain;
+      if (isFirstMain) badgedMain = true;
+    }
   }
 
   // -- Pass 2: edges -----------------------------------------------------------
@@ -142,7 +162,7 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
 
       switch (fact.kind) {
         case 'workflows-member': {
-          const candidates = [...(nameIndex.get(fact.calleeName) ?? [])].sort(cmp);
+          const candidates = [...(classNameIndex.get(fact.calleeName) ?? [])].sort(cmp);
           if (candidates.length === 1) {
             addEdge(edges, sourceId, candidates[0], 'invoke-workflow', true);
           } else if (candidates.length === 0) {

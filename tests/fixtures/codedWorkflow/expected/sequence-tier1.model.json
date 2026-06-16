@@ -186,6 +186,12 @@
                     "end": 599
                   },
                   "valueRaw": "\"Invoices\""
+                },
+                {
+                  "label": "+1 more",
+                  "value": "endpoint",
+                  "kind": "expression",
+                  "editableKind": "none"
                 }
               ],
               "icon": "gear",
@@ -284,6 +290,12 @@
                     "end": 708
                   },
                   "valueRaw": "@\"Shared\\Notify.xaml\""
+                },
+                {
+                  "label": "+1 more",
+                  "value": "input",
+                  "kind": "expression",
+                  "editableKind": "none"
                 }
               ],
               "icon": "play-circle",
