@@ -21,13 +21,14 @@
  *     `tier1` (an activity card), or another rule id (that OTHER rule's
  *     pseudo-step).
  *
- * The shipped registry is EMPTY today (T3.2 lands the rules), so the
- * data-driven section is vacuous — the `discovery` test pins the
- * fixture-directory set to the shipped rule-id set (proving the harness ran,
- * and doubling as evidence coverage once rules land), and the
- * `harness self-test` block proves the harness mechanics with inline fake
- * rules injected through the `BuildModelInput.tier2Rules` test seam — no
- * fixture files, no touching the shipped registry.
+ * The shipped registry now ships 9 tier-2 rules, so the data-driven section is
+ * LIVE — it discovers each rule's fixture directory and runs its golden /
+ * near-miss pairs through the real pipeline.  The `discovery` test pins the
+ * fixture-directory set to the shipped rule-id set (a rule without fixtures, or
+ * an orphan directory, fails it), and the `harness self-test` block still proves
+ * the harness mechanics in isolation with inline fake rules injected through the
+ * `BuildModelInput.tier2Rules` test seam — no fixture files, no touching the
+ * shipped registry.
  *
  * Fixture layout doc: tests/fixtures/codedWorkflow/tier2/README.md.
  */
@@ -174,9 +175,8 @@ const ruleDirs = readdirSync(FIXTURE_ROOT, { withFileTypes: true })
 
 describe('tier-2 golden harness — discovery', () => {
   it('fixture directories equal the shipped TIER2_RULES ids exactly', () => {
-    // PASSES VACUOUSLY TODAY (both sides empty) but proves the harness ran,
-    // and becomes the evidence-coverage gate the moment T3.2 ships a rule:
-    // a rule without fixtures fails here, and so does an orphan directory.
+    // The evidence-coverage gate now that 9 rules ship: a rule without a
+    // fixture directory fails here, and so does an orphan directory.
     const shippedIds = TIER2_RULES.map((rule) => rule.id as string).sort();
     expect(ruleDirs).toEqual(shippedIds);
   });

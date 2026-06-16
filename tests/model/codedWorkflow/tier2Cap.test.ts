@@ -3,16 +3,15 @@
  * whitelist, m0Rank ordering, fixture evidence, and manifest parity against
  * `docs/tier2-rules.md`.
  *
- * These guards freeze the cap discipline BEFORE any rule ships (the registry
- * is empty today): when T3.2 lands a rule, it must arrive with corpus
- * provenance (m0Rank order), fixture evidence (≥2 golden pairs + ≥1
- * near-miss under `tests/fixtures/codedWorkflow/tier2/<id>/`), and a
- * manifest row whose id cell has had its `*(proposed)*` marker removed —
- * or these tests fail.  Deleting a rule without deleting its fixtures (or
+ * These guards enforce the cap discipline on the 9 shipped tier-2 rules: each
+ * rule must carry corpus provenance (m0Rank order), fixture evidence (≥2 golden
+ * pairs + ≥1 near-miss under `tests/fixtures/codedWorkflow/tier2/<id>/`), and a
+ * manifest row whose id cell has had its `*(proposed)*` marker removed — or
+ * these tests fail.  Deleting a rule without deleting its fixtures (or
  * re-marking its manifest row) fails them too.
  *
- * Each guard collects offenders and asserts the collection is empty, so
- * every test makes a real assertion even while the registry is empty.
+ * Each guard collects offenders and asserts the collection is empty, so every
+ * test makes a real assertion against the live registry.
  */
 import { describe, it, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
