@@ -34,20 +34,21 @@ it('computes a minimal patch that rewrites only the edited literal', async () =>
   expect(SOURCE.slice(computed.patches[0].start, computed.patches[0].end)).toBe('"hi"');
 });
 
-// Strings can no longer break syntax (the host quotes them), so the parse-gate
-// is exercised through a NON-string arg: an identifier edited to raw text that
-// leaves an unterminated literal. Identifier edits are written verbatim.
+// Strings can no longer break syntax (the host quotes them), so a malformed
+// value is exercised through a NON-string arg: an identifier edited to raw text
+// that leaves an unterminated literal. Identifier edits are written verbatim.
 const IDENT_GATE_SOURCE =
   'class W : CodedWorkflow { [Workflow] public void Execute() { Log(name); } }';
 
-it('rejects an edit that would break the C# syntax (parse-gate)', async () => {
+it('rejects a value that is not a single well-formed expression', async () => {
   const id = await cardIdOf(IDENT_GATE_SOURCE);
-  // `"bye` (raw, no requote for an identifier) leaves an unterminated literal —
-  // a new parse error the source lacked.
+  // `"bye` (raw, no requote for an identifier) is not a single self-contained
+  // expression — the single-expression guard catches it before the parse-gate
+  // (it would also leave an unterminated literal in the document).
   const computed = await computeValueEdit(IDENT_GATE_SOURCE, { type: 'editValue', id, argIndex: 0, newText: '"bye' });
   expect(computed.ok).toBe(false);
   if (computed.ok) return;
-  expect(computed.error).toBe('edit would break the C# syntax');
+  expect(computed.error).toBe('value must be a single expression');
 });
 
 it('rejects an unknown node id with the resolver error', async () => {

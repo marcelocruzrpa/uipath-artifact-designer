@@ -33,6 +33,14 @@ export interface SlotTarget {
   children: CwStatement[];
   bodySpan?: { start: number; end: number };
   indentText?: string;
+  /**
+   * Whether the target body is a real `{ }` block. `true` for a method body and
+   * for a braced slot; `false` for a block-less single-statement control-flow
+   * body (`if (x) Foo();`). `undefined` when the source carried no `braced`
+   * flag. The resolver REJECTS an insert into a `braced === false` body —
+   * splicing a statement there silently moves it out of the control-flow scope.
+   */
+  braced?: boolean;
 }
 
 /** Resolve a SlotRef to the children list + body interior, or null. */
@@ -43,12 +51,13 @@ export function findSlot(model: CodedWorkflowModel, ref: SlotRef): SlotTarget | 
     for (const cls of model.classes) {
       for (const ep of cls.entryPoints) {
         if (ep.bodyId === ref.methodId) {
-          return { children: ep.body, bodySpan: ep.bodySpan, indentText: ep.indentText };
+          // A method body is always a real `{ }` block.
+          return { children: ep.body, bodySpan: ep.bodySpan, indentText: ep.indentText, braced: true };
         }
       }
       for (const hm of cls.helperMethods) {
         if (hm.bodyId === ref.methodId) {
-          return { children: hm.body, bodySpan: hm.bodySpan, indentText: hm.indentText };
+          return { children: hm.body, bodySpan: hm.bodySpan, indentText: hm.indentText, braced: true };
         }
       }
     }
@@ -59,7 +68,7 @@ export function findSlot(model: CodedWorkflowModel, ref: SlotRef): SlotTarget | 
   const slot = matchSlot(container.slots, ref);
   return slot === null
     ? null
-    : { children: slot.children, bodySpan: slot.bodySpan, indentText: slot.indentText };
+    : { children: slot.children, bodySpan: slot.bodySpan, indentText: slot.indentText, braced: slot.braced };
 }
 
 function matchSlot(slots: CwSlot[], ref: SlotRef): CwSlot | null {

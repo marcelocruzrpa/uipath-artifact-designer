@@ -46,6 +46,14 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
         // Splice the first argument at the empty interior.
         return { ok: true, patches: [{ start: interior.start, end: interior.start, newText: intent.newText }] };
       }
+      // C# forbids a POSITIONAL argument after a NAMED one (CS1738). Appending
+      // `, <newText>` trailing a named arg compiles-invalid yet parses clean, so
+      // the syntax gate misses it. Reject when ANY existing arg is named — the
+      // safe append target (positional-only lists) is the common case.
+      if (card.args.some((a) => a.argSpan !== undefined
+        && isNamedArgument(source.slice(a.argSpan.start, a.argSpan.end)))) {
+        return { ok: false, error: 'cannot append a positional argument after a named argument' };
+      }
       // Append after the last existing argument: `, <newText>` at the interior end.
       return { ok: true, patches: [{ start: interior.end, end: interior.end, newText: `, ${intent.newText}` }] };
     }
@@ -55,6 +63,13 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
       const arg = card.args[idx];
       if (arg === undefined || arg.argSpan === undefined) {
         return { ok: false, error: `arg ${idx} is not removable` };
+      }
+      // A comment between the arg and its separating comma (`Foo(a /*c*/, b)`)
+      // would either be partly eaten or left dangling by the whitespace-only
+      // comma scan below. Reject when a comment sits adjacent to the comma we
+      // would consume rather than risk a malformed list.
+      if (commentAdjacentToSeparator(source, card, idx, arg.argSpan)) {
+        return { ok: false, error: 'cannot remove an argument with an adjacent comment' };
       }
       const span = removalRange(source, card, idx, arg.argSpan);
       return { ok: true, patches: [{ start: span.start, end: span.end, newText: '' }] };
@@ -109,6 +124,33 @@ function removalRange(
     end = i;
   }
   return { start: argSpan.start, end };
+}
+
+/**
+ * True when a comment sits between arg #idx and the comma `removalRange` would
+ * consume — mirrors that function's direction choice (eat the PRECEDING comma
+ * for a non-first arg, else the FOLLOWING one). We walk the same whitespace gap
+ * and flag a `/` (the start of `//` or a `/* … *​/`), since the plain `\s` scan
+ * in `removalRange` would stop at it and miscompute the comma boundary.
+ */
+function commentAdjacentToSeparator(
+  source: string,
+  card: CwActivityCard,
+  idx: number,
+  argSpan: OffsetSpan
+): boolean {
+  const interior = card.argListSpan!;
+  if (idx > 0) {
+    // Walk left over whitespace toward the preceding comma; a `/` en route is a
+    // comment's close (`*/`) or, less commonly, a `//` line on the wrapped line.
+    let i = argSpan.start - 1;
+    while (i > interior.start && /\s/.test(source[i])) i -= 1;
+    return source[i] === '/';
+  }
+  // First arg: walk right over whitespace toward the following comma.
+  let i = argSpan.end;
+  while (i < interior.end && /\s/.test(source[i])) i += 1;
+  return source[i] === '/';
 }
 
 /**
