@@ -27,10 +27,11 @@ export async function copyWasm() {
 const common = {
   bundle: true,
   minify: production,
-  // Sourcemaps are emitted for the production build too: they aid field
-  // debugging of the bundled extension and are not surfaced to users via the
-  // marketplace listing. Minification stays on for production.
-  sourcemap: true,
+  // Production: write .map files for field debugging but omit the
+  // sourceMappingURL footer from the bundle so VS Code does not log a
+  // dangling-reference warning when the maps are excluded from the VSIX.
+  // Dev/watch: inline references are fine because maps are not packaged.
+  sourcemap: production ? 'external' : true,
   logLevel: 'info'
 };
 
