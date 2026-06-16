@@ -7,19 +7,24 @@ on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Coded Workflow Canvas (`*.cs`).** A new read-only visual canvas for UiPath
+- **Coded Workflow Canvas (`*.cs`).** A structural source editor for UiPath
   coded workflows. Open any `.cs` file via **Open With… → UiPath: Open
   Designer** to see an activity-graph representation of the workflow's
-  structure. The canvas is read-only by default; individual argument values at
-  the top level (L0) can be edited by opting in via the inspector toggle.
+  structure. The canvas is read-only by default; editing is opt-in per-file
+  via the inspector toggle and gated by a parse check that rejects edits
+  introducing C# syntax errors.
 - **Call graph panel.** When the Coded Workflow Canvas is active, the
   **UiPath: Show Call Graph** toolbar button opens a side panel that renders
   the inter-workflow call graph, making it easy to trace call chains across
   multiple coded workflows in the project.
 - **L0 value editing (opt-in).** Top-level argument values in a coded workflow
-  can be edited directly from the canvas inspector. The feature is off by
-  default (canvas is read-only) and activated per-file via the inspector
-  toggle. Deeper structural edits (L1 / L2) are planned for a future release.
+  can be edited directly from the canvas inspector.
+- **L1 argument editing (opt-in).** Add, remove, and switch the invocation
+  method of arguments on any activity node — directly from the inspector's
+  edit mode.
+- **L2 statement editing (opt-in).** Add new statements, delete existing ones,
+  and reorder them via the canvas — all protected by the parse gate so only
+  syntactically valid changes are written back to the source file.
 
 ## [1.0.2] - 2026-05-24
 
