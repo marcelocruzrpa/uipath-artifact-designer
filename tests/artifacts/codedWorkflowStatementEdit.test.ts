@@ -93,7 +93,7 @@ describe('computeDeleteStatement (host e2e)', () => {
     const res = await computeDeleteStatement(commented, { type: 'deleteStatement', id: 'W#Execute/0' });
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.error).toBe('cannot delete a statement that has a trailing // comment');
+    expect(res.error).toBe('cannot delete a statement that has a trailing comment');
   });
 });
 

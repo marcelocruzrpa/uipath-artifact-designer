@@ -33,12 +33,12 @@ export function resolveEdit(
       if (node === null || node.offsets === undefined) {
         return { ok: false, error: 'statement not found or not deletable' };
       }
-      // A trailing same-line `//…` comment is outside the statement's offsets;
-      // a full-line delete would strand it on a now-empty line (or, if other code
-      // shares the line, leave it dangling). Reject rather than guess the user's
-      // intent for the orphaned comment.
-      if (hasTrailingLineComment(source, node.offsets)) {
-        return { ok: false, error: 'cannot delete a statement that has a trailing // comment' };
+      // A trailing same-line comment (`//…` or `/*…`) sits outside the
+      // statement's offsets; a full-line delete would strand it on a now-empty
+      // line (or, if other code shares the line, leave it dangling). Reject
+      // rather than guess the user's intent for the orphaned comment.
+      if (hasTrailingComment(source, node.offsets)) {
+        return { ok: false, error: 'cannot delete a statement that has a trailing comment' };
       }
       return { ok: true, patches: [deletionPatch(source, node.offsets)] };
     }
@@ -54,13 +54,13 @@ export function resolveEdit(
       if (a.offsets === undefined || b.offsets === undefined) {
         return { ok: false, error: 'a statement in the swap has no source offsets' };
       }
-      // A trailing same-line `//…` comment is part of the statement's line but
-      // sits OUTSIDE its `offsets`. Swapping the bare offset slices would strand
-      // each comment on the wrong statement (move b's code under a's comment).
-      // Reject when either statement carries such a comment rather than silently
-      // misattributing it. (Delete has the same hazard; see deletionPatch.)
-      if (hasTrailingLineComment(source, a.offsets) || hasTrailingLineComment(source, b.offsets)) {
-        return { ok: false, error: 'cannot move a statement that has a trailing // comment' };
+      // A trailing same-line comment (`//…` or `/*…`) is part of the statement's
+      // line but sits OUTSIDE its `offsets`. Swapping the bare offset slices
+      // would strand each comment on the wrong statement (move b's code under
+      // a's comment). Reject when either statement carries such a comment rather
+      // than silently misattributing it. (Delete has the same hazard.)
+      if (hasTrailingComment(source, a.offsets) || hasTrailingComment(source, b.offsets)) {
+        return { ok: false, error: 'cannot move a statement that has a trailing comment' };
       }
       // Swap the two statements' source text (their offset slices), preserving
       // everything between them. Two non-overlapping replacements, emitted
@@ -80,14 +80,16 @@ export function resolveEdit(
 }
 
 /**
- * True when an immediately-trailing same-line `//…` comment follows the
- * statement at `offsets` (`Foo(); // note`). Scans rightward from the
- * statement end over spaces/tabs only; a `//` reached before any newline is a
- * trailing line comment that belongs to this statement's line but sits outside
- * its offsets, so delete/move must not silently strand or misattribute it.
+ * True when an immediately-trailing same-line comment follows the statement at
+ * `offsets` — a line comment (`Foo(); // note`) or a block comment opened with
+ * `/*`. Scans rightward from the statement end over spaces/tabs only; a `//` or
+ * `/*` reached before any newline is a trailing comment that belongs to this
+ * statement's line but sits OUTSIDE its offsets, so delete/move must not
+ * silently strand or misattribute it. The `/*` opener is caught whether its
+ * block closes on this line or spans several.
  */
-function hasTrailingLineComment(source: string, offsets: { start: number; end: number }): boolean {
+function hasTrailingComment(source: string, offsets: { start: number; end: number }): boolean {
   let i = offsets.end;
   while (i < source.length && (source[i] === ' ' || source[i] === '\t')) i += 1;
-  return source[i] === '/' && source[i + 1] === '/';
+  return source[i] === '/' && (source[i + 1] === '/' || source[i + 1] === '*');
 }
