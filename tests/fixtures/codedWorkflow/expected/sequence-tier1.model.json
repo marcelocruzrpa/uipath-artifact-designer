@@ -203,7 +203,15 @@
                   "label": "+1 more",
                   "value": "endpoint",
                   "kind": "expression",
-                  "editableKind": "none"
+                  "editableKind": "none",
+                  "overflowArgs": [
+                    {
+                      "label": "arg2",
+                      "value": "endpoint",
+                      "kind": "expression",
+                      "editableKind": "none"
+                    }
+                  ]
                 }
               ],
               "icon": "gear",
@@ -267,6 +275,8 @@
                 }
               ],
               "icon": "type-hierarchy",
+              "invokeKind": "workflows-member",
+              "invokeCallee": "ProcessInvoice",
               "argListSpan": {
                 "start": 649,
                 "end": 660
@@ -315,10 +325,20 @@
                   "label": "+1 more",
                   "value": "input",
                   "kind": "expression",
-                  "editableKind": "none"
+                  "editableKind": "none",
+                  "overflowArgs": [
+                    {
+                      "label": "arg2",
+                      "value": "input",
+                      "kind": "expression",
+                      "editableKind": "none"
+                    }
+                  ]
                 }
               ],
               "icon": "play-circle",
+              "invokeKind": "run-workflow",
+              "invokeCallee": "Shared\\Notify.xaml",
               "argListSpan": {
                 "start": 687,
                 "end": 715

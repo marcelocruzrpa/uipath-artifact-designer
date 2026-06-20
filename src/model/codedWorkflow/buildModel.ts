@@ -89,6 +89,9 @@ import {
   matchTier1Expression,
   type Tier1Match
 } from './classify/tier1Match';
+import { detectWorkflowInvoke } from './classify/invokeDetect';
+import { detectHelperCall } from './classify/helperCallDetect';
+import { annotateStateMachines } from './classify/stateMachine';
 import {
   createHandleMap,
   trackHandle,
@@ -107,6 +110,8 @@ import {
 import {
   COLLAPSE_ALL_STATEMENTS,
   COLLAPSE_CONTAINER_LINES,
+  COLLAPSE_DEEP_NESTING,
+  COLLAPSE_METHOD_STATEMENTS,
   COLLAPSE_STATEMENT_THRESHOLD,
   COLLAPSE_TOTAL_LINES,
   HEADER_MAX_CHARS,
@@ -176,6 +181,23 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
     classOccurrences.set(className, classOccurrence);
     const classSegment = classOccurrence === 1 ? className : `${className}@${classOccurrence}`;
 
+    // Helper method names that resolve UNIQUELY to one rendered `Helper:`
+    // section (non-entry, simple name unique, no collision with an entry name) —
+    // the only own-class calls we make navigable (see helperCallDetect.ts).
+    const entryNameSet = new Set(
+      entryMethods.map((m) => m.childForFieldName('name')?.text ?? '(unnamed)')
+    );
+    const helperNameCounts = new Map<string, number>();
+    for (const method of methods) {
+      if (entryPointAttribute(method) !== null) continue;
+      const n = method.childForFieldName('name')?.text ?? '(unnamed)';
+      helperNameCounts.set(n, (helperNameCounts.get(n) ?? 0) + 1);
+    }
+    const navigableHelpers = new Set<string>();
+    for (const [n, count] of helperNameCounts) {
+      if (count === 1 && !entryNameSet.has(n)) navigableHelpers.add(n);
+    }
+
     const entryPoints: CwEntryPoint[] = [];
     const helperMethods: CwHelperMethod[] = [];
     const methodOccurrences = new Map<string, number>();
@@ -189,7 +211,9 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       const ctx: ClassifyContext = {
         source,
         handles: createHandleMap(),
-        tier2Rules: input.tier2Rules ?? TIER2_RULES
+        tier2Rules: input.tier2Rules ?? TIER2_RULES,
+        className,
+        navigableHelpers
       };
       const classified = classifyMethodBody(method, ctx);
       // tierCounts/stats keep PRE-truncation totals (see limits.ts).
@@ -201,6 +225,9 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       truncated = truncated || didTruncate;
       const bodyId = `${classSegment}#${methodSegment}/`;
       assignIds(body, bodyId);
+      // Recognize a loop-driven enum `switch` as a REFramework state machine
+      // (purely additive — the switch/case/Assign tree is untouched).
+      annotateStateMachines(body);
       const interior = methodBodyInterior(method, source);
       const attribute = entryPointAttribute(method);
       if (attribute !== null) {
@@ -351,6 +378,10 @@ interface ClassifyContext {
   handles: HandleMap;
   /** Tier-2 rule registry (the shipped one, or a test override). */
   tier2Rules: readonly Tier2Rule[];
+  /** Display name of the enclosing class — used to build helper-call targetIds. */
+  className: string;
+  /** Helper method names that resolve uniquely to a navigable `Helper:` section. */
+  navigableHelpers: ReadonlySet<string>;
 }
 
 /** Exact source slice of a node. */
@@ -472,7 +503,14 @@ function leafNode(stmt: Node, ctx: ClassifyContext): CwStatement {
   }
   const pseudo = applyTier2(stmt, ctx.source, ctx.tier2Rules);
   if (pseudo !== null) return pseudo;
-  return makeChip(stmt, ctx);
+  const chip = makeChip(stmt, ctx);
+  // A bare call to a uniquely-named own-class helper gets an in-file jump
+  // affordance (stays tier-3; the raw code is still shown when expanded).
+  const helperName = detectHelperCall(stmt, ctx.navigableHelpers);
+  if (helperName !== null) {
+    chip.helperTarget = { name: helperName, targetId: `${ctx.className}#helper:${helperName}` };
+  }
+  return chip;
 }
 
 /** Split PascalCase: 'ReadRange' → 'Read Range' (digits break words too). */
@@ -561,6 +599,11 @@ function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): Cw
     match.method === '[indexer]'
       ? extractIndexerKey(match.indexerSubscript, ctx.source)
       : extractArgs(match.invocation, entry, ctx.source);
+  // Annotate workflow invocations (`workflows.Foo(...)` / `RunWorkflow("X")`) so a
+  // double-click can open the invoked workflow. Detection shares the call graph's
+  // `detectWorkflowInvoke`, so the canvas card and the graph edge always agree.
+  // `invokeTarget` is resolved later, host-side, from the project graph.
+  const invoke = match.invocation !== undefined ? detectWorkflowInvoke(match.invocation) : null;
   return {
     id: '',
     span,
@@ -574,6 +617,7 @@ function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): Cw
     args,
     ...(match.resultBinding !== undefined ? { resultBinding: match.resultBinding } : {}),
     icon: entry?.icon ?? match.familyIcon,
+    ...(invoke !== null ? { invokeKind: invoke.kind, invokeCallee: invoke.calleeName } : {}),
     ...(match.method !== '[indexer]'
       ? {
           argListSpan: argListInterior(match.invocation),
@@ -954,18 +998,28 @@ function applyCollapsePass(
   totalStatements: number,
   totalLines: number
 ): void {
-  let minCollapseDepth = Number.POSITIVE_INFINITY;
+  // File-level ceiling: a huge file collapses even when each method is small.
+  let fileMinDepth = Number.POSITIVE_INFINITY;
   if (totalStatements > COLLAPSE_ALL_STATEMENTS) {
-    minCollapseDepth = 1;
+    fileMinDepth = 1;
   } else if (
     totalStatements > COLLAPSE_STATEMENT_THRESHOLD ||
     totalLines > COLLAPSE_TOTAL_LINES
   ) {
-    minCollapseDepth = 2;
+    fileMinDepth = 2;
   }
   for (const cls of classes) {
     for (const method of [...cls.entryPoints, ...cls.helperMethods]) {
-      collapseContainers(method.body, 1, minCollapseDepth);
+      // Per-method density: a dense single method (a REFramework state machine,
+      // say) collapses its nested containers even in an otherwise small file.
+      const leaves = method.tierCounts.tier1 + method.tierCounts.tier2 + method.tierCounts.tier3;
+      let methodMinDepth = Number.POSITIVE_INFINITY;
+      if (leaves > COLLAPSE_ALL_STATEMENTS) {
+        methodMinDepth = 1;
+      } else if (leaves > COLLAPSE_METHOD_STATEMENTS) {
+        methodMinDepth = 2;
+      }
+      collapseContainers(method.body, 1, Math.min(fileMinDepth, methodMinDepth));
     }
   }
 }
@@ -979,7 +1033,9 @@ function collapseContainers(
     if (child.type !== 'container') continue;
     const spanLines = child.span.endLine - child.span.startLine + 1;
     child.collapsedByDefault =
-      depth >= minCollapseDepth || spanLines > COLLAPSE_CONTAINER_LINES;
+      depth >= minCollapseDepth ||
+      depth >= COLLAPSE_DEEP_NESTING ||
+      spanLines > COLLAPSE_CONTAINER_LINES;
     for (const slot of child.slots) {
       collapseContainers(slot.children, depth + 1, minCollapseDepth);
     }

@@ -250,7 +250,14 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
     case 'reopenAsText':
       return { type: 'reopenAsText' };
     case 'openResource':
-      return isString(raw.uri, MAX_ID) ? { type: 'openResource', uri: raw.uri } : null;
+      return isString(raw.uri, MAX_ID) &&
+        (raw.preview === undefined || typeof raw.preview === 'boolean')
+        ? {
+            type: 'openResource',
+            uri: raw.uri,
+            ...(raw.preview !== undefined ? { preview: raw.preview } : {})
+          }
+        : null;
     case 'persistViewState':
       return isViewState(raw.state) ? { type: 'persistViewState', state: raw.state } : null;
     case 'log':

@@ -18,6 +18,28 @@ describe('validateWebviewMessage — valid messages', () => {
     expect(validateWebviewMessage({ type: 'reopenAsText' })).toEqual({ type: 'reopenAsText' });
   });
 
+  it('accepts openResource with and without the optional preview flag', () => {
+    expect(validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs' })).toEqual({
+      type: 'openResource',
+      uri: 'file:///p/a.cs'
+    });
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: false })
+    ).toEqual({ type: 'openResource', uri: 'file:///p/a.cs', preview: false });
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: true })
+    ).toEqual({ type: 'openResource', uri: 'file:///p/a.cs', preview: true });
+  });
+
+  it('rejects openResource with a non-boolean preview', () => {
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: 'yes' })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: 1 })
+    ).toBeNull();
+  });
+
   it('accepts an editAgentField with a safe path', () => {
     const msg = { type: 'editAgentField', path: ['settings', 'model'], value: 'gpt-4o' };
     expect(validateWebviewMessage(msg)).toEqual(msg);

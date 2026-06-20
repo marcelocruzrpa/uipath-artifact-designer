@@ -127,7 +127,15 @@
                           "label": "+1 more",
                           "value": "true",
                           "kind": "expression",
-                          "editableKind": "none"
+                          "editableKind": "none",
+                          "overflowArgs": [
+                            {
+                              "label": "arg3",
+                              "value": "true",
+                              "kind": "expression",
+                              "editableKind": "none"
+                            }
+                          ]
                         }
                       ],
                       "resultBinding": "cellValue",

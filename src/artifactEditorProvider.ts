@@ -353,7 +353,22 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             );
             return;
           }
-          await vscode.window.showTextDocument(target, { preview: true });
+          // `preview === false` is the double-click "open the workflow" intent:
+          // open a PERSISTENT tab in the target's own designer when one is
+          // registered (a .cs coded workflow → the canvas), else as plain text.
+          // Anything else keeps the single-click transient preview.
+          if (message.preview === false) {
+            const targetDescriptor = descriptorForUri(target);
+            if (targetDescriptor !== undefined) {
+              await vscode.commands.executeCommand('vscode.openWith', target, targetDescriptor.viewType, {
+                preview: false
+              });
+            } else {
+              await vscode.window.showTextDocument(target, { preview: false });
+            }
+          } else {
+            await vscode.window.showTextDocument(target, { preview: true });
+          }
         } catch (e) {
           logWarn(
             `rejected malformed openResource URI "${message.uri}": ${

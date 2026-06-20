@@ -43,7 +43,10 @@ export type HostToWebview =
 /** Messages sent from the webview to the extension host. */
 export type WebviewToHost =
   | { type: 'ready' }
-  | { type: 'openResource'; uri: string }
+  // `preview` absent/true → transient preview tab (single-click peek); `false` →
+  // a persistent tab opened in the resource's own designer when one is
+  // registered (double-click "open the workflow"). See the host's openResource handler.
+  | { type: 'openResource'; uri: string; preview?: boolean }
   | { type: 'openParentAgent' }
   | { type: 'reopenAsText' }
   | { type: 'persistViewState'; state: WebviewViewState }

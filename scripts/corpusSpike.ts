@@ -101,10 +101,16 @@ function parseArgs(argv: string[]): CliOptions {
 // File walking
 // ---------------------------------------------------------------------------
 
-/** Path segments never analyzed (build output, scaffolding, VCS). */
+/**
+ * Path segments never analyzed (build output, scaffolding, VCS). Mirrors the
+ * PRODUCTION discovery exclusions (`codedProjectIndex.ts` EXCLUDE_GLOB),
+ * including `.local` (UiPath's generated activity-wrapper partials), so corpus
+ * numbers reflect exactly the files the extension renders.
+ */
 const EXCLUDED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'bin',
   'obj',
+  '.local',
   '.codedworkflows',
   'properties',
   '.git'

@@ -248,7 +248,16 @@ describe('tier-1 cards — excel handles', () => {
         label: '+1 more',
         value: 'true',
         kind: 'expression',
-        editableKind: 'none'
+        editableKind: 'none',
+        // The folded arg is expanded as a read-only detail row for the panel.
+        overflowArgs: [
+          {
+            label: 'arg3',
+            value: 'true',
+            kind: 'expression',
+            editableKind: 'none'
+          }
+        ]
       }
     ]);
   });

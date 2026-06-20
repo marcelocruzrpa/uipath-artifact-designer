@@ -33,11 +33,14 @@ export function mergeAdjacentChips(children: CwStatement[], source: string): CwS
   };
 
   for (const child of children) {
-    if (child.type === 'raw') {
+    // A helper-call chip carries an in-file navigation target and must stay an
+    // individually-addressable unit — never fold it into a multi-statement run
+    // (e.g. `SafeCloseAndKill(Config); return;` keeps the call navigable).
+    if (child.type === 'raw' && child.helperTarget === undefined) {
       run.push(child);
     } else {
       flush();
-      out.push(child);
+      out.push(child.type === 'raw' ? capChip(child) : child);
     }
   }
   flush();

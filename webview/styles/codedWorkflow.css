@@ -891,6 +891,114 @@ body.vscode-light {
   box-shadow: 0 0 0 1px var(--vscode-focusBorder);
 }
 
+/* --- Invoke activities (open the invoked workflow on double-click) ---------------------------------- */
+/* An invoke activity whose target resolved to a file carries `cw-card--link`:
+   a link-coloured accent marks "double-click opens another workflow". */
+.cw-card--invoke.cw-card--link {
+  border-left-color: var(--vscode-textLink-foreground, var(--cw-t1));
+}
+
+.cw-card--invoke.cw-card--link:hover {
+  border-color: var(--vscode-textLink-activeForeground, var(--vscode-focusBorder));
+}
+
+/* A tier-3 chip that calls an in-file helper: a "Call helper <name>" label;
+   double-click reveals the Helper section (wired by the renderer). The raw code
+   still shows verbatim when expanded. */
+.cw-chip--helper.cw-chip--link {
+  cursor: pointer;
+}
+
+.cw-chip-helper {
+  color: var(--vscode-textLink-foreground, var(--cw-t1));
+  font-weight: 600;
+}
+
+.cw-chip--helper.cw-chip--link:hover .cw-chip-helper {
+  color: var(--vscode-textLink-activeForeground, var(--vscode-focusBorder));
+  text-decoration: underline;
+}
+
+/* The honest line count stays, but de-emphasized next to the helper label. */
+.cw-chip--helper .cw-chip-count {
+  opacity: 0.7;
+}
+
+/* --- Initialization group (folds a leading run of `x = null` Assign cards) -------------------------- */
+.cw-method-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-init-group {
+  border: 1px dashed var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+.cw-init-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.cw-init-header:hover {
+  color: var(--vscode-foreground);
+}
+
+.cw-init-title {
+  flex: 1 1 auto;
+}
+
+.cw-init-group .cw-ct-chevron {
+  margin-left: auto;
+}
+
+/* --- State machine (REFramework while+switch recognized as states) ---------------------------------- */
+/* States overview on the switch head — visible even when the switch is collapsed. */
+.cw-sm-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 6px;
+}
+
+.cw-sm-overview-label {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cw-sm-state {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+/* Per-case outgoing transition chips, shown under the case label. */
+.cw-sm-transitions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+
+.cw-sm-arrow {
+  color: var(--vscode-textLink-foreground, var(--cw-t1));
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
 /* --- Structural editing (L2): insertion points, handles, palette ----------------------------------- */
 .cw-insert {
   align-self: center;

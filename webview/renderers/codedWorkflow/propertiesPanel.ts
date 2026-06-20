@@ -112,6 +112,30 @@ export function renderPseudoPanel(step: CwPseudoStep): HTMLElement {
   return panel;
 }
 
+/**
+ * Detail text for an invoke activity's resolved target — a path when openable,
+ * else why it is unresolved. Returns null when the card is not an invocation.
+ */
+function invokeTargetDetail(card: CwActivityCard): string | null {
+  if (card.invokeKind === undefined) return null;
+  const target = card.invokeTarget;
+  const callee = card.invokeCallee ?? '';
+  switch (target?.status) {
+    case 'resolved':
+      return target.relPath ?? callee;
+    case 'no-match':
+      return `${callee} — no matching workflow in the project`;
+    case 'ambiguous':
+      return `${callee} — multiple workflows match this name`;
+    case 'dynamic':
+      return 'Dynamic workflow name — resolved at runtime';
+    case 'missing-file':
+      return `${target.relPath ?? callee} — file not found`;
+    default:
+      return callee;
+  }
+}
+
 /** Builds the docked properties panel for one activity card. */
 export function renderPropertiesPanel(
   card: CwActivityCard,
@@ -125,6 +149,26 @@ export function renderPropertiesPanel(
       title: `${card.serviceDisplayName} · ${card.method}`
     })
   );
+
+  // Invoke activities surface their resolved target + how to open it.
+  const targetDetail = invokeTargetDetail(card);
+  if (targetDetail !== null) {
+    panel.append(
+      el('div', { class: 'cw-props-row' }, [
+        el('label', { class: 'cw-props-label', text: 'Opens' }),
+        el('div', { class: 'cw-props-detail', text: targetDetail, title: targetDetail })
+      ])
+    );
+    const openable = card.invokeTarget?.status === 'resolved' && card.invokeTarget.uri !== undefined;
+    panel.append(
+      el('div', {
+        class: 'cw-props-hint',
+        text: openable
+          ? 'Double-click the card to open this workflow.'
+          : 'No file to open — the target could not be resolved.'
+      })
+    );
+  }
 
   // Method switch (overload / sibling method) — only in edit mode, only when the
   // family catalogs more than one emittable method. Switching leaves args intact.
@@ -141,6 +185,21 @@ export function renderPropertiesPanel(
   }
 
   card.args.forEach((arg, argIndex) => {
+    // The `+N more` overflow row expands into one read-only detail row per
+    // folded argument — so a many-arg call reveals every argument here, not
+    // just the count the card shows.
+    if (arg.overflowArgs !== undefined) {
+      for (const extra of arg.overflowArgs) {
+        panel.append(
+          el('div', { class: 'cw-props-row' }, [
+            el('label', { class: 'cw-props-label', text: extra.label }),
+            el('div', { class: 'cw-props-detail', text: extra.value, title: extra.value })
+          ])
+        );
+      }
+      return;
+    }
+
     const label = el('label', { class: 'cw-props-label', text: arg.label });
     const row = el('div', { class: 'cw-props-row' }, [label]);
 

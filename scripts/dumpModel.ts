@@ -143,12 +143,22 @@ function printStatement(stmt: CwStatement, depth: number, out: string[]): void {
     case 'raw': {
       const flat = stmt.code.replace(/\s+/g, ' ').trim();
       const mult = stmt.statementCount > 1 ? ` ×${stmt.statementCount}` : '';
-      out.push(`${pad}[T3${mult}] ${flat}   (${lineRange(stmt)})`);
+      const helper =
+        stmt.helperTarget !== undefined ? `  →helper ${stmt.helperTarget.name}` : '';
+      out.push(`${pad}[T3${mult}] ${flat}${helper}   (${lineRange(stmt)})`);
       break;
     }
     case 'container': {
       const collapsed = stmt.collapsedByDefault ? '  [collapsed]' : '';
       out.push(`${pad}<${stmt.kind.toUpperCase()}> ${stmt.header}${collapsed}`);
+      if (stmt.stateMachine !== undefined) {
+        const sm = stmt.stateMachine;
+        out.push(`${pad}${INDENT}· stateMachine(${sm.stateVar}):`);
+        for (const st of sm.states) {
+          const tr = st.transitions.length > 0 ? ` → ${st.transitions.join(', ')}` : ' (terminal)';
+          out.push(`${pad}${INDENT}    ${st.label}${tr}`);
+        }
+      }
       if (stmt.resourceCard !== undefined) {
         out.push(`${pad}${INDENT}· resource: ${renderCard(stmt.resourceCard)}`);
       }
@@ -215,10 +225,17 @@ function printModel(model: CodedWorkflowModel, out: string[]): void {
 // Project graph (drives the pure graphFacts/assembleGraph layer)
 // ---------------------------------------------------------------------------
 
-/** Path segments never analyzed (mirrors corpusSpike's exclusions). */
+/**
+ * Path segments never analyzed — mirrors the PRODUCTION discovery exclusions
+ * (`codedProjectIndex.ts` EXCLUDE_GLOB: bin/obj/.local/.settings/.objects/.tmh/
+ * .codedworkflows) so this oracle sees exactly the files the extension does.
+ * `.local` holds UiPath's generated activity-wrapper partials; scanning them
+ * would diverge the oracle from production.
+ */
 const EXCLUDED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'bin',
   'obj',
+  '.local',
   '.codedworkflows',
   'properties',
   '.git'

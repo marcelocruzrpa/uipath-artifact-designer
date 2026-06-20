@@ -157,7 +157,13 @@ class CodedGraphView implements GraphView {
   };
 
   private readonly onStageDblClick = (e: MouseEvent): void => {
-    if (!(e.target as HTMLElement).closest('.cwg-node')) {
+    const card = (e.target as HTMLElement).closest('.cwg-node') as HTMLElement | null;
+    if (card) {
+      // Double-click a node → open the workflow in a PERSISTENT tab (the
+      // single-click handler already fired a transient preview; this promotes
+      // it). Empty canvas → re-fit, as before.
+      this.openCard(card, true);
+    } else {
       this.fit();
     }
   };
@@ -188,10 +194,10 @@ class CodedGraphView implements GraphView {
     }
   };
 
-  private openCard(card: HTMLElement | null): void {
+  private openCard(card: HTMLElement | null, persistent = false): void {
     const uri = card?.dataset.uri;
     if (uri) {
-      this.opts.post({ type: 'openResource', uri });
+      this.opts.post({ type: 'openResource', uri, ...(persistent ? { preview: false } : {}) });
     }
   }
 

@@ -180,7 +180,7 @@
                                           "indentText": "                            "
                                         }
                                       ],
-                                      "collapsedByDefault": false
+                                      "collapsedByDefault": true
                                     },
                                     {
                                       "id": "ContainerFlow#Execute/1.then.1.body.0.body.1",
@@ -216,7 +216,7 @@
                                   "indentText": "                        "
                                 }
                               ],
-                              "collapsedByDefault": false
+                              "collapsedByDefault": true
                             }
                           ],
                           "span": {
@@ -512,7 +512,11 @@
                       "code": "Process();",
                       "lineCount": 1,
                       "statementCount": 1,
-                      "codeTruncated": false
+                      "codeTruncated": false,
+                      "helperTarget": {
+                        "name": "Process",
+                        "targetId": "ContainerFlow#helper:Process"
+                      }
                     }
                   ],
                   "span": {

@@ -5,6 +5,7 @@
  */
 import type {
   CwActivityCard,
+  CwArgSummary,
   CwPseudoStep,
   CwRawChip,
   SourceSpan
@@ -34,13 +35,30 @@ function applyDataAttrs(node: HTMLElement, id: string, span: SourceSpan, tier: n
   node.dataset.tier = String(tier);
 }
 
-/** `label: value` text for one arg, used for the hover title. */
-function argText(card: CwActivityCard): string {
-  const parts = card.args.map((arg) => `${arg.label}: ${arg.value}`);
-  if (card.resultBinding !== undefined) {
-    parts.push(`→ ${card.resultBinding}`);
+/** `label: value` text for an arg list (+ optional result), used for hover titles / aria. */
+function argText(args: CwArgSummary[], resultBinding: string | undefined): string {
+  const parts = args.map((arg) => `${arg.label}: ${arg.value}`);
+  if (resultBinding !== undefined) {
+    parts.push(`→ ${resultBinding}`);
   }
   return parts.join('  ·  ');
+}
+
+/** The `.cw-card-args` line shared by activity and invoke cards. */
+function buildArgLine(args: CwArgSummary[], resultBinding: string | undefined): HTMLElement {
+  const argLine = el('div', { class: 'cw-card-args', title: argText(args, resultBinding) });
+  for (const arg of args) {
+    argLine.append(
+      el('span', { class: `cw-arg cw-arg--${safeArgKind(arg.kind)}` }, [
+        el('span', { class: 'cw-arg-label', text: `${arg.label}: ` }),
+        el('span', { class: 'cw-arg-value', text: arg.value })
+      ])
+    );
+  }
+  if (resultBinding !== undefined) {
+    argLine.append(el('span', { class: 'cw-arg cw-arg-result', text: `→ ${resultBinding}` }));
+  }
+  return argLine;
 }
 
 /** Tier-1 activity card: accent + icon block + title row + optional arg line. */
@@ -64,24 +82,27 @@ export function buildActivityCard(card: CwActivityCard): HTMLElement {
   // what is on screen). No HTML — pure strings from the model.
   const ariaParts = [card.title, card.serviceDisplayName];
   if (card.args.length > 0 || card.resultBinding !== undefined) {
-    ariaParts.push(argText(card));
+    ariaParts.push(argText(card.args, card.resultBinding));
   }
   node.setAttribute('aria-label', ariaParts.filter((p) => p.length > 0).join(', '));
 
   if (card.args.length > 0 || card.resultBinding !== undefined) {
-    const argLine = el('div', { class: 'cw-card-args', title: argText(card) });
-    for (const arg of card.args) {
-      argLine.append(
-        el('span', { class: `cw-arg cw-arg--${safeArgKind(arg.kind)}` }, [
-          el('span', { class: 'cw-arg-label', text: `${arg.label}: ` }),
-          el('span', { class: 'cw-arg-value', text: arg.value })
-        ])
-      );
+    body.append(buildArgLine(card.args, card.resultBinding));
+  }
+
+  // Workflow-invocation activities (`workflows.Foo(...)` / `RunWorkflow("X")`)
+  // gain an open affordance: when the target resolves to a file the card carries
+  // `data-uri` so a double-click opens the invoked workflow (wired by the
+  // renderer), plus a link accent. Selection (single click) is unchanged.
+  if (card.invokeKind !== undefined) {
+    node.classList.add('cw-card--invoke');
+    const target = card.invokeTarget;
+    const uri = target?.status === 'resolved' ? target.uri : undefined;
+    if (uri !== undefined) {
+      node.classList.add('cw-card--link');
+      node.dataset.uri = uri;
+      node.title = `Open ${target?.relPath ?? card.invokeCallee ?? ''} — double-click`;
     }
-    if (card.resultBinding !== undefined) {
-      argLine.append(el('span', { class: 'cw-arg cw-arg-result', text: `→ ${card.resultBinding}` }));
-    }
-    body.append(argLine);
   }
 
   node.append(icon, body);
@@ -148,9 +169,20 @@ export function buildChip(
   chevron.append(cwIcon(collapsed ? 'chevron-right' : 'chevron-down'));
   const headerChildren: Array<Node | string> = [
     chevron,
-    el('span', { class: 'cw-chip-braces', text: '{ }' }),
-    el('span', { class: 'cw-chip-count', text: chipLabel(chip) })
+    el('span', { class: 'cw-chip-braces', text: '{ }' })
   ];
+  // A helper-call chip leads with "Call helper <name>" and carries an in-file
+  // jump target (a double-click reveals the Helper section). The honest line
+  // count stays as a dim suffix and the raw code still shows when expanded.
+  if (chip.helperTarget !== undefined) {
+    node.classList.add('cw-chip--helper', 'cw-chip--link');
+    node.dataset.target = chip.helperTarget.targetId;
+    node.title = `Open helper ${chip.helperTarget.name} — double-click`;
+    headerChildren.push(
+      el('span', { class: 'cw-chip-helper', text: `Call helper ${chip.helperTarget.name}` })
+    );
+  }
+  headerChildren.push(el('span', { class: 'cw-chip-count', text: chipLabel(chip) }));
 
   if (collapsed) {
     // The whole chip is the toggle.

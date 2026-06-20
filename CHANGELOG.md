@@ -3,6 +3,39 @@
 All notable changes to this extension are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-06-20
+
+Legibility and navigation improvements for the Coded Workflow Canvas, focused on
+real-world REFramework projects (Dispatcher/Performer) where large orchestrators
+previously rendered as one deeply-nested wall.
+
+### Added
+
+- **Workflow-invoke navigation.** Double-click an **Invoke Workflow** card
+  (`workflows.Foo(...)`) or a `RunWorkflow("X.xaml")` activity to open the
+  invoked workflow in its own designer tab; the inspector shows the resolved
+  target (or why it is unresolved — no-match / ambiguous / dynamic / missing).
+- **In-file helper-call navigation.** A bare call to one of the class's own
+  helper methods (`SetStatus(...)`, `this.SafeCloseAndKill(...)`) renders as a
+  "Call helper" chip; double-click reveals and focuses that `Helper:` section.
+- **REFramework state-machine recognition.** A loop-driven `switch` over an enum
+  state variable (the coded `while(true){ switch(state){…} }` port of an
+  REFramework state machine) shows a states overview and per-case transition
+  chips (`→ GetTransactionData`) — without changing the underlying code view.
+- **Initialization grouping.** A leading run of `x = null/0` variable-init
+  Assign cards folds into a collapsible "Initialization (N)" group so the real
+  activity stays at the top of the canvas (read-only view).
+
+### Changed
+
+- **Smarter default collapse.** Large orchestrator methods now collapse their
+  nested containers by per-method density (and any container nested ≥3 deep),
+  while small workflows stay fully expanded — turning a 60+-statement state
+  machine into a navigable overview instead of a fully-expanded wall.
+- **Full argument detail in the inspector.** A many-argument call still shows a
+  compact `+N more` summary on the card, but the properties panel now lists
+  every folded argument instead of hiding them behind the count.
+
 ## [1.1.0] - 2026-06-14
 
 ### Added

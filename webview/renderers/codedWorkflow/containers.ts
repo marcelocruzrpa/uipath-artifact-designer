@@ -7,12 +7,22 @@
 import type {
   CwContainer,
   CwContainerKind,
+  CwPseudoStep,
   CwSlot,
+  CwStateMachine,
   CwStatement
 } from '../../../src/model/codedWorkflow/cwTypes';
 import { el } from '../../util';
 import { cwIcon } from './cwIcons';
 import { buildActivityCard, buildChip, buildPseudoCard } from './stepCard';
+
+/**
+ * Minimum length of a leading run of literal-init Assign cards before it is
+ * folded into a collapsible "Initialization (N)" group (read-only mode only).
+ * A REFramework `Main` opens with 8-11 `x = null/0` declarations; grouping them
+ * keeps the real activity at the top of the canvas. Short runs stay inline.
+ */
+const INIT_GROUP_MIN = 4;
 
 /** A webview-side slot reference (mirrors edit/editTypes SlotRef). */
 export interface SlotIdentity {
@@ -104,6 +114,85 @@ export function renderStatements(stmts: CwStatement[], ctx: RenderCtx): HTMLElem
     }
   });
   return seq;
+}
+
+/**
+ * Renders a METHOD-BODY statement column. In read-only mode it folds a leading
+ * run of literal-init Assign cards (>= INIT_GROUP_MIN) into a collapsible
+ * "Initialization (N)" group so the real activity is not buried under a stack
+ * of `x = null` cards; the remaining statements render normally. In EDIT mode
+ * grouping is skipped so the per-slot insertion indices stay 1:1 with the model.
+ */
+export function renderMethodBody(stmts: CwStatement[], ctx: RenderCtx): HTMLElement {
+  if (ctx.editing) {
+    return renderStatements(stmts, ctx);
+  }
+  let n = 0;
+  while (
+    n < stmts.length &&
+    stmts[n].type === 'pseudo' &&
+    (stmts[n] as CwPseudoStep).ruleId === 'assign-literal'
+  ) {
+    n += 1;
+  }
+  if (n < INIT_GROUP_MIN) {
+    return renderStatements(stmts, ctx);
+  }
+  const rest = stmts.slice(n);
+  const children: HTMLElement[] = [buildInitGroup(stmts.slice(0, n), ctx)];
+  if (rest.length > 0) {
+    children.push(renderStatements(rest, ctx));
+  }
+  return el('div', { class: 'cw-method-body' }, children);
+}
+
+/** Collapsible "Initialization (N)" group wrapping the leading init Assign cards. */
+function buildInitGroup(cards: CwStatement[], ctx: RenderCtx): HTMLElement {
+  const id = `${ctx.slot.methodId}::init`;
+  const collapsed = ctx.isCollapsed(id, 'container', true);
+  const node = el('div', {
+    class: `cw-init-group${collapsed ? ' cw-init-group--collapsed' : ''}`
+  });
+  node.dataset.id = id;
+
+  const glyph = el('span', { class: 'cw-ct-glyph' });
+  glyph.append(cwIcon('fx'));
+  const chevron = el('span', { class: 'cw-ct-chevron' });
+  chevron.append(cwIcon(collapsed ? 'chevron-right' : 'chevron-down'));
+  const header = el('div', { class: 'cw-init-header' }, [
+    glyph,
+    el('span', { class: 'cw-init-title', text: `Initialization (${cards.length})` }),
+    chevron
+  ]);
+  header.setAttribute('role', 'button');
+  header.tabIndex = 0;
+  header.setAttribute('aria-expanded', String(!collapsed));
+  onActivate(header, () => ctx.onToggle(id));
+  node.append(header);
+
+  if (!collapsed) {
+    node.append(renderStatements(cards, ctx));
+  }
+  return node;
+}
+
+/** The states-overview chip row shown on a recognized state-machine `switch`. */
+function buildStateOverview(sm: CwStateMachine): HTMLElement {
+  const row = el('div', { class: 'cw-sm-overview' });
+  row.append(el('span', { class: 'cw-sm-overview-label', text: `States (${sm.states.length})` }));
+  for (const st of sm.states) {
+    const title =
+      st.transitions.length > 0 ? `${st.label} → ${st.transitions.join(', ')}` : `${st.label} (terminal)`;
+    row.append(el('span', { class: 'cw-sm-state', text: st.label, title }));
+  }
+  return row;
+}
+
+/** Outgoing transitions for the case whose label ends in `.<state>`, else []. */
+function transitionsForCase(sm: CwStateMachine | undefined, slotLabel: string): string[] {
+  if (sm === undefined) return [];
+  const state = sm.states.find((st) => slotLabel.endsWith(`.${st.label}`));
+  return state?.transitions ?? [];
 }
 
 /** A `+` button that opens the palette to insert into `ctx.slot` at `index`. */
@@ -232,6 +321,11 @@ export function buildContainer(c: CwContainer, ctx: RenderCtx): HTMLElement {
   if (c.kind === 'using' && c.resourceCard) {
     head.append(el('div', { class: 'cw-ct-resource' }, [buildActivityCard(c.resourceCard)]));
   }
+  // A switch recognized as a REFramework state machine shows a states overview
+  // in the (always-visible) head, so even a collapsed switch reads as states.
+  if (c.kind === 'switch' && c.stateMachine) {
+    head.append(buildStateOverview(c.stateMachine));
+  }
   node.append(head);
 
   if (collapsed) {
@@ -279,11 +373,24 @@ export function buildContainer(c: CwContainer, ctx: RenderCtx): HTMLElement {
       const ri = REPEATABLE.has(slot.role)
         ? (roleCounts[slot.role] = (roleCounts[slot.role] ?? -1) + 1)
         : undefined;
+      const sectionChildren: HTMLElement[] = [
+        el('div', { class: 'cw-section-label', text: slot.label })
+      ];
+      // State-machine case: show this state's outgoing transitions as chips.
+      const transitions =
+        c.kind === 'switch' ? transitionsForCase(c.stateMachine, slot.label) : [];
+      if (transitions.length > 0) {
+        sectionChildren.push(
+          el(
+            'div',
+            { class: 'cw-sm-transitions' },
+            transitions.map((t) => el('span', { class: 'cw-sm-arrow', text: `→ ${t}` }))
+          )
+        );
+      }
+      sectionChildren.push(slotChildren(slot, slotCtx(slot.role, ri)));
       node.append(
-        el('div', { class: `cw-section cw-section--${safeSectionRole(slot.role)}` }, [
-          el('div', { class: 'cw-section-label', text: slot.label }),
-          slotChildren(slot, slotCtx(slot.role, ri))
-        ])
+        el('div', { class: `cw-section cw-section--${safeSectionRole(slot.role)}` }, sectionChildren)
       );
     }
   } else {

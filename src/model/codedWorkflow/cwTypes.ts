@@ -55,6 +55,15 @@ export interface CwArgSummary {
    *   'raw' → raw-text only (expression/interpolated); 'none' → read-only.
    */
   editableKind: 'string' | 'number' | 'bool' | 'enum' | 'identifier' | 'raw' | 'none';
+  /**
+   * Present ONLY on a `+N more` overflow row: the structured, read-only detail
+   * for each folded argument (label = C# param name or positional `argN`, value
+   * = its source). The CARD shows the compact `+N more` summary; the PROPERTIES
+   * PANEL expands these into one row each, so a many-argument call (e.g. an
+   * 11-arg `system.SetTransactionStatus`) reveals every argument instead of
+   * hiding them behind the count.
+   */
+  overflowArgs?: CwArgSummary[];
 }
 
 interface CwNodeBase {
@@ -95,6 +104,17 @@ export interface CwActivityCard extends CwNodeBase {
    * `add` that would place a positional argument after a named one (CS1738).
    */
   hasNamedArg?: boolean;
+  /**
+   * Set when this activity is a WORKFLOW INVOCATION (`workflows.Foo(...)` →
+   * 'workflows-member', `RunWorkflow("X.xaml")` → 'run-workflow'), detected at
+   * build time alongside the tier-1 match. Drives double-click "open the invoked
+   * workflow". `invokeCallee` is the callee CLASS name (workflows-member) or the
+   * literal/placeholder path (run-workflow). `invokeTarget` is resolved
+   * host-side from the project graph (`attachInvokeTargets`); absent until then.
+   */
+  invokeKind?: 'workflows-member' | 'run-workflow';
+  invokeCallee?: string;
+  invokeTarget?: CwInvokeTarget;
 }
 
 export interface CwPseudoStep extends CwNodeBase {
@@ -106,6 +126,25 @@ export interface CwPseudoStep extends CwNodeBase {
   icon: string;
 }
 
+/**
+ * Resolution of an invoke activity's target workflow, computed host-side from
+ * the project call graph (`attachInvokeTargets`). Mirrors the graph view's
+ * outcomes so a card and its graph node read the same:
+ *   - 'resolved'      → exactly one target file; `uri` is set (openable).
+ *   - 'no-match'      → no project workflow matches the callee.
+ *   - 'ambiguous'     → several classes share the callee name (no single file).
+ *   - 'dynamic'       → RunWorkflow(<non-literal>) — target not statically known.
+ *   - 'missing-file'  → literal RunWorkflow path with no file on disk.
+ * Absent until the host attaches it (e.g. when the project graph is unavailable).
+ */
+export interface CwInvokeTarget {
+  status: 'resolved' | 'no-match' | 'ambiguous' | 'dynamic' | 'missing-file';
+  /** File URI to open — present only when `status === 'resolved'`. */
+  uri?: string;
+  /** Project-relative path of the target, for the label / tooltip. */
+  relPath?: string;
+}
+
 export interface CwRawChip extends CwNodeBase {
   type: 'raw';
   tier: 3;
@@ -113,6 +152,18 @@ export interface CwRawChip extends CwNodeBase {
   lineCount: number;
   statementCount: number;
   codeTruncated: boolean;
+  /**
+   * Set when this chip is a bare call to ONE of the SAME class's own helper
+   * methods (`SetStatus(...)`, `this.SafeCloseAndKill(...)`) that resolves
+   * UNIQUELY to a rendered `Helper:` section. Drives an in-file "jump to the
+   * helper" affordance: a double-click reveals + focuses the target section.
+   * Stays tier-3 (a local method call is not a UiPath service call, so tier
+   * metrics stay honest) and the raw code is still shown when expanded.
+   * `targetId` matches the helper section's DOM id (`<className>#helper:<name>`).
+   * Helper-call chips are never merged into a multi-statement run, so the call
+   * stays individually navigable.
+   */
+  helperTarget?: { name: string; targetId: string };
 }
 
 export type CwContainerKind = 'if' | 'foreach' | 'for' | 'while' | 'do' | 'try' | 'switch' | 'using';
@@ -150,6 +201,26 @@ export interface CwSlot {
   braced?: boolean;
 }
 
+/**
+ * State-machine annotation attached to a `switch` container that a loop drives
+ * over an enum state variable (the REFramework `while(true){ switch(state){…} }`
+ * shape). PURELY ADDITIVE: the underlying `switch`/`case`/Assign model is
+ * unchanged and still renders inside when expanded — this only lets the canvas
+ * surface the states + transitions every RPA developer recognizes. Absent when
+ * the conservative detector (`classify/stateMachine.ts`) does not match.
+ */
+export interface CwStateMachine {
+  /** The switched-over state variable (`state`). */
+  stateVar: string;
+  /** One entry per `case`, in source order. */
+  states: Array<{
+    /** The enum member name (`Init`, `Process`, …) — the `case State.X` label. */
+    label: string;
+    /** Distinct target states this case transitions to (`state = State.Y`). */
+    transitions: string[];
+  }>;
+}
+
 export interface CwContainer extends CwNodeBase {
   type: 'container';
   kind: CwContainerKind;
@@ -157,6 +228,8 @@ export interface CwContainer extends CwNodeBase {
   resourceCard?: CwActivityCard;
   slots: CwSlot[];
   collapsedByDefault: boolean;
+  /** Present on a `switch` recognized as a loop-driven enum state machine (F3). */
+  stateMachine?: CwStateMachine;
 }
 
 export type CwStatement = CwActivityCard | CwPseudoStep | CwRawChip | CwContainer;

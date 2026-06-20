@@ -38,6 +38,13 @@ import { unwrapExpression } from './tier1Match';
 /** Default cap for 'expression'-kind rendered values. */
 export const ARG_VALUE_MAX_LEN = 48;
 
+/**
+ * Cap for the per-argument values surfaced in the `+N more` overflow detail
+ * (shown in the properties panel, which wraps): more generous than the compact
+ * card cap so a folded argument's value stays legible.
+ */
+export const OVERFLOW_ARG_MAX_LEN = 200;
+
 /** How many args the generic (uncataloged) extractor surfaces. */
 const GENERIC_ARG_COUNT = 2;
 
@@ -104,11 +111,26 @@ function overflowRow(
   const remaining = args.filter((a) => !covered.has(a.id));
   if (remaining.length === 0) return null;
   const joined = remaining.map((a) => sliceOf(a, source)).join(', ');
+  // Structured, read-only detail for the properties panel: one row per folded
+  // argument so a many-arg call reveals every argument (the CARD still shows
+  // only the compact `+N more` summary below).
+  const overflowArgs: CwArgSummary[] = remaining.map((arg) => {
+    const name = argName(arg);
+    const valueNode = argValueNode(arg);
+    const label = name ?? `arg${args.indexOf(arg) + 1}`;
+    return {
+      label,
+      value: valueNode !== null ? clip(sliceOf(valueNode, source), OVERFLOW_ARG_MAX_LEN) : '',
+      kind: 'expression',
+      editableKind: 'none'
+    };
+  });
   return {
     label: `+${remaining.length} more`,
     value: clip(joined, ARG_VALUE_MAX_LEN),
     kind: 'expression',
-    editableKind: 'none'
+    editableKind: 'none',
+    overflowArgs
   };
 }
 

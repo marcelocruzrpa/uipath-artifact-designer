@@ -33,7 +33,7 @@ import type { Renderer, RendererHost } from '../renderer';
 import { clearChildren, deepEqual, el, note } from '../util';
 import { effectiveCollapsed, toggleId } from './codedWorkflow/collapsePolicy';
 import {
-  renderStatements,
+  renderMethodBody,
   type RenderCtx,
   type SlotIdentity
 } from './codedWorkflow/containers';
@@ -276,6 +276,7 @@ class CodedWorkflowRenderer implements Renderer {
     if (this.scrollEl) {
       this.canvasScrollStash = { x: this.scrollEl.scrollLeft, y: this.scrollEl.scrollTop };
       this.scrollEl.removeEventListener('scroll', this.onScroll);
+      this.scrollEl.removeEventListener('dblclick', this.onCanvasDblClick);
       this.scrollEl = null;
     }
     // The popover lives in the canvas DOM being torn down — drop it + its
@@ -328,6 +329,7 @@ class CodedWorkflowRenderer implements Renderer {
     const layout = el('div', { class: 'cw-layout' }, [root, dock]);
 
     root.addEventListener('scroll', this.onScroll);
+    root.addEventListener('dblclick', this.onCanvasDblClick);
     this.scrollEl = root;
     container.append(layout);
     root.scrollLeft = scroll.x;
@@ -863,7 +865,9 @@ class CodedWorkflowRenderer implements Renderer {
     if (stmts.length === 0) {
       return el('div', { class: 'cw-empty', text: '– no statements –' });
     }
-    return renderStatements(stmts, ctx);
+    // Method bodies fold a leading literal-init run into an "Initialization"
+    // group (read-only mode); nested slots render via renderStatements directly.
+    return renderMethodBody(stmts, ctx);
   }
 
   private buildHelperSection(className: string, helper: CwHelperMethod): HTMLElement {
@@ -947,6 +951,51 @@ class CodedWorkflowRenderer implements Renderer {
       this.host?.notifyViewChanged();
     }, SCROLL_PERSIST_DELAY_MS);
   };
+
+  /**
+   * Double-click handling, delegated on the scroll root so it covers any nested
+   * container:
+   *   - a `.cw-card[data-uri]` (an invoke card with a resolved cross-file target)
+   *     → open that workflow in a PERSISTENT designer tab.
+   *   - a `.cw-chip[data-target]` (a call to an in-file helper) → reveal +
+   *     focus that `Helper:` section.
+   * Single click is unchanged (cards select; collapsed chips toggle).
+   */
+  private readonly onCanvasDblClick = (e: MouseEvent): void => {
+    const card = (e.target as HTMLElement).closest('.cw-card[data-uri]') as HTMLElement | null;
+    const uri = card?.dataset.uri;
+    if (uri !== undefined) {
+      this.host?.post({ type: 'openResource', uri, preview: false });
+      return;
+    }
+    const chip = (e.target as HTMLElement).closest('.cw-chip[data-target]') as HTMLElement | null;
+    const target = chip?.dataset.target;
+    if (target !== undefined) {
+      this.revealHelper(target);
+    }
+  };
+
+  /**
+   * Reveal an in-file helper section: expand it if collapsed (its default), then
+   * scroll it into view and focus its header. Reuses the collapse delta +
+   * effective-collapse policy so the expansion persists like any user toggle.
+   */
+  private revealHelper(targetId: string): void {
+    if (effectiveCollapsed(targetId, 'container', true, this.userToggled)) {
+      toggleId(this.userToggled, targetId);
+      this.render();
+      this.host?.notifyViewChanged();
+    }
+    const node = this.scrollEl?.querySelector<HTMLElement>(`[data-id="${CSS.escape(targetId)}"]`);
+    if (!node) {
+      return;
+    }
+    node.scrollIntoView({ block: 'center' });
+    const focusable = node.getAttribute('role') === 'button'
+      ? node
+      : node.querySelector<HTMLElement>('[role="button"]');
+    focusable?.focus();
+  }
 
   // --- Renderer contract --------------------------------------------------------
 
@@ -1056,6 +1105,7 @@ class CodedWorkflowRenderer implements Renderer {
     this.canvasScrollStash = null;
     this.graphTransformStash = null;
     this.scrollEl?.removeEventListener('scroll', this.onScroll);
+    this.scrollEl?.removeEventListener('dblclick', this.onCanvasDblClick);
     this.scrollEl = null;
     this.dockEl = null;
     this.container = null;

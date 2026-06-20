@@ -14,6 +14,7 @@
 import type * as vscode from 'vscode';
 import { VIEW_TYPES } from '../constants';
 import type { ArtifactDescriptor, DetectResult } from '../model/artifactDescriptor';
+import { attachInvokeTargets } from '../model/codedWorkflow/attachInvokeTargets';
 import { buildModel, nowMs } from '../model/codedWorkflow/buildModel';
 import { isCodedWorkflowSource } from '../model/codedWorkflow/detectSource';
 import { extractFileFacts, type FileFacts } from '../model/codedWorkflow/graph/graphFacts';
@@ -120,6 +121,12 @@ async function loadCodedWorkflowModel(document: vscode.TextDocument): Promise<Ar
     if (projectRoot !== undefined) {
       try {
         fresh.graph = await CodedProjectIndex.for(projectRoot).getGraph(document, activeFacts);
+        // Resolve every Invoke card's target from the freshly-built graph so a
+        // double-click can open the invoked workflow. Skipped when the graph
+        // failed to build (graph null) — cards stay unresolved (inert).
+        if (fresh.graph !== null) {
+          attachInvokeTargets(fresh, fresh.graph);
+        }
       } catch (err) {
         fresh.graph = null;
         fresh.diagnostics.push({
