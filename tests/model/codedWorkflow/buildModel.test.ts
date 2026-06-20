@@ -13,6 +13,7 @@ import {
 } from './helpers';
 import { getCSharpParser } from '../../../src/model/codedWorkflow/parser';
 import { buildModel } from '../../../src/model/codedWorkflow/buildModel';
+import { findNodeById } from '../../../src/model/codedWorkflow/edit/findNode';
 import type {
   CodedWorkflowModel,
   CwContainer,
@@ -37,6 +38,37 @@ async function build(source: string, fileName = 'Flow.cs'): Promise<CodedWorkflo
     tree.delete();
   }
 }
+
+describe('duplicate class names in one document get unique ids', () => {
+  const DUP = [
+    'namespace A { public class W : CodedWorkflow { [Workflow] public void Execute() { LogA(); } } }',
+    'namespace B { public class W : CodedWorkflow { [Workflow] public void Execute() { LogB(); } } }'
+  ].join('\n');
+
+  it('suffixes the 2nd same-named class so statement ids do not collide', async () => {
+    const model = await build(DUP);
+    expect(model.classes).toHaveLength(2);
+    expect(model.classes[0].className).toBe('W');
+    expect(model.classes[1].className).toBe('W'); // display name unchanged
+    const id0 = model.classes[0].entryPoints[0].bodyId;
+    const id1 = model.classes[1].entryPoints[0].bodyId;
+    expect(id0).toBe('W#Execute/');
+    expect(id1).toBe('W@2#Execute/');
+    expect(id0).not.toBe(id1);
+  });
+
+  it('findNodeById resolves each card to the correct class (no first-match collision)', async () => {
+    const model = await build(DUP);
+    const s0 = model.classes[0].entryPoints[0].body[0];
+    const s1 = model.classes[1].entryPoints[0].body[0];
+    expect(s0.id).not.toBe(s1.id);
+    // Each id round-trips to ITS OWN statement, not the first same-id match.
+    expect(findNodeById(model, s0.id)).toBe(s0);
+    expect(findNodeById(model, s1.id)).toBe(s1);
+    // ...and the two statements are at different source offsets (LogA vs LogB).
+    expect(s0.offsets?.start).not.toBe(s1.offsets?.start);
+  });
+});
 
 /** Collect every raw chip in a statement tree, depth-first. */
 function collectChips(children: CwStatement[]): CwRawChip[] {
@@ -225,7 +257,10 @@ describe('buildModel — container-aware body', () => {
     const foreach = then.children[1] as CwContainer;
     expect(foreach.kind).toBe('foreach');
     expect(foreach.header).toBe('For Each c in name');
-    expect((foreach.slots[0].children[0] as CwRawChip).code).toBe('count = count + 1;');
+    // `count = count + 1;` is an arithmetic reassignment → a generic Assign card
+    // (verbatim RHS) since the assign-generic floor rule shipped.
+    expect((foreach.slots[0].children[0] as CwPseudoStep).ruleId).toBe('assign-generic');
+    expect((foreach.slots[0].children[0] as CwPseudoStep).text).toBe('count = count + 1');
   });
 
   it('assigns hierarchical stable ids <className>#<methodName>/<path>', async () => {
@@ -338,9 +373,10 @@ describe('buildModel — container-aware body', () => {
     const model = await build(MIXED_FILE);
     const execute = model.classes[0].entryPoints[0];
     const chips = collectChips(execute.body);
-    // count = count + 1; / return name; — Log is a tier-1 card and count = 0;
-    // is now a tier-2 assign-literal card, leaving two tier-3 chips.
-    expect(chips.length).toBe(2);
+    // `return name;` is the only tier-3 chip: Log is a tier-1 card, `count = 0;`
+    // is a tier-2 assign-literal card, and `count = count + 1;` is a tier-2
+    // assign-generic card.
+    expect(chips.length).toBe(1);
     for (const chip of chips) {
       expect(sliceBySpan(MIXED_FILE, chip.span)).toBe(chip.code);
       expect(chip.lineCount).toBe(chip.span.endLine - chip.span.startLine + 1);
@@ -375,12 +411,13 @@ describe('buildModel — stats and health', () => {
     // Execute: 4 leaves, Verify: 2, LogTwice: 2 — Helper class is excluded;
     // containers do not count, only the leaves inside them.  The four Log
     // calls are tier-1 cards; the two single-literal assigns (`count = 0;`,
-    // `var expected = 3;`) are tier-2 assign-literal cards; `count = count + 1;`
-    // and `return name;` stay tier-3 chips.
+    // `var expected = 3;`) are tier-2 assign-literal cards and the arithmetic
+    // `count = count + 1;` is a tier-2 assign-generic card; only `return name;`
+    // stays a tier-3 chip.
     expect(model.stats.totalStatements).toBe(8);
     expect(model.stats.tier1).toBe(4);
-    expect(model.stats.tier2).toBe(2);
-    expect(model.stats.tier3).toBe(2);
+    expect(model.stats.tier2).toBe(3);
+    expect(model.stats.tier3).toBe(1);
     for (const m of perMethod) {
       const chipStatements = collectChips(m.body).reduce((s, c) => s + c.statementCount, 0);
       expect(m.tierCounts.tier3).toBe(chipStatements);
@@ -396,7 +433,7 @@ describe('buildModel — stats and health', () => {
       '    [Workflow]',
       '    void E()',
       '    {',
-      '        var x = a + b;',
+      '        Bar();',
       '        foo(((  ;',
       '    }',
       '}',
@@ -414,13 +451,15 @@ describe('buildModel — stats and health', () => {
     ]);
 
     // The recovered statement and the broken region are adjacent chips and
-    // therefore merge into ONE chip carrying both raw texts (Stage C).
+    // therefore merge into ONE chip carrying both raw texts (Stage C). A bare
+    // call (`Bar();`) is used as the clean statement so it stays a tier-3 chip
+    // and merges, rather than being lifted to a tier-2 Assign card.
     const body = model.classes[0].entryPoints[0].body as CwRawChip[];
     expect(body).toHaveLength(1);
     // Exactly how many nodes tree-sitter recovers from the broken region is
     // grammar-version detail — at least the clean statement plus one.
     expect(body[0].statementCount).toBeGreaterThanOrEqual(2);
-    expect(body[0].code.startsWith('var x = a + b;')).toBe(true);
+    expect(body[0].code.startsWith('Bar();')).toBe(true);
     expect(body[0].code).toContain('foo(((');
   });
 

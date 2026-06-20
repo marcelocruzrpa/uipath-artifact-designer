@@ -29,7 +29,8 @@ export type Tier2RuleId =
   | 'assign-new-object'
   | 'linq-single-chain'
   | 'file-op'
-  | 'datetime-arith';
+  | 'datetime-arith'
+  | 'assign-generic';
 
 /** Hard budget on the number of shipped tier-2 rules. */
 export const MAX_TIER2_RULES = 15;
@@ -1183,6 +1184,107 @@ const ASSIGN_FROM_CALL: Tier2Rule = {
   textTemplate: '{x} = {call}'
 };
 
+// ---------------------------------------------------------------------------
+// Rule: assign-generic (assign, m0Rank 104 — catch-all floor, last to run)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lvalue node types the generic assign card accepts as a target.  Broader than
+ * `boundValueOf` (identifier-only) so member and element-access assignments
+ * (`order.Total = ...`, `items[i] = ...`) — which NO other rule handles — are
+ * legible as Assign cards instead of opaque collapsed chips.
+ */
+const GENERIC_ASSIGN_TARGETS: ReadonlySet<string> = new Set([
+  'identifier',
+  'member_access_expression',
+  'element_access_expression'
+]);
+
+/**
+ * Target / operator / RHS of any single assignment the generic rule renders.
+ * Reuses `boundValueOf` for the declaration form and `=`/`+=` on an identifier
+ * (so the binding text is the target), and broadens to member/element lvalues
+ * with ANY assignment operator for the bare-assignment form.  Returns null for
+ * a non-assignment, a multi-declarator declaration, or a non-lvalue target.
+ */
+function genericAssignParts(
+  stmt: Node,
+  source: string
+): { target: string; op: string; rhs: Node } | null {
+  const bound = boundValueOf(stmt);
+  if (bound !== null) {
+    return { target: bound.binding, op: bound.op, rhs: bound.value };
+  }
+  // Bare assignment with an lvalue target and any operator (`x.P = v`,
+  // `items[i] = v`, `x -= 1`).  boundValueOf already claimed the identifier
+  // `=`/`+=` shapes above; this path covers everything else.
+  if (stmt.type !== 'expression_statement') return null;
+  const inner = firstNonComment(stmt);
+  if (inner === null || inner.type !== 'assignment_expression') return null;
+  const left = inner.childForFieldName('left');
+  const op = inner.childForFieldName('operator');
+  const right = inner.childForFieldName('right');
+  if (left === null || op === null || right === null) return null;
+  if (!GENERIC_ASSIGN_TARGETS.has(left.type)) return null;
+  // Event subscribe / unsubscribe: `btn.Click += OnClick` / `timer.Elapsed -=
+  // Handler` compiles to add_/remove_ accessor CALLS, not a value assignment.
+  // A member-access target with `+=` / `-=` is the event-handler shape — and is
+  // syntactically indistinguishable from a numeric property compound assign — so
+  // demote it to a tier-3 raw chip (which shows the verbatim line) rather than
+  // title it "Assign". Identifier compounds (`x += 1`), element-access, and
+  // other compound ops (`x.N *= 2`) are unaffected — none can be an event op.
+  if (left.type === 'member_access_expression' && (op.text === '+=' || op.text === '-=')) {
+    return null;
+  }
+  return { target: sliceOf(left, source), op: op.text, rhs: right };
+}
+
+function matchAssignGeneric(
+  stmt: Node,
+  source: string
+): { captures: Record<string, string> } | null {
+  // SINGLE-LINE fence: a folded multi-line RHS would misrepresent on a
+  // one-line card, so multi-line assignments stay tier-3 raw chips (which
+  // expand to show the full code).  Honesty otherwise comes from the verbatim
+  // RHS slice — unlike the claim-making specific assign rules, the generic card
+  // shows the exact source, so await/lambda/query need no escape-hatch fence.
+  if (stmt.startPosition.row !== stmt.endPosition.row) return null;
+  const parts = genericAssignParts(stmt, source);
+  if (parts === null) return null;
+  // Chained assignment (`x = y = z`): the RHS is ITSELF an assignment, so a
+  // single "Assign" card would stand in for TWO writes. Keep it tier-3 — the
+  // raw chip shows the full chain — rather than understate the second effect.
+  if (parts.rhs.type === 'assignment_expression') return null;
+  return {
+    captures: {
+      target: parts.target,
+      op: parts.op,
+      rhs: sliceOf(parts.rhs, source)
+    }
+  };
+}
+
+const ASSIGN_GENERIC: Tier2Rule = {
+  id: 'assign-generic',
+  family: 'assign',
+  m0Rank: 104,
+  doc:
+    'Catch-all assignment floor (LAST rule — first-match-wins lets every more ' +
+    'specific rule claim its shape first): any SINGLE-LINE assignment renders ' +
+    '`Assign | <target> <op> <verbatim RHS>`. Covers declarations (`var x = ' +
+    'a + b`), identifier compound assigns (`x -= 1`), and — uniquely among the ' +
+    'assign rules — member and element-access targets (`order.Total = ' +
+    'subtotal`, `items[i] = value`). The RHS is shown verbatim, so there is no ' +
+    'honesty loss and no escape-hatch fence (await/lambda/query render as ' +
+    'written). Multi-line assignments, multi-declarator declarations, non-lvalue ' +
+    'targets (tuple deconstruction), event subscribe/unsubscribe (`x.E += h` / ' +
+    '`-= h`, which is a handler op, not a value assignment), and chained ' +
+    'assignments (`x = y = z`, two writes) stay tier-3.',
+  match: matchAssignGeneric,
+  titleTemplate: 'Assign',
+  textTemplate: '{target} {op} {rhs}'
+};
+
 /** The shipped registry — sorted ascending by m0Rank. */
 export const TIER2_RULES: readonly Tier2Rule[] = [
   CONSOLE_WRITE,
@@ -1193,7 +1295,8 @@ export const TIER2_RULES: readonly Tier2Rule[] = [
   ASSIGN_NEW_OBJECT,
   LINQ_SINGLE_CHAIN,
   FILE_OP,
-  DATETIME_ARITH
+  DATETIME_ARITH,
+  ASSIGN_GENERIC
 ];
 
 /** Icon per rule family. */

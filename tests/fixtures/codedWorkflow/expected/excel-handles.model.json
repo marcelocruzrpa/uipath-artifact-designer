@@ -69,6 +69,10 @@
                         "start": 606,
                         "end": 606
                       },
+                      "methodNameSpan": {
+                        "start": 596,
+                        "end": 605
+                      },
                       "offsets": {
                         "start": 567,
                         "end": 608
@@ -132,6 +136,10 @@
                         "start": 653,
                         "end": 670
                       },
+                      "methodNameSpan": {
+                        "start": 644,
+                        "end": 652
+                      },
                       "offsets": {
                         "start": 625,
                         "end": 682
@@ -156,6 +164,10 @@
                       "argListSpan": {
                         "start": 707,
                         "end": 707
+                      },
+                      "methodNameSpan": {
+                        "start": 702,
+                        "end": 706
                       },
                       "offsets": {
                         "start": 699,
@@ -225,6 +237,10 @@
                 "argListSpan": {
                   "start": 454,
                   "end": 534
+                },
+                "methodNameSpan": {
+                  "start": 441,
+                  "end": 453
                 }
               }
             },
@@ -266,6 +282,10 @@
                 "start": 768,
                 "end": 781
               },
+              "methodNameSpan": {
+                "start": 755,
+                "end": 767
+              },
               "offsets": {
                 "start": 736,
                 "end": 783
@@ -306,6 +326,10 @@
               "argListSpan": {
                 "start": 815,
                 "end": 820
+              },
+              "methodNameSpan": {
+                "start": 803,
+                "end": 814
               },
               "offsets": {
                 "start": 796,

@@ -1,0 +1,1 @@
+Assign | ratio = width / height

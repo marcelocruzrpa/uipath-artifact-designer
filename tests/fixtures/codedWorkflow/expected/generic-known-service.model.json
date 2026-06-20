@@ -84,6 +84,10 @@
                         "start": 525,
                         "end": 526
                       },
+                      "methodNameSpan": {
+                        "start": 513,
+                        "end": 524
+                      },
                       "offsets": {
                         "start": 509,
                         "end": 528
@@ -141,6 +145,10 @@
                 "argListSpan": {
                   "start": 465,
                   "end": 476
+                },
+                "methodNameSpan": {
+                  "start": 439,
+                  "end": 464
                 }
               }
             },
@@ -176,6 +184,10 @@
               "argListSpan": {
                 "start": 582,
                 "end": 629
+              },
+              "methodNameSpan": {
+                "start": 569,
+                "end": 581
               },
               "offsets": {
                 "start": 555,
@@ -214,6 +226,10 @@
               "argListSpan": {
                 "start": 675,
                 "end": 719
+              },
+              "methodNameSpan": {
+                "start": 660,
+                "end": 674
               },
               "offsets": {
                 "start": 644,
@@ -256,6 +272,10 @@
               "argListSpan": {
                 "start": 771,
                 "end": 782
+              },
+              "methodNameSpan": {
+                "start": 756,
+                "end": 770
               },
               "offsets": {
                 "start": 734,

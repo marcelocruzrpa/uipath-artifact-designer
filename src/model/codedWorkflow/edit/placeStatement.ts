@@ -38,7 +38,12 @@ export function insertionPatch(
   if (index >= kids.length) {
     // Append after the last child with an offset.
     const last = lastWithOffsets(kids);
-    const at = last?.offsets?.end ?? target.bodySpan?.end ?? 0;
+    let at = last?.offsets?.end ?? target.bodySpan?.end ?? 0;
+    // A statement's offsets END at its `;`/`}`, BEFORE a same-line trailing line
+    // comment (`Log("a"); // note`). Inserting there would slide the comment onto
+    // the NEW statement. If one is present, append after the physical line so the
+    // comment stays with its own statement.
+    at = afterTrailingLineComment(source, at);
     return { start: at, end: at, newText: `${eol}${indent}${statementSource}` };
   }
   // Insert before child[index].
@@ -57,6 +62,25 @@ export function insertionPatch(
 function closeIndentFrom(indent: string): string {
   if (indent.endsWith('\t')) return indent.slice(0, -1);
   return indent.replace(/ {1,2}$/, '');
+}
+
+/**
+ * If a same-line trailing LINE comment (`// …`) follows position `at` (only
+ * whitespace in between), return the index at the END of that physical line
+ * (before the EOL) so an append lands AFTER the comment. Otherwise return `at`
+ * unchanged. Only `//` is handled — a block comment may span lines or carry
+ * trailing code, so it is left to the move/delete guards. `source === ''`
+ * (no document supplied) is a no-op.
+ */
+function afterTrailingLineComment(source: string, at: number): number {
+  if (source === '' || at >= source.length) return at;
+  let i = at;
+  while (i < source.length && (source[i] === ' ' || source[i] === '\t')) i += 1;
+  if (source[i] !== '/' || source[i + 1] !== '/') return at;
+  let nl = source.indexOf('\n', i);
+  if (nl === -1) return source.length;
+  if (nl > 0 && source[nl - 1] === '\r') nl -= 1;
+  return nl;
 }
 
 function lastWithOffsets(kids: CwStatement[]): CwStatement | undefined {

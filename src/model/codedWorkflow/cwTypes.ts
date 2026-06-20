@@ -43,6 +43,13 @@ export interface CwArgSummary {
    */
   argSpan?: OffsetSpan;
   /**
+   * True when this row's `argument` is a C# NAMED argument (`name: value`),
+   * detected from the PARSER's `name` field — robust to `@`-verbatim and unicode
+   * identifiers that a text regex misses. The edit engine uses it to reject a
+   * whole-span `change` (which would drop the `name:`). Absent ⇒ positional.
+   */
+  isNamed?: boolean;
+  /**
    * How the value may be edited from a form:
    *   'string'|'number'|'bool'|'enum' → typed field; 'identifier' → text field;
    *   'raw' → raw-text only (expression/interpolated); 'none' → read-only.
@@ -71,11 +78,23 @@ export interface CwActivityCard extends CwNodeBase {
   /**
    * Char offsets of the INTERIOR of the call's `argument_list` — the range
    * between `(` and `)` exclusive (so an empty `()` has start === end). An
-   * arg add splices at `argListSpan.end`; a method switch needs the call's
-   * function name span (resolved from the source by the host, not stored).
+   * arg add splices at `argListSpan.end`.
    * Absent for indexer matches (no argument_list) and synthesized cards.
    */
   argListSpan?: OffsetSpan;
+  /**
+   * Char offsets of the call's METHOD-NAME token (the last callee segment) — the
+   * exact range a method switch replaces. Stored from the parse tree, NOT
+   * re-found by scanning source for `method(` (which patches the wrong call in a
+   * chain like `a.GetAsset().GetAsset(1)`). Absent ⇒ a method switch is refused.
+   */
+  methodNameSpan?: OffsetSpan;
+  /**
+   * True when ANY argument of the call is passed by name (parser `name` field) —
+   * across ALL args, not just the surfaced rows, so the engine can reject an
+   * `add` that would place a positional argument after a named one (CS1738).
+   */
+  hasNamedArg?: boolean;
 }
 
 export interface CwPseudoStep extends CwNodeBase {

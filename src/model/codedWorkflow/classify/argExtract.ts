@@ -266,6 +266,7 @@ function finalize(
     value: rendered.value,
     kind: rendered.kind,
     editableKind: rendered.editableKind,
+    ...(argNode !== undefined && argName(argNode) !== null ? { isNamed: true } : {}),
     ...(argNode !== undefined ? { argSpan: { start: argNode.startIndex, end: argNode.endIndex } } : {}),
     ...(rendered.node !== undefined
       ? {

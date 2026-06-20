@@ -25,6 +25,12 @@ export function resolveEdit(
           error: 'cannot insert into an unbraced control-flow body — convert it to a { } block first'
         };
       }
+      // Bound the index: `=== children.length` appends; anything beyond is a
+      // malformed request (validateMessage only checks `index >= 0`). Reject
+      // rather than silently clamp to an append.
+      if (intent.index > target.children.length) {
+        return { ok: false, error: 'insertion index is past the end of the slot' };
+      }
       const eol = source.includes('\r\n') ? '\r\n' : '\n';
       return { ok: true, patches: [insertionPatch(target, intent.index, intent.source, eol, source)] };
     }

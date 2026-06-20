@@ -70,6 +70,10 @@
                 "start": 345,
                 "end": 364
               },
+              "methodNameSpan": {
+                "start": 341,
+                "end": 344
+              },
               "offsets": {
                 "start": 341,
                 "end": 366
@@ -113,6 +117,10 @@
                 "start": 407,
                 "end": 412
               },
+              "methodNameSpan": {
+                "start": 398,
+                "end": 406
+              },
               "offsets": {
                 "start": 379,
                 "end": 414
@@ -123,25 +131,44 @@
               "span": {
                 "startLine": 14,
                 "startCol": 12,
-                "endLine": 15,
-                "endCol": 30
+                "endLine": 14,
+                "endCol": 24
+              },
+              "offsets": {
+                "start": 427,
+                "end": 439
               },
               "type": "raw",
               "tier": 3,
-              "code": "count = = 1;\n            count = count + 1;",
-              "lineCount": 2,
-              "statementCount": 2,
-              "codeTruncated": false,
+              "code": "count = = 1;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            },
+            {
+              "id": "BrokenFlow#Execute/3",
+              "span": {
+                "startLine": 15,
+                "startCol": 12,
+                "endLine": 15,
+                "endCol": 30
+              },
+              "type": "pseudo",
+              "tier": 2,
+              "ruleId": "assign-generic",
+              "title": "Assign",
+              "text": "count = count + 1",
+              "icon": "arrow-right",
               "offsets": {
-                "start": 427,
+                "start": 452,
                 "end": 470
               }
             }
           ],
           "tierCounts": {
             "tier1": 2,
-            "tier2": 0,
-            "tier3": 2
+            "tier2": 1,
+            "tier3": 1
           },
           "bodyId": "BrokenFlow#Execute/",
           "bodySpan": {
@@ -198,6 +225,10 @@
                 "start": 557,
                 "end": 582
               },
+              "methodNameSpan": {
+                "start": 553,
+                "end": 556
+              },
               "offsets": {
                 "start": 553,
                 "end": 584
@@ -228,7 +259,7 @@
   "stats": {
     "totalStatements": 5,
     "tier1": 3,
-    "tier2": 0,
-    "tier3": 2
+    "tier2": 1,
+    "tier3": 1
   }
 }

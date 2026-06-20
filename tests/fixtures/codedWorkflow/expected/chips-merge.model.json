@@ -11,9 +11,9 @@
       "namespace": "Acme.Chips",
       "baseType": "CodedWorkflow",
       "span": {
-        "startLine": 8,
+        "startLine": 10,
         "startCol": 4,
-        "endLine": 82,
+        "endLine": 84,
         "endCol": 5
       },
       "entryPoints": [
@@ -21,9 +21,9 @@
           "name": "Execute",
           "attribute": "Workflow",
           "span": {
-            "startLine": 10,
+            "startLine": 12,
             "startCol": 8,
-            "endLine": 26,
+            "endLine": 28,
             "endCol": 9
           },
           "signatureSummary": "int total",
@@ -31,28 +31,28 @@
             {
               "id": "ChipsFlow#Execute/0",
               "span": {
-                "startLine": 13,
+                "startLine": 15,
                 "startCol": 12,
-                "endLine": 17,
-                "endCol": 26
+                "endLine": 19,
+                "endCol": 20
               },
               "type": "raw",
               "tier": 3,
-              "code": "var a = total + 1;\n            var b = a + 2; // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            var c = a + b;",
+              "code": "StepA(total);\n            StepB(); // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            StepC();",
               "lineCount": 5,
               "statementCount": 3,
               "codeTruncated": false,
               "offsets": {
-                "start": 413,
-                "end": 608
+                "start": 566,
+                "end": 744
               }
             },
             {
               "id": "ChipsFlow#Execute/1",
               "span": {
-                "startLine": 18,
+                "startLine": 20,
                 "startCol": 12,
-                "endLine": 18,
+                "endLine": 20,
                 "endCol": 28
               },
               "type": "activity",
@@ -69,56 +69,60 @@
                   "kind": "literal",
                   "editableKind": "string",
                   "argSpan": {
-                    "start": 625,
-                    "end": 635
+                    "start": 761,
+                    "end": 771
                   },
                   "valueSpan": {
-                    "start": 625,
-                    "end": 635
+                    "start": 761,
+                    "end": 771
                   },
                   "valueRaw": "\"midpoint\""
                 }
               ],
               "icon": "play-circle",
               "argListSpan": {
-                "start": 625,
-                "end": 635
+                "start": 761,
+                "end": 771
+              },
+              "methodNameSpan": {
+                "start": 757,
+                "end": 760
               },
               "offsets": {
-                "start": 621,
-                "end": 637
+                "start": 757,
+                "end": 773
               }
             },
             {
               "id": "ChipsFlow#Execute/2",
               "span": {
-                "startLine": 19,
+                "startLine": 21,
                 "startCol": 12,
-                "endLine": 20,
-                "endCol": 26
+                "endLine": 22,
+                "endCol": 20
               },
               "type": "raw",
               "tier": 3,
-              "code": "var d = c * 2;\n            var e = d - 1;",
+              "code": "StepD();\n            StepE();",
               "lineCount": 2,
               "statementCount": 2,
               "codeTruncated": false,
               "offsets": {
-                "start": 650,
-                "end": 691
+                "start": 786,
+                "end": 815
               }
             },
             {
               "id": "ChipsFlow#Execute/3",
               "span": {
-                "startLine": 21,
+                "startLine": 23,
                 "startCol": 12,
-                "endLine": 24,
+                "endLine": 26,
                 "endCol": 13
               },
               "offsets": {
-                "start": 704,
-                "end": 781
+                "start": 828,
+                "end": 899
               },
               "type": "container",
               "kind": "if",
@@ -131,33 +135,33 @@
                     {
                       "id": "ChipsFlow#Execute/3.then.0",
                       "span": {
-                        "startLine": 23,
+                        "startLine": 25,
                         "startCol": 16,
-                        "endLine": 23,
-                        "endCol": 34
+                        "endLine": 25,
+                        "endCol": 28
                       },
                       "offsets": {
-                        "start": 749,
-                        "end": 767
+                        "start": 873,
+                        "end": 885
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "total = total - 1;",
+                      "code": "StepInner();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
                     }
                   ],
                   "span": {
-                    "startLine": 22,
+                    "startLine": 24,
                     "startCol": 12,
-                    "endLine": 24,
+                    "endLine": 26,
                     "endCol": 13
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 732,
-                    "end": 780
+                    "start": 856,
+                    "end": 898
                   },
                   "indentText": "                "
                 }
@@ -167,18 +171,18 @@
             {
               "id": "ChipsFlow#Execute/4",
               "span": {
-                "startLine": 25,
+                "startLine": 27,
                 "startCol": 12,
-                "endLine": 25,
-                "endCol": 30
+                "endLine": 27,
+                "endCol": 20
               },
               "offsets": {
-                "start": 794,
-                "end": 812
+                "start": 912,
+                "end": 920
               },
               "type": "raw",
               "tier": 3,
-              "code": "var f = e + total;",
+              "code": "StepF();",
               "lineCount": 1,
               "statementCount": 1,
               "codeTruncated": false
@@ -191,8 +195,8 @@
           },
           "bodyId": "ChipsFlow#Execute/",
           "bodySpan": {
-            "start": 400,
-            "end": 821
+            "start": 553,
+            "end": 929
           },
           "indentText": "            "
         },
@@ -200,9 +204,9 @@
           "name": "Big",
           "attribute": "Workflow",
           "span": {
-            "startLine": 28,
+            "startLine": 30,
             "startCol": 8,
-            "endLine": 81,
+            "endLine": 83,
             "endCol": 9
           },
           "signatureSummary": "",
@@ -210,20 +214,20 @@
             {
               "id": "ChipsFlow#Big/0",
               "span": {
-                "startLine": 31,
+                "startLine": 33,
                 "startCol": 12,
-                "endLine": 80,
-                "endCol": 27
+                "endLine": 82,
+                "endCol": 19
               },
               "type": "raw",
               "tier": 3,
-              "code": "big = big + 1;\n            big = big + 2;\n            big = big + 3;\n            big = big + 4;\n            big = big + 5;\n            big = big + 6;\n            big = big + 7;\n            big = big + 8;\n            big = big + 9;\n            big = big + 10;\n            big = big + 11;\n            big = big + 12;\n            big = big + 13;\n            big = big + 14;\n            big = big + 15;\n            big = big + 16;\n            big = big + 17;\n            big = big + 18;\n            big = big + 19;\n            big = big + 20;\n            big = big + 21;\n            big = big + 22;\n            big = big + 23;\n            big = big + 24;\n            big = big + 25;\n            big = big + 26;\n            big = big + 27;\n            big = big + 28;\n            big = big + 29;\n            big = big + 30;\n            big = big + 31;\n            big = big + 32;\n            big = big + 33;\n            big = big + 34;\n            big = big + 35;\n            big = big + 36;\n            big = big + 37;\n            big = big + 38;\n            big = big + 39;\n            big = big + 40;",
+              "code": "Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();",
               "lineCount": 50,
               "statementCount": 50,
               "codeTruncated": true,
               "offsets": {
-                "start": 891,
-                "end": 2269
+                "start": 999,
+                "end": 1986
               }
             }
           ],
@@ -234,8 +238,8 @@
           },
           "bodyId": "ChipsFlow#Big/",
           "bodySpan": {
-            "start": 878,
-            "end": 2278
+            "start": 986,
+            "end": 1995
           },
           "indentText": "            "
         }
@@ -247,7 +251,7 @@
   "parseHealth": "ok",
   "parseErrorCount": 0,
   "truncated": false,
-  "totalLines": 85,
+  "totalLines": 87,
   "stats": {
     "totalStatements": 58,
     "tier1": 1,

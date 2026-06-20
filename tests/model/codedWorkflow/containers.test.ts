@@ -152,12 +152,12 @@ describe('containers — if / else-if / else flattening', () => {
 
     const deepChip = asChip(innerIf.slots[0].children[0]);
     expect(deepChip.id).toBe('ContainerFlow#Execute/1.then.1.body.0.body.0.then.0');
-    expect(deepChip.code).toBe('deep = deep + 1;');
+    expect(deepChip.code).toBe('DoDeep();');
     expect(sliceBySpan(SOURCE, deepChip.span)).toBe(deepChip.code);
 
     const afterIf = asChip(whileC.slots[0].children[1]);
     expect(afterIf.id).toBe('ContainerFlow#Execute/1.then.1.body.0.body.1');
-    expect(afterIf.code).toBe('mode = mode - 1;');
+    expect(afterIf.code).toBe('AfterInner();');
   });
 });
 
@@ -171,7 +171,7 @@ describe('containers — loop headers', () => {
     const doC = asContainer(executeBody()[3]);
     expect(doC.kind).toBe('do');
     expect(doC.header).toBe('Do … While mode < 0');
-    expect(asChip(doC.slots[0].children[0]).code).toBe('mode = mode + 1;');
+    expect(asChip(doC.slots[0].children[0]).code).toBe('Loop();');
   });
 });
 
@@ -219,7 +219,7 @@ describe('containers — using', () => {
     expect(usingC.kind).toBe('using');
     expect(usingC.header).toBe('Use var file = OpenFile(name)');
     expect(usingC.slots.map((s) => s.role)).toEqual(['body']);
-    expect(asChip(usingC.slots[0].children[0]).code).toBe('touched = touched + 1;');
+    expect(asChip(usingC.slots[0].children[0]).code).toBe('Use();');
     // OpenFile is not a tier-1 service call — no resource card.
     expect(usingC.resourceCard).toBeUndefined();
   });
@@ -231,7 +231,7 @@ describe('containers — block-less bodies, header caps, local functions', () =>
     expect(ifC.header).toBe('If mode > 9');
     expect(ifC.slots).toHaveLength(1);
     const chip = asChip(ifC.slots[0].children[0]);
-    expect(chip.code).toBe('seed = mode + 99;');
+    expect(chip.code).toBe('Spike();');
     // Block-less slot span === the single statement's span.
     expect(ifC.slots[0].span).toEqual(chip.span);
   });

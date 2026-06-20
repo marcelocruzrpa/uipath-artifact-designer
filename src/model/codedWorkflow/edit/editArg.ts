@@ -31,8 +31,9 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
       // (`name: value`) includes the `name:` prefix. Replacing the whole span
       // would silently drop the name and re-bind by position. Reject it — value
       // edits route through editValue's valueSpan, so this op never legitimately
-      // targets a named argument.
-      if (isNamedArgument(source.slice(arg.argSpan.start, arg.argSpan.end))) {
+      // targets a named argument. `isNamed` is parser-derived, so it also catches
+      // `@`-verbatim / unicode names a text regex would miss.
+      if (arg.isNamed) {
         return { ok: false, error: 'cannot change a named argument by replacing its whole span (would drop the name)' };
       }
       return { ok: true, patches: [{ start: arg.argSpan.start, end: arg.argSpan.end, newText: intent.newText }] };
@@ -48,10 +49,9 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
       }
       // C# forbids a POSITIONAL argument after a NAMED one (CS1738). Appending
       // `, <newText>` trailing a named arg compiles-invalid yet parses clean, so
-      // the syntax gate misses it. Reject when ANY existing arg is named — the
-      // safe append target (positional-only lists) is the common case.
-      if (card.args.some((a) => a.argSpan !== undefined
-        && isNamedArgument(source.slice(a.argSpan.start, a.argSpan.end)))) {
+      // the syntax gate misses it. `hasNamedArg` is computed over ALL call args
+      // (not just surfaced rows), so a named arg hidden in the overflow is caught.
+      if (card.hasNamedArg) {
         return { ok: false, error: 'cannot append a positional argument after a named argument' };
       }
       // Append after the last existing argument: `, <newText>` at the interior end.
@@ -77,15 +77,16 @@ export function editArg(source: string, model: CodedWorkflowModel, intent: EditA
 
     case 'method': {
       if (intent.newMethod === undefined) return { ok: false, error: 'method switch requires newMethod' };
-      // The method name immediately precedes the argument list. Search the
-      // statement's char range for `<method>(` and replace just the name.
-      const stmtStart = offsetOfSpanStart(source, card);
-      const needle = `${card.method}(`;
-      const at = source.indexOf(needle, stmtStart);
-      if (at < 0 || at >= card.argListSpan!.start) {
+      // Patch the EXACT method-name token captured from the parse tree. Scanning
+      // source for `<method>(` would patch an earlier same-named call in a chain
+      // (`a.GetAsset().GetAsset(1)`); the stored span cannot. Refuse when absent.
+      if (card.methodNameSpan === undefined) {
         return { ok: false, error: 'could not locate the method name to switch' };
       }
-      return { ok: true, patches: [{ start: at, end: at + card.method.length, newText: intent.newMethod }] };
+      return {
+        ok: true,
+        patches: [{ start: card.methodNameSpan.start, end: card.methodNameSpan.end, newText: intent.newMethod }]
+      };
     }
 
     default:
@@ -153,29 +154,3 @@ function commentAdjacentToSeparator(
   return source[i] === '/';
 }
 
-/**
- * True when an `argument` slice is a C# NAMED argument (`name: value`). The
- * slice is exactly one `argument` node, so a named arg always opens with a bare
- * identifier followed by a single `:` (not `::`, the namespace separator). A
- * positional arg opens with an expression — a string/number/`(`/member access —
- * never a bare-identifier-then-colon, and a ternary's `:` is mid-expression
- * (preceded by `?`), so this prefix-only test cannot misfire on positional args.
- */
-function isNamedArgument(slice: string): boolean {
-  const m = /^\s*[A-Za-z_]\w*\s*:/.exec(slice);
-  if (m === null) return false;
-  // Reject the namespace separator `::` (e.g. `global::Foo`): the char after the
-  // matched colon must not be another colon.
-  return slice.charAt(m[0].length) !== ':';
-}
-
-/** Char offset of the card's statement start, from its line/col SourceSpan. */
-function offsetOfSpanStart(source: string, card: CwActivityCard): number {
-  // Convert {startLine,startCol} to a char offset by counting newlines.
-  let line = 0;
-  let i = 0;
-  for (; i < source.length && line < card.span.startLine; i += 1) {
-    if (source.charCodeAt(i) === 10) line += 1;
-  }
-  return i + card.span.startCol;
-}

@@ -106,6 +106,41 @@ it('rejects change on a NAMED argument (would drop the `name:`)', async () => {
   expect(res.ok).toBe(false);
 });
 
+it('method switch patches the OUTER call in a repeated-method chain (not the inner)', async () => {
+  // The receiver chain repeats the method name, so the inner `GetData(` precedes
+  // the real call. The old `source.indexOf("GetData(")` patched the inner call;
+  // the stored methodNameSpan points at the outer (correct) occurrence.
+  const src = wrap('var a = system.GetData().GetData("k");');
+  const { model, card } = await build(src);
+  expect(card.methodNameSpan).toBeDefined();
+  expect(src.slice(card.methodNameSpan!.start, card.methodNameSpan!.end)).toBe('GetData');
+  // span starts AFTER the inner `GetData(` occurrence.
+  expect(card.methodNameSpan!.start).toBeGreaterThan(src.indexOf('GetData('));
+  const res = resolveEdit(src, model, { kind: 'editArg', id: card.id, op: 'method', newMethod: 'SetData' });
+  expect(res.ok).toBe(true);
+  if (!res.ok) return;
+  expect(applyPatches(src, res.patches)).toBe(wrap('var a = system.GetData().SetData("k");'));
+});
+
+it('rejects change on a `@`-verbatim NAMED argument (regex would miss the `@`)', async () => {
+  // `@event` is a C# verbatim identifier; the old text regex (`^\w+:`) misses the
+  // leading `@`, so it would replace the whole `@event: "x"` span and drop the
+  // name. The parser-derived `isNamed` flag catches it.
+  const src = wrap('system.DoThing(@event: "x", b);');
+  const { model, card } = await build(src);
+  expect(card.args[0].isNamed).toBe(true);
+  const res = resolveEdit(src, model, { kind: 'editArg', id: card.id, op: 'change', argIndex: 0, newText: '"y"' });
+  expect(res.ok).toBe(false);
+});
+
+it('rejects add after a `@`-verbatim named argument (CS1738 positional-after-named)', async () => {
+  const src = wrap('system.DoThing(@event: "x");');
+  const { model, card } = await build(src);
+  expect(card.hasNamedArg).toBe(true);
+  const res = resolveEdit(src, model, { kind: 'editArg', id: card.id, op: 'add', newText: 'b' });
+  expect(res.ok).toBe(false);
+});
+
 it('removes the TRUE MIDDLE arg of a 3-arg call (general-N comma handling)', async () => {
   // Uncataloged member call: the generic extractor surfaces only the first two
   // rows (arg1/arg2), but removing the middle arg (index 1) by its argSpan must

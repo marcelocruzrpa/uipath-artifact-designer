@@ -6,19 +6,20 @@
  * The fixture's bodies repeat, per step:
  *   Log("step N start");                 → tier-1 activity card
  *   var valueN = system.GetAsset("...")  → tier-1 activity card (assigned)
- *   counter = counter + N;               → ARITHMETIC assign  → tier-3 raw chip
+ *   counter = counter + N;               → ARITHMETIC assign  → tier-2 `assign-generic`
  *   if (counter > N) { ... }             → container
  *     Log("step N hot");                 → tier-1
- *     counter = counter - 1;             → ARITHMETIC assign  → tier-3 raw chip
- *   total = total + counter;             → ARITHMETIC assign  → tier-3 raw chip
+ *     counter = counter - 1;             → ARITHMETIC assign  → tier-2 `assign-generic`
+ *   total = total + counter;             → ARITHMETIC assign  → tier-2 `assign-generic`
  * plus two literal-RHS initializers at the top:
  *   var counter = 0; / var total = 0;    → tier-2 `assign-literal` pseudo-steps
  *
- * The INVARIANT: the arithmetic assignments stay HONEST tier-3 raw chips — they
- * are NOT swallowed by a tier-2 `assign-*` rule (which only matches literal /
- * call / new-object RHS, never an arithmetic expression).  Only the two
- * literal-RHS initializers are tier-2.  This guards against a future tier-2 rule
- * over-reaching and pretending arithmetic is a recognized "Assign" step.
+ * The INVARIANT (post `assign-generic`): the arithmetic assignments render as
+ * tier-2 generic Assign cards, and that stays HONEST because the card text is
+ * the EXACT source — the arithmetic operator is shown verbatim, never summarized
+ * away behind a friendly label.  This guards against the generic rule ever
+ * hiding or rewriting the RHS, and confirms every leaf is still counted exactly
+ * once across the three tiers.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { configureCSharpParserFromNodeModules, loadFixture } from './helpers';
@@ -57,40 +58,58 @@ function flatten(children: CwStatement[]): CwStatement[] {
 }
 
 describe('honesty-at-scale — tier split', () => {
-  it('keeps the bulk of statements at tier-3 (raw), not tier-2', async () => {
+  it('accounts for every leaf exactly once across the three tiers', async () => {
     const model = await build();
-    // Pre-truncation totals (limits.test.ts pins totalStatements === 1382).
-    // The honest split: the arithmetic assignments dominate tier-3; only the two
-    // literal initializers are tier-2.
-    expect(model.stats.tier2).toBe(2);
-    expect(model.stats.tier3).toBeGreaterThan(model.stats.tier2);
-    // Sanity: the three tiers sum to the total.
+    // Sanity: the three tiers sum to the total (no leaf lost or double-counted).
     expect(model.stats.tier1 + model.stats.tier2 + model.stats.tier3)
       .toBe(model.stats.totalStatements);
+    // The arithmetic mass now lives in tier-2 generic Assign cards, so tier-2
+    // is non-trivial — but the count still reconciles above.
+    expect(model.stats.tier2).toBeGreaterThan(2);
   });
 
-  it('classifies arithmetic assignments as tier-3 raw chips, NOT tier-2', async () => {
+  it('renders arithmetic assignments as HONEST verbatim tier-2 Assign cards', async () => {
     const model = await build();
     const all = flatten(model.classes[0].entryPoints[0].body);
 
     // Every `counter = counter + N;` / `counter = counter - 1;` / `total = ...`
-    // that survives into the rendered tree is a RAW chip.
+    // is now a tier-2 `assign-generic` card — never a raw chip.
+    const arithAssigns = all.filter(
+      (s): s is CwPseudoStep =>
+        s.type === 'pseudo' &&
+        s.ruleId === 'assign-generic' &&
+        (s.text.includes('counter + ') ||
+          s.text.includes('counter - ') ||
+          s.text.includes('total + '))
+    );
+    expect(arithAssigns.length).toBeGreaterThan(0);
+
+    // HONESTY: the arithmetic operator is shown VERBATIM in the card text — the
+    // generic rule never hides or rewrites the RHS behind a friendly label.
+    for (const a of arithAssigns) {
+      expect(a.text.includes(' + ') || a.text.includes(' - ')).toBe(true);
+    }
+
+    // No INDIVIDUAL arithmetic assignment leaks back into a raw chip. (The
+    // scale fixture truncates: the remainder folds into ONE multi-statement
+    // tail chip whose verbatim slice naturally contains arithmetic source — it
+    // is excluded by the statementCount === 1 guard, since it is a scale
+    // artifact, not a per-statement classification.)
     const arithChips = all.filter(
       (s): s is CwRawChip =>
         s.type === 'raw' &&
+        s.statementCount === 1 &&
         (s.code.includes('counter = counter +') ||
           s.code.includes('counter = counter -') ||
           s.code.includes('total = total +'))
     );
-    expect(arithChips.length).toBeGreaterThan(0);
+    expect(arithChips).toEqual([]);
 
-    // No tier-2 pseudo-step ever captured an arithmetic assignment.
+    // The only tier-2 rules in play are the two assign floor rules: the literal
+    // initializers (`assign-literal`) and the arithmetic reassigns
+    // (`assign-generic`).
     const pseudos = all.filter((s): s is CwPseudoStep => s.type === 'pseudo');
-    for (const p of pseudos) {
-      expect(p.text.includes('+ ')).toBe(false);
-      expect(p.text.includes(' - ')).toBe(false);
-    }
-    // The only pseudo-steps are the two literal-RHS initializers.
-    expect(pseudos.every((p) => p.ruleId === 'assign-literal')).toBe(true);
+    const ruleIds = new Set(pseudos.map((p) => p.ruleId));
+    expect([...ruleIds].sort()).toEqual(['assign-generic', 'assign-literal']);
   });
 });

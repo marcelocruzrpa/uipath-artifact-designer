@@ -49,4 +49,26 @@ describe('requoteString', () => {
     // a real newline + tab in content becomes the escape sequences \n \t
     expect(requoteString('a\nb\tc', '"x"')).toBe('"a\\nb\\tc"');
   });
+
+  it('escapes C# Unicode line terminators NEL/LS/PS (CS1010) for a regular literal', () => {
+    // U+0085 / U+2028 / U+2029 are C# line terminators: raw inside "..." they
+    // are a compiler error, but tree-sitter accepts them, so the host must
+    // escape them to `\uXXXX`. Built via fromCharCode so the raw char never
+    // sits in this source file.
+    const cases: ReadonlyArray<readonly [number, string]> = [
+      [0x0085, '\\u0085'],
+      [0x2028, '\\u2028'],
+      [0x2029, '\\u2029']
+    ];
+    for (const [cp, esc] of cases) {
+      const content = `x${String.fromCharCode(cp)}y`;
+      expect(requoteString(content, '"q"')).toBe(`"x${esc}y"`);
+    }
+  });
+
+  it('keeps a verbatim literal unescaped for those terminators (verbatim may span lines)', () => {
+    // A verbatim @"..." re-emit only doubles quotes; a raw U+2028 stays literal.
+    const content = `a${String.fromCharCode(0x2028)}b`;
+    expect(requoteString(content, '@"x"')).toBe(`@"${content}"`);
+  });
 });

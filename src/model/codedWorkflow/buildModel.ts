@@ -150,6 +150,12 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
 
   const classes: CwWorkflowClass[] = [];
   const otherClassNames: string[] = [];
+  // Disambiguate two workflow classes that share a simple name in ONE document
+  // (legal C# across namespaces, or nested). Without this their statement ids
+  // (`<class>#<method>/…`) collide and findNodeById returns the FIRST match, so
+  // an edit to the second class's card would silently patch the first. Mirrors
+  // the per-method overload `@N` suffix below, at the class level.
+  const classOccurrences = new Map<string, number>();
   const totals: CwTierCounts = { tier1: 0, tier2: 0, tier3: 0 };
   let truncated = false;
 
@@ -163,6 +169,12 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       otherClassNames.push(className);
       continue;
     }
+
+    // Id-safe class segment: `Worker`, then `Worker@2`, `Worker@3`, … for a
+    // repeated simple name. `className` (the display name) is left unchanged.
+    const classOccurrence = (classOccurrences.get(className) ?? 0) + 1;
+    classOccurrences.set(className, classOccurrence);
+    const classSegment = classOccurrence === 1 ? className : `${className}@${classOccurrence}`;
 
     const entryPoints: CwEntryPoint[] = [];
     const helperMethods: CwHelperMethod[] = [];
@@ -187,7 +199,7 @@ export function buildModel(tree: Tree, source: string, input: BuildModelInput): 
       totals.tier3 += tierCounts.tier3;
       const { body, didTruncate } = truncateStatements(classified, source);
       truncated = truncated || didTruncate;
-      const bodyId = `${className}#${methodSegment}/`;
+      const bodyId = `${classSegment}#${methodSegment}/`;
       assignIds(body, bodyId);
       const interior = methodBodyInterior(method, source);
       const attribute = entryPointAttribute(method);
@@ -497,6 +509,51 @@ function argListInterior(invocation: Node | undefined): OffsetSpan | undefined {
   return { start: open.endIndex, end: close.startIndex };
 }
 
+/**
+ * Span of the call's METHOD-NAME token — the last segment of the callee
+ * expression (the `.name` of a member/conditional/binding access, or the whole
+ * identifier for a bare call; the inner identifier of a `generic_name`). This is
+ * the exact range a method switch replaces, so it can never patch an earlier
+ * same-named call in a chain. Undefined for an exotic callee (the switch then
+ * refuses rather than guessing).
+ */
+function methodNameSpanOf(invocation: Node | undefined): OffsetSpan | undefined {
+  if (invocation === undefined) return undefined;
+  const fn = invocation.childForFieldName('function');
+  if (fn === null) return undefined;
+  let nameNode: Node | null;
+  switch (fn.type) {
+    case 'member_access_expression':
+    case 'conditional_access_expression':
+    case 'member_binding_expression':
+      nameNode = fn.childForFieldName('name');
+      break;
+    case 'identifier':
+    case 'generic_name':
+      nameNode = fn;
+      break;
+    default:
+      nameNode = null;
+  }
+  if (nameNode === null) return undefined;
+  if (nameNode.type === 'generic_name') {
+    const id = nameNode.namedChildren.find((c) => c.type === 'identifier');
+    if (id === undefined) return undefined;
+    nameNode = id;
+  }
+  return { start: nameNode.startIndex, end: nameNode.endIndex };
+}
+
+/** True when ANY argument of the call is passed by name (parser `name` field). */
+function hasNamedArgument(invocation: Node | undefined): boolean {
+  if (invocation === undefined) return false;
+  const argList = invocation.childForFieldName('arguments');
+  if (argList === null) return false;
+  return argList.namedChildren.some(
+    (c) => c.type === 'argument' && c.childForFieldName('name') !== null
+  );
+}
+
 /** Build a CwActivityCard from a tier-1 match (id assigned later). */
 function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): CwActivityCard {
   const entry = match.catalogEntry;
@@ -518,7 +575,13 @@ function makeCard(match: Tier1Match, span: SourceSpan, ctx: ClassifyContext): Cw
     ...(match.resultBinding !== undefined ? { resultBinding: match.resultBinding } : {}),
     icon: entry?.icon ?? match.familyIcon,
     ...(match.method !== '[indexer]'
-      ? { argListSpan: argListInterior(match.invocation) }
+      ? {
+          argListSpan: argListInterior(match.invocation),
+          ...(methodNameSpanOf(match.invocation) !== undefined
+            ? { methodNameSpan: methodNameSpanOf(match.invocation) }
+            : {}),
+          ...(hasNamedArgument(match.invocation) ? { hasNamedArg: true } : {})
+        }
       : {})
   };
 }

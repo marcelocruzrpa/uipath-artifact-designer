@@ -1,9 +1,9 @@
 // Fixture: every CwContainerKind plus >=4-level nesting, for containers.test.ts.
-// Leaf statements deliberately avoid tier-1 service calls (no Log/system/etc.)
-// AND single-literal assigns (no `seed = 0;`) so they stay raw chips across all
-// classifier stages — including tier-2 (assign-literal would card a lone
-// literal). No two chips are adjacent in any slot so chip merging never changes
-// this fixture's shape.
+// Leaf statements are bare void method calls (no Log/system/etc. tier-1 service
+// calls, and no assignments) so they stay raw chips across ALL classifier
+// stages — tier-1 (no service handle), tier-2 (not an assign/console/collection
+// pattern, including the generic assign rule), and tier-3. No two chips are
+// adjacent in any slot so chip merging never changes this fixture's shape.
 using System;
 using System.IO;
 using UiPath.CodedWorkflows;
@@ -15,41 +15,41 @@ namespace Acme.Containers
         [Workflow]
         public void Execute(int mode, string name)
         {
-            var seed = mode;
+            Begin();
             if (name.Length > 0)
             {
-                seed = seed + 1;
+                Touch();
                 foreach (var c in name)
                 {
                     while (mode > 0)
                     {
                         if (c == 'x')
                         {
-                            deep = deep + 1;
+                            DoDeep();
                         }
-                        mode = mode - 1;
+                        AfterInner();
                     }
                 }
             }
             else if (mode == 1)
             {
-                seed = mode + 10;
+                Handle1();
             }
             else if (mode == 2)
             {
-                seed = mode + 20;
+                Handle2();
             }
             else
             {
-                seed = mode + 30;
+                Handle3();
             }
             for (var i = 0; i < mode; i++)
             {
-                seed = seed + i;
+                Iterate();
             }
             do
             {
-                mode = mode + 1;
+                Loop();
             } while (mode < 0);
             try
             {
@@ -57,15 +57,15 @@ namespace Acme.Containers
             }
             catch (IOException ex)
             {
-                failures = failures + 1;
+                Fail1();
             }
             catch
             {
-                failures = failures + 2;
+                Fail2();
             }
             finally
             {
-                failures = mode;
+                Cleanup();
             }
             switch (mode)
             {
@@ -79,12 +79,12 @@ namespace Acme.Containers
             }
             using (var file = OpenFile(name))
             {
-                touched = touched + 1;
+                Use();
             }
-            if (mode > 9) seed = mode + 99;
+            if (mode > 9) Spike();
             if (name.Contains("alpha") && name.Contains("bravo") && name.Contains("charlie") && name.Contains("delta"))
             {
-                seed = mode + 2;
+                Final();
             }
             int Local(int v)
             {
@@ -94,7 +94,7 @@ namespace Acme.Containers
 
         private void Process()
         {
-            count = count + 1;
+            Record();
         }
 
         private object OpenFile(string name)

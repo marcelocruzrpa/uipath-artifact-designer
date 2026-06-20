@@ -65,6 +65,10 @@
                 "start": 420,
                 "end": 434
               },
+              "methodNameSpan": {
+                "start": 416,
+                "end": 419
+              },
               "offsets": {
                 "start": 416,
                 "end": 436
@@ -108,6 +112,10 @@
                 "start": 480,
                 "end": 493
               },
+              "methodNameSpan": {
+                "start": 471,
+                "end": 479
+              },
               "offsets": {
                 "start": 449,
                 "end": 495
@@ -150,6 +158,10 @@
               "argListSpan": {
                 "start": 541,
                 "end": 554
+              },
+              "methodNameSpan": {
+                "start": 527,
+                "end": 540
               },
               "offsets": {
                 "start": 508,
@@ -198,6 +210,10 @@
               "argListSpan": {
                 "start": 589,
                 "end": 609
+              },
+              "methodNameSpan": {
+                "start": 576,
+                "end": 588
               },
               "offsets": {
                 "start": 569,
@@ -255,6 +271,10 @@
                 "start": 649,
                 "end": 660
               },
+              "methodNameSpan": {
+                "start": 634,
+                "end": 648
+              },
               "offsets": {
                 "start": 624,
                 "end": 662
@@ -303,6 +323,10 @@
                 "start": 687,
                 "end": 715
               },
+              "methodNameSpan": {
+                "start": 675,
+                "end": 686
+              },
               "offsets": {
                 "start": 675,
                 "end": 717
@@ -345,6 +369,10 @@
                 "start": 734,
                 "end": 757
               },
+              "methodNameSpan": {
+                "start": 730,
+                "end": 733
+              },
               "offsets": {
                 "start": 730,
                 "end": 759
@@ -386,6 +414,10 @@
               "argListSpan": {
                 "start": 795,
                 "end": 807
+              },
+              "methodNameSpan": {
+                "start": 786,
+                "end": 794
               },
               "offsets": {
                 "start": 772,

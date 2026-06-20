@@ -34,15 +34,15 @@
                 "startLine": 17,
                 "startCol": 12,
                 "endLine": 17,
-                "endCol": 28
+                "endCol": 20
               },
               "offsets": {
-                "start": 657,
-                "end": 673
+                "start": 706,
+                "end": 714
               },
               "type": "raw",
               "tier": 3,
-              "code": "var seed = mode;",
+              "code": "Begin();",
               "lineCount": 1,
               "statementCount": 1,
               "codeTruncated": false
@@ -56,8 +56,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 686,
-                "end": 1367
+                "start": 727,
+                "end": 1369
               },
               "type": "container",
               "kind": "if",
@@ -73,15 +73,15 @@
                         "startLine": 20,
                         "startCol": 16,
                         "endLine": 20,
-                        "endCol": 32
+                        "endCol": 24
                       },
                       "offsets": {
-                        "start": 737,
-                        "end": 753
+                        "start": 778,
+                        "end": 786
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = seed + 1;",
+                      "code": "Touch();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -95,8 +95,8 @@
                         "endCol": 17
                       },
                       "offsets": {
-                        "start": 770,
-                        "end": 1086
+                        "start": 803,
+                        "end": 1109
                       },
                       "type": "container",
                       "kind": "foreach",
@@ -115,8 +115,8 @@
                                 "endCol": 21
                               },
                               "offsets": {
-                                "start": 832,
-                                "end": 1068
+                                "start": 865,
+                                "end": 1091
                               },
                               "type": "container",
                               "kind": "while",
@@ -135,8 +135,8 @@
                                         "endCol": 25
                                       },
                                       "offsets": {
-                                        "start": 895,
-                                        "end": 1005
+                                        "start": 928,
+                                        "end": 1031
                                       },
                                       "type": "container",
                                       "kind": "if",
@@ -152,15 +152,15 @@
                                                 "startLine": 27,
                                                 "startCol": 28,
                                                 "endLine": 27,
-                                                "endCol": 44
+                                                "endCol": 37
                                               },
                                               "offsets": {
-                                                "start": 963,
-                                                "end": 979
+                                                "start": 996,
+                                                "end": 1005
                                               },
                                               "type": "raw",
                                               "tier": 3,
-                                              "code": "deep = deep + 1;",
+                                              "code": "DoDeep();",
                                               "lineCount": 1,
                                               "statementCount": 1,
                                               "codeTruncated": false
@@ -174,8 +174,8 @@
                                           },
                                           "braced": true,
                                           "bodySpan": {
-                                            "start": 934,
-                                            "end": 1004
+                                            "start": 967,
+                                            "end": 1030
                                           },
                                           "indentText": "                            "
                                         }
@@ -188,15 +188,15 @@
                                         "startLine": 29,
                                         "startCol": 24,
                                         "endLine": 29,
-                                        "endCol": 40
+                                        "endCol": 37
                                       },
                                       "offsets": {
-                                        "start": 1030,
-                                        "end": 1046
+                                        "start": 1056,
+                                        "end": 1069
                                       },
                                       "type": "raw",
                                       "tier": 3,
-                                      "code": "mode = mode - 1;",
+                                      "code": "AfterInner();",
                                       "lineCount": 1,
                                       "statementCount": 1,
                                       "codeTruncated": false
@@ -210,8 +210,8 @@
                                   },
                                   "braced": true,
                                   "bodySpan": {
-                                    "start": 870,
-                                    "end": 1067
+                                    "start": 903,
+                                    "end": 1090
                                   },
                                   "indentText": "                        "
                                 }
@@ -227,8 +227,8 @@
                           },
                           "braced": true,
                           "bodySpan": {
-                            "start": 811,
-                            "end": 1085
+                            "start": 844,
+                            "end": 1108
                           },
                           "indentText": "                    "
                         }
@@ -244,8 +244,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 720,
-                    "end": 1099
+                    "start": 761,
+                    "end": 1122
                   },
                   "indentText": "                "
                 },
@@ -259,15 +259,15 @@
                         "startLine": 35,
                         "startCol": 16,
                         "endLine": 35,
-                        "endCol": 33
+                        "endCol": 26
                       },
                       "offsets": {
-                        "start": 1163,
-                        "end": 1180
+                        "start": 1186,
+                        "end": 1196
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = mode + 10;",
+                      "code": "Handle1();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -281,8 +281,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1146,
-                    "end": 1193
+                    "start": 1169,
+                    "end": 1209
                   },
                   "indentText": "                "
                 },
@@ -296,15 +296,15 @@
                         "startLine": 39,
                         "startCol": 16,
                         "endLine": 39,
-                        "endCol": 33
+                        "endCol": 26
                       },
                       "offsets": {
-                        "start": 1257,
-                        "end": 1274
+                        "start": 1273,
+                        "end": 1283
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = mode + 20;",
+                      "code": "Handle2();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -318,8 +318,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1240,
-                    "end": 1287
+                    "start": 1256,
+                    "end": 1296
                   },
                   "indentText": "                "
                 },
@@ -333,15 +333,15 @@
                         "startLine": 43,
                         "startCol": 16,
                         "endLine": 43,
-                        "endCol": 33
+                        "endCol": 26
                       },
                       "offsets": {
-                        "start": 1336,
-                        "end": 1353
+                        "start": 1345,
+                        "end": 1355
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = mode + 30;",
+                      "code": "Handle3();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -355,8 +355,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1319,
-                    "end": 1366
+                    "start": 1328,
+                    "end": 1368
                   },
                   "indentText": "                "
                 }
@@ -372,8 +372,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 1380,
-                "end": 1471
+                "start": 1382,
+                "end": 1467
               },
               "type": "container",
               "kind": "for",
@@ -389,15 +389,15 @@
                         "startLine": 47,
                         "startCol": 16,
                         "endLine": 47,
-                        "endCol": 32
+                        "endCol": 26
                       },
                       "offsets": {
-                        "start": 1441,
-                        "end": 1457
+                        "start": 1443,
+                        "end": 1453
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = seed + i;",
+                      "code": "Iterate();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -411,8 +411,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1424,
-                    "end": 1470
+                    "start": 1426,
+                    "end": 1466
                   },
                   "indentText": "                "
                 }
@@ -428,8 +428,8 @@
                 "endCol": 31
               },
               "offsets": {
-                "start": 1484,
-                "end": 1565
+                "start": 1480,
+                "end": 1552
               },
               "type": "container",
               "kind": "do",
@@ -445,15 +445,15 @@
                         "startLine": 51,
                         "startCol": 16,
                         "endLine": 51,
-                        "endCol": 32
+                        "endCol": 23
                       },
                       "offsets": {
-                        "start": 1517,
-                        "end": 1533
+                        "start": 1513,
+                        "end": 1520
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "mode = mode + 1;",
+                      "code": "Loop();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -467,8 +467,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1500,
-                    "end": 1546
+                    "start": 1496,
+                    "end": 1533
                   },
                   "indentText": "                "
                 }
@@ -484,8 +484,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 1578,
-                "end": 1908
+                "start": 1565,
+                "end": 1857
               },
               "type": "container",
               "kind": "try",
@@ -504,8 +504,8 @@
                         "endCol": 26
                       },
                       "offsets": {
-                        "start": 1612,
-                        "end": 1622
+                        "start": 1599,
+                        "end": 1609
                       },
                       "type": "raw",
                       "tier": 3,
@@ -523,8 +523,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1595,
-                    "end": 1635
+                    "start": 1582,
+                    "end": 1622
                   },
                   "indentText": "                "
                 },
@@ -538,15 +538,15 @@
                         "startLine": 59,
                         "startCol": 16,
                         "endLine": 59,
-                        "endCol": 40
+                        "endCol": 24
                       },
                       "offsets": {
-                        "start": 1702,
-                        "end": 1726
+                        "start": 1689,
+                        "end": 1697
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "failures = failures + 1;",
+                      "code": "Fail1();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -560,8 +560,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1685,
-                    "end": 1739
+                    "start": 1672,
+                    "end": 1710
                   },
                   "indentText": "                "
                 },
@@ -575,15 +575,15 @@
                         "startLine": 63,
                         "startCol": 16,
                         "endLine": 63,
-                        "endCol": 40
+                        "endCol": 24
                       },
                       "offsets": {
-                        "start": 1789,
-                        "end": 1813
+                        "start": 1760,
+                        "end": 1768
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "failures = failures + 2;",
+                      "code": "Fail2();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -597,8 +597,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1772,
-                    "end": 1826
+                    "start": 1743,
+                    "end": 1781
                   },
                   "indentText": "                "
                 },
@@ -612,15 +612,15 @@
                         "startLine": 67,
                         "startCol": 16,
                         "endLine": 67,
-                        "endCol": 32
+                        "endCol": 26
                       },
                       "offsets": {
-                        "start": 1878,
-                        "end": 1894
+                        "start": 1833,
+                        "end": 1843
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "failures = mode;",
+                      "code": "Cleanup();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -634,8 +634,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 1861,
-                    "end": 1907
+                    "start": 1816,
+                    "end": 1856
                   },
                   "indentText": "                "
                 }
@@ -651,8 +651,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 1921,
-                "end": 2164
+                "start": 1870,
+                "end": 2113
               },
               "type": "container",
               "kind": "switch",
@@ -671,8 +671,8 @@
                         "endCol": 27
                       },
                       "offsets": {
-                        "start": 1993,
-                        "end": 2000
+                        "start": 1942,
+                        "end": 1949
                       },
                       "type": "raw",
                       "tier": 3,
@@ -715,8 +715,8 @@
                         "endCol": 48
                       },
                       "offsets": {
-                        "start": 2069,
-                        "end": 2097
+                        "start": 2018,
+                        "end": 2046
                       },
                       "type": "raw",
                       "tier": 3,
@@ -747,8 +747,8 @@
                         "endCol": 27
                       },
                       "offsets": {
-                        "start": 2143,
-                        "end": 2150
+                        "start": 2092,
+                        "end": 2099
                       },
                       "type": "raw",
                       "tier": 3,
@@ -778,8 +778,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 2177,
-                "end": 2277
+                "start": 2126,
+                "end": 2210
               },
               "type": "container",
               "kind": "using",
@@ -795,15 +795,15 @@
                         "startLine": 81,
                         "startCol": 16,
                         "endLine": 81,
-                        "endCol": 38
+                        "endCol": 22
                       },
                       "offsets": {
-                        "start": 2241,
-                        "end": 2263
+                        "start": 2190,
+                        "end": 2196
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "touched = touched + 1;",
+                      "code": "Use();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -817,8 +817,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 2224,
-                    "end": 2276
+                    "start": 2173,
+                    "end": 2209
                   },
                   "indentText": "                "
                 }
@@ -831,11 +831,11 @@
                 "startLine": 83,
                 "startCol": 12,
                 "endLine": 83,
-                "endCol": 43
+                "endCol": 34
               },
               "offsets": {
-                "start": 2290,
-                "end": 2321
+                "start": 2223,
+                "end": 2245
               },
               "type": "container",
               "kind": "if",
@@ -851,15 +851,15 @@
                         "startLine": 83,
                         "startCol": 26,
                         "endLine": 83,
-                        "endCol": 43
+                        "endCol": 34
                       },
                       "offsets": {
-                        "start": 2304,
-                        "end": 2321
+                        "start": 2237,
+                        "end": 2245
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = mode + 99;",
+                      "code": "Spike();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -869,7 +869,7 @@
                     "startLine": 83,
                     "startCol": 26,
                     "endLine": 83,
-                    "endCol": 43
+                    "endCol": 34
                   },
                   "braced": false
                 }
@@ -885,8 +885,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 2334,
-                "end": 2502
+                "start": 2258,
+                "end": 2418
               },
               "type": "container",
               "kind": "if",
@@ -902,15 +902,15 @@
                         "startLine": 86,
                         "startCol": 16,
                         "endLine": 86,
-                        "endCol": 32
+                        "endCol": 24
                       },
                       "offsets": {
-                        "start": 2472,
-                        "end": 2488
+                        "start": 2396,
+                        "end": 2404
                       },
                       "type": "raw",
                       "tier": 3,
-                      "code": "seed = mode + 2;",
+                      "code": "Final();",
                       "lineCount": 1,
                       "statementCount": 1,
                       "codeTruncated": false
@@ -924,8 +924,8 @@
                   },
                   "braced": true,
                   "bodySpan": {
-                    "start": 2455,
-                    "end": 2501
+                    "start": 2379,
+                    "end": 2417
                   },
                   "indentText": "                "
                 }
@@ -941,8 +941,8 @@
                 "endCol": 13
               },
               "offsets": {
-                "start": 2515,
-                "end": 2589
+                "start": 2431,
+                "end": 2505
               },
               "type": "raw",
               "tier": 3,
@@ -959,8 +959,8 @@
           },
           "bodyId": "ContainerFlow#Execute/",
           "bodySpan": {
-            "start": 644,
-            "end": 2598
+            "start": 693,
+            "end": 2514
           },
           "indentText": "            "
         }
@@ -981,15 +981,15 @@
                 "startLine": 96,
                 "startCol": 12,
                 "endLine": 96,
-                "endCol": 30
+                "endCol": 21
               },
               "offsets": {
-                "start": 2654,
-                "end": 2672
+                "start": 2570,
+                "end": 2579
               },
               "type": "raw",
               "tier": 3,
-              "code": "count = count + 1;",
+              "code": "Record();",
               "lineCount": 1,
               "statementCount": 1,
               "codeTruncated": false
@@ -1002,8 +1002,8 @@
           },
           "bodyId": "ContainerFlow#Process/",
           "bodySpan": {
-            "start": 2641,
-            "end": 2681
+            "start": 2557,
+            "end": 2588
           },
           "indentText": "            "
         },
@@ -1025,8 +1025,8 @@
                 "endCol": 24
               },
               "offsets": {
-                "start": 2751,
-                "end": 2763
+                "start": 2658,
+                "end": 2670
               },
               "type": "raw",
               "tier": 3,
@@ -1043,8 +1043,8 @@
           },
           "bodyId": "ContainerFlow#OpenFile/",
           "bodySpan": {
-            "start": 2738,
-            "end": 2772
+            "start": 2645,
+            "end": 2679
           },
           "indentText": "            "
         }

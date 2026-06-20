@@ -85,8 +85,8 @@ describe('mergeAdjacentChips — runs, breaks, invariants', () => {
   it('re-slices merged code from source with comments/blank lines verbatim', () => {
     const merged = asChip(model.classes[0].entryPoints[0].body[0]);
     expect(merged.code).toBe(sliceBySpan(SOURCE, merged.span));
-    expect(merged.code.startsWith('var a = total + 1;')).toBe(true);
-    expect(merged.code.endsWith('var c = a + b;')).toBe(true);
+    expect(merged.code.startsWith('StepA(total);')).toBe(true);
+    expect(merged.code.endsWith('StepC();')).toBe(true);
     expect(merged.code).toContain('// trailing comment stays inside the merged slice');
     expect(merged.code).toContain('// a standalone comment between chips is re-sliced verbatim');
     expect(merged.code).toContain('\n\n'); // the blank line survives
@@ -214,11 +214,11 @@ describe('tier-2 engine', () => {
     const { stmt, source } = await parseFlagStatement();
     expect(applyTier2(stmt, source, [])).toBeNull();
     // The SHIPPED registry returns null for a statement no floor rule claims:
-    // `total = total + 1;` is a numeric binary reassignment (assign-literal
-    // wants a single literal token, string-op wants a string-ish leaf,
-    // assign-from-call wants an invocation — none match).
+    // a bare local method call is not an assignment (so the assign rules —
+    // including the generic catch-all — skip it), nor a Console.WriteLine /
+    // `.Add` / string / linq / file / datetime shape, so it stays a tier-3 chip.
     const { stmt: unclaimed, source: unclaimedSrc } = await parseStatement(
-      'total = total + 1;'
+      'Helper();'
     );
     expect(applyTier2(unclaimed, unclaimedSrc)).toBeNull();
   });
