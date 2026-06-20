@@ -137,7 +137,24 @@ export type WebviewToHost =
       /** New method name (method switch). */
       newMethod?: string;
     }
-  | { type: 'addStatement'; slot: SlotRefMessage; index: number; source: string }
+  | {
+      type: 'addStatement';
+      slot: SlotRefMessage;
+      index: number;
+      /**
+       * Trusted palette item id (`catalog:<svc>.<m>` | `step:assign` |
+       * `step:add-item` | `raw`). The HOST emits the statement source from the
+       * matching catalog template — the webview no longer sends final C# — so a
+       * crafted message cannot repurpose a catalog insert into arbitrary code.
+       */
+      paletteItemId: string;
+      /** Per-arg values substituted into the item's schema; `[]` for raw. */
+      argValues: string[];
+      /** Optional result-binding variable name (for `returnsValue` items). */
+      resultBinding?: string;
+      /** Free-text C# — honored ONLY when `paletteItemId` is the `raw` escape. */
+      rawText?: string;
+    }
   | { type: 'deleteStatement'; id: string }
   | { type: 'moveStatement'; id: string; direction: 1 | -1 };
 

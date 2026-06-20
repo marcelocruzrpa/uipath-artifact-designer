@@ -59,6 +59,15 @@ export function buildActivityCard(card: CwActivityCard): HTMLElement {
 
   const body = el('div', { class: 'cw-card-body' }, [titleRow]);
 
+  // Concise, textContent-only summary for screen readers: title + service, then
+  // the same `label: value` arg line shown visually (so the announcement matches
+  // what is on screen). No HTML — pure strings from the model.
+  const ariaParts = [card.title, card.serviceDisplayName];
+  if (card.args.length > 0 || card.resultBinding !== undefined) {
+    ariaParts.push(argText(card));
+  }
+  node.setAttribute('aria-label', ariaParts.filter((p) => p.length > 0).join(', '));
+
   if (card.args.length > 0 || card.resultBinding !== undefined) {
     const argLine = el('div', { class: 'cw-card-args', title: argText(card) });
     for (const arg of card.args) {
@@ -96,6 +105,12 @@ export function buildPseudoCard(step: CwPseudoStep): HTMLElement {
     ]),
     el('div', { class: 'cw-card-text', text: step.text, title: step.text })
   ]);
+
+  // Screen-reader summary: the recognized-pattern title plus its short text.
+  node.setAttribute(
+    'aria-label',
+    [step.title, step.text].filter((p) => p.length > 0).join(', ')
+  );
 
   node.append(icon, body, fx);
   return node;

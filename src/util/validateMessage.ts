@@ -423,10 +423,24 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
           }
         : null;
     case 'addStatement':
+      // The webview sends a palette item id + per-arg values, NOT final C#; the
+      // host emits from the trusted template. `rawText` is bounded here but only
+      // honored host-side for the `raw` escape item.
       return isSlotRef(raw.slot) &&
         typeof raw.index === 'number' && Number.isInteger(raw.index) && raw.index >= 0 &&
-        isString(raw.source, MAX_TEXT)
-        ? { type: 'addStatement', slot: raw.slot, index: raw.index, source: raw.source }
+        isString(raw.paletteItemId, MAX_ID) &&
+        isStringArray(raw.argValues) &&
+        (raw.resultBinding === undefined || isString(raw.resultBinding, MAX_ID)) &&
+        (raw.rawText === undefined || isString(raw.rawText, MAX_TEXT))
+        ? {
+            type: 'addStatement',
+            slot: raw.slot,
+            index: raw.index,
+            paletteItemId: raw.paletteItemId,
+            argValues: raw.argValues,
+            ...(raw.resultBinding !== undefined ? { resultBinding: raw.resultBinding } : {}),
+            ...(raw.rawText !== undefined ? { rawText: raw.rawText } : {})
+          }
         : null;
     case 'deleteStatement':
       return isString(raw.id, MAX_ID) ? { type: 'deleteStatement', id: raw.id } : null;

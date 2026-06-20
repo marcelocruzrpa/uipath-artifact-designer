@@ -7,8 +7,11 @@
  * backing token (`valueRaw === undefined`) are always disabled.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { renderPropertiesPanel } from '../../webview/renderers/codedWorkflow/propertiesPanel';
-import type { CwActivityCard } from '../../src/model/codedWorkflow/cwTypes';
+import {
+  renderPropertiesPanel,
+  renderPseudoPanel
+} from '../../webview/renderers/codedWorkflow/propertiesPanel';
+import type { CwActivityCard, CwPseudoStep } from '../../src/model/codedWorkflow/cwTypes';
 
 function card(): CwActivityCard {
   return {
@@ -39,6 +42,40 @@ describe('renderPropertiesPanel', () => {
     const root = document.createElement('div');
     root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
     expect(root.textContent).toContain('Log');
+  });
+
+  it('associates each label with its control (a11y: label.htmlFor === control.id)', () => {
+    const root = document.createElement('div');
+    // Every label in the panel must point at (or wrap) a real control: at least
+    // the arg-row <input>, plus the Method/Add-argument <select>s when present.
+    root.appendChild(renderPropertiesPanel(card(), { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
+    const labels = Array.from(root.querySelectorAll('label')) as HTMLLabelElement[];
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      // Either the label points at a control by id, or it wraps the control.
+      const byFor = label.htmlFor !== '' ? root.querySelector(`#${label.htmlFor}`) : null;
+      const wrapped = label.querySelector('input, select, textarea');
+      const associated = (byFor !== null && byFor.id === label.htmlFor) || wrapped !== null;
+      expect(associated).toBe(true);
+    }
+    // The arg input specifically is reachable from its label's htmlFor.
+    const input = root.querySelector('input.cw-props-input') as HTMLInputElement;
+    const inputLabel = Array.from(labels).find((l) => l.htmlFor === input.id);
+    expect(inputLabel).toBeDefined();
+    expect(input.id).not.toBe('');
+  });
+
+  it('mints unique control ids across multiple arg rows (no duplicate-id collisions)', () => {
+    const c = card();
+    c.args = [
+      { label: 'A', value: 'x', kind: 'identifier', editableKind: 'identifier', valueRaw: 'x', valueSpan: { start: 1, end: 2 } },
+      { label: 'B', value: 'y', kind: 'identifier', editableKind: 'identifier', valueRaw: 'y', valueSpan: { start: 4, end: 5 } }
+    ];
+    const root = document.createElement('div');
+    root.appendChild(renderPropertiesPanel(c, { editing: true, onEdit: () => {}, onArgEdit: () => {} }));
+    const ids = Array.from(root.querySelectorAll('input, select')).map((n) => (n as HTMLElement).id);
+    expect(ids.every((id) => id !== '')).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('binds a string input to the unquoted CONTENT, not the raw token', () => {
@@ -211,5 +248,45 @@ describe('renderPropertiesPanel', () => {
     second.value = 'z';
     second.dispatchEvent(new Event('change'));
     expect(onEdit).toHaveBeenCalledWith({ id: 'W#Execute/0', argIndex: 1, newText: 'z' });
+  });
+});
+
+describe('renderPseudoPanel', () => {
+  function pseudo(overrides: Partial<CwPseudoStep> = {}): CwPseudoStep {
+    return {
+      id: 'W#Execute/0',
+      type: 'pseudo',
+      tier: 2,
+      ruleId: 'assign-generic',
+      title: 'Assign',
+      text: 'x = a + b',
+      icon: 'arrow-right',
+      span: { startLine: 0, startCol: 0, endLine: 0, endCol: 0 },
+      ...overrides
+    };
+  }
+
+  it('shows the pseudo-step title', () => {
+    const root = document.createElement('div');
+    root.appendChild(renderPseudoPanel(pseudo()));
+    expect(root.querySelector('.cw-props-title')?.textContent).toBe('Assign');
+  });
+
+  it('shows the FULL detail text in a .cw-props-detail block', () => {
+    const longText = 'result = someVeryLongComputation(alpha, beta, gamma, delta, epsilon)';
+    const root = document.createElement('div');
+    root.appendChild(renderPseudoPanel(pseudo({ text: longText })));
+    const detail = root.querySelector('.cw-props-detail') as HTMLElement;
+    expect(detail).not.toBeNull();
+    // The dock shows the full value — no ellipsis/clipping at the model layer.
+    expect(detail.textContent).toBe(longText);
+  });
+
+  it('is a read-only inspector — no input fields', () => {
+    const root = document.createElement('div');
+    root.appendChild(renderPseudoPanel(pseudo()));
+    expect(root.querySelector('input')).toBeNull();
+    expect(root.querySelector('select')).toBeNull();
+    expect(root.querySelector('button')).toBeNull();
   });
 });

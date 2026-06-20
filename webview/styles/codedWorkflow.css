@@ -817,6 +817,22 @@ body.vscode-light {
   cursor: not-allowed;
 }
 
+/* Read-only detail block for a tier-2 pseudo-step (e.g. an Assign card). Unlike
+   the inline `.cw-card-text` (single-line, ellipsis-clipped), this wraps so the
+   full `target = value` is always legible in the dock. */
+.cw-props-detail {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, var(--card-border));
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* --- Structural editing (L1): remove / add arg, method switch -------------------------------------- */
 .cw-arg-remove {
   align-self: flex-end;
@@ -863,7 +879,10 @@ body.vscode-light {
 }
 
 /* --- Selected card highlight ----------------------------------------------------------------------- */
-.cw-card--activity {
+/* Both tier-1 activity cards and tier-2 pseudo-steps are selectable (clicking
+   opens the docked inspector), so both get the pointer affordance. */
+.cw-card--activity,
+.cw-card--pseudo {
   cursor: pointer;
 }
 

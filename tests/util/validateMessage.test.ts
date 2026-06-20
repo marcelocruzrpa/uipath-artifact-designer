@@ -296,17 +296,26 @@ describe('validateWebviewMessage — editArg message', () => {
 });
 
 describe('validateWebviewMessage — statement messages', () => {
-  it('accepts addStatement with a method-body slot ref', () => {
+  it('accepts addStatement with a palette item id + arg values', () => {
     expect(validateWebviewMessage({
       type: 'addStatement',
       slot: { containerId: '', methodId: 'W#Execute/' },
       index: 0,
-      source: 'Log("x");'
+      paletteItemId: 'step:assign',
+      argValues: ['x', '42']
     })).not.toBeNull();
+  });
+  it('rejects addStatement with no paletteItemId / non-array argValues', () => {
+    const slot = { containerId: '', methodId: 'W#Execute/' };
+    expect(validateWebviewMessage({ type: 'addStatement', slot, index: 0, argValues: [] })).toBeNull();
+    expect(validateWebviewMessage({
+      type: 'addStatement', slot, index: 0, paletteItemId: 'raw', argValues: 'nope'
+    })).toBeNull();
   });
   it('rejects addStatement whose slot.methodId is prototype-polluting', () => {
     expect(validateWebviewMessage({
-      type: 'addStatement', slot: { containerId: '', methodId: '__proto__' }, index: 0, source: 'x;'
+      type: 'addStatement', slot: { containerId: '', methodId: '__proto__' }, index: 0,
+      paletteItemId: 'raw', argValues: []
     })).toBeNull();
   });
   it('accepts deleteStatement', () => {

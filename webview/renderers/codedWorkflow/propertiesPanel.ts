@@ -25,12 +25,24 @@
  * Pure DOM builder — no renderer state, no innerHTML (the `el` helper and
  * direct property assignment only).
  */
-import type { CwActivityCard } from '../../../src/model/codedWorkflow/cwTypes';
+import type { CwActivityCard, CwPseudoStep } from '../../../src/model/codedWorkflow/cwTypes';
 import {
   TIER1_CATALOG,
   type CatalogEmitArg
 } from '../../../src/model/codedWorkflow/classify/tier1Catalog';
 import { el } from '../../util';
+
+/**
+ * Monotonic source of unique control ids so each `<label htmlFor>` points at a
+ * distinct backing control. A module-level counter guarantees uniqueness even
+ * when several panels (or several rows with the same arg label) coexist in the
+ * DOM, which a field-name-based scheme could not.
+ */
+let controlIdSeq = 0;
+function nextControlId(prefix: string): string {
+  controlIdSeq += 1;
+  return `cw-props-${prefix}-${controlIdSeq}`;
+}
 
 /** The edit intent emitted when a value field changes (mirrors `editValue`). */
 export interface PropertiesEdit {
@@ -71,6 +83,35 @@ function siblingMethods(card: CwActivityCard): string[] {
   return family.entries.filter((e) => e.emit !== undefined).map((e) => e.method);
 }
 
+/**
+ * Read-only inspector for a tier-2 pseudo-step (a recognized code pattern, e.g.
+ * an Assign card).  Pseudo-steps are NOT field-editable — the edit engine
+ * treats them as move/delete units (Fence F) — so this panel exists only to
+ * surface the FULL, un-truncated detail the inline card clips with an ellipsis:
+ * the title plus the verbatim `${text}` (e.g. `x = a + b`) in a wrapping
+ * `.cw-props-detail` block, with a muted "recognized pattern" hint.
+ */
+export function renderPseudoPanel(step: CwPseudoStep): HTMLElement {
+  const panel = el('div', { class: 'cw-props' });
+  panel.append(
+    el('div', {
+      class: 'cw-props-title',
+      text: step.title,
+      title: `Recognized pattern · ${step.ruleId}`
+    })
+  );
+  panel.append(
+    el('div', { class: 'cw-props-row' }, [
+      el('label', { class: 'cw-props-label', text: 'Detail' }),
+      el('div', { class: 'cw-props-detail', text: step.text, title: step.text })
+    ])
+  );
+  panel.append(
+    el('div', { class: 'cw-props-hint', text: 'Recognized code pattern — read-only.' })
+  );
+  return panel;
+}
+
 /** Builds the docked properties panel for one activity card. */
 export function renderPropertiesPanel(
   card: CwActivityCard,
@@ -100,13 +141,15 @@ export function renderPropertiesPanel(
   }
 
   card.args.forEach((arg, argIndex) => {
-    const row = el('div', { class: 'cw-props-row' }, [
-      el('label', { class: 'cw-props-label', text: arg.label })
-    ]);
+    const label = el('label', { class: 'cw-props-label', text: arg.label });
+    const row = el('div', { class: 'cw-props-row' }, [label]);
 
     const input = document.createElement('input');
     input.className = 'cw-props-input';
     input.type = 'text';
+    // Associate the label with its control so screen readers announce it.
+    input.id = nextControlId('arg');
+    label.htmlFor = input.id;
     // String fields show the unquoted CONTENT (the host re-quotes on save);
     // every other editable kind shows the raw source token it patches in place.
     input.value = arg.editableKind === 'string' ? arg.value : (arg.valueRaw ?? arg.value);
@@ -162,11 +205,13 @@ function buildMethodSelect(
   methods: string[],
   opts: PropertiesPanelOptions
 ): HTMLElement {
-  const row = el('div', { class: 'cw-props-row' }, [
-    el('label', { class: 'cw-props-label', text: 'Method' })
-  ]);
+  const label = el('label', { class: 'cw-props-label', text: 'Method' });
+  const row = el('div', { class: 'cw-props-row' }, [label]);
   const select = document.createElement('select');
   select.className = 'cw-method-select';
+  // Associate the label with its control so screen readers announce it.
+  select.id = nextControlId('method');
+  label.htmlFor = select.id;
   for (const m of methods) {
     const option = document.createElement('option');
     option.value = m;
@@ -204,11 +249,13 @@ function buildAddArg(card: CwActivityCard, opts: PropertiesPanelOptions): HTMLEl
   if (addable.length === 0) {
     return null;
   }
-  const row = el('div', { class: 'cw-arg-add' }, [
-    el('label', { class: 'cw-props-label', text: 'Add argument' })
-  ]);
+  const label = el('label', { class: 'cw-props-label', text: 'Add argument' });
+  const row = el('div', { class: 'cw-arg-add' }, [label]);
   const select = document.createElement('select');
   select.className = 'cw-arg-add-select';
+  // Associate the label with its control so screen readers announce it.
+  select.id = nextControlId('add');
+  label.htmlFor = select.id;
   const blank = document.createElement('option');
   blank.value = '';
   blank.textContent = '…';

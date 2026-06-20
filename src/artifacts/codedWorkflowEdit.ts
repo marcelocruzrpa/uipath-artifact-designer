@@ -14,6 +14,8 @@ import { resolveEdit } from '../model/codedWorkflow/edit/resolveEdit';
 import { applyPatches } from '../model/codedWorkflow/edit/applyPatches';
 import { introducesNewError } from '../model/codedWorkflow/edit/parseGate';
 import { findNodeById } from '../model/codedWorkflow/edit/findNode';
+import { emitStatement } from '../model/codedWorkflow/edit/emitStatement';
+import { findPaletteItem } from '../model/codedWorkflow/edit/editCatalog';
 import type { EditIntent } from '../model/codedWorkflow/edit/editTypes';
 import type { CodedWorkflowModel } from '../model/codedWorkflow/cwTypes';
 import type {
@@ -232,8 +234,18 @@ export async function computeArgEdit(source: string, message: EditArgMessage): P
 
 /** Insert a fully-emitted statement into a slot at an index (parse-gated). */
 export async function computeAddStatement(source: string, message: AddStatementMessage): Promise<ComputedEdit> {
+  // Resolve the trusted palette item and emit the statement HOST-SIDE. The
+  // webview supplies only the item id + per-arg values, so it cannot hand the
+  // host a finished line of C# for a cataloged insert — the template/receiver
+  // come from the catalog. Raw free-text is honored ONLY for the `raw` escape.
+  const item = findPaletteItem(message.paletteItemId);
+  if (item === null) {
+    return { ok: false, error: `unknown palette item: ${message.paletteItemId}` };
+  }
+  const rawText = item.kind === 'raw' ? message.rawText : undefined;
+  const emitted = emitStatement(item, message.argValues, message.resultBinding, rawText);
   return computeStatementEdit(source, {
-    kind: 'addStatement', slot: message.slot, index: message.index, source: message.source
+    kind: 'addStatement', slot: message.slot, index: message.index, source: emitted
   });
 }
 

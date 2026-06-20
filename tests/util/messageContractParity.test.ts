@@ -98,7 +98,7 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
   // --- coded workflow canvas ---
   { type: 'editValue', minValid: { id: 'W#Execute/0', argIndex: 0, newText: '"x"' } },
   { type: 'editArg', minValid: { id: 'W#Execute/0', op: 'change', argIndex: 0, newText: 'x' } },
-  { type: 'addStatement', minValid: { slot: { containerId: '', methodId: 'W#Execute/' }, index: 0, source: 'x;' } },
+  { type: 'addStatement', minValid: { slot: { containerId: '', methodId: 'W#Execute/' }, index: 0, paletteItemId: 'raw', argValues: [] } },
   { type: 'deleteStatement', minValid: { id: 'W#Execute/1' } },
   { type: 'moveStatement', minValid: { id: 'W#Execute/1', direction: 1 } }
 ];

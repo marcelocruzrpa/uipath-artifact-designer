@@ -18,12 +18,12 @@ import type {
   CwActivityCard,
   CwEntryPoint,
   CwHelperMethod,
+  CwPseudoStep,
   CwStatement,
   CwWorkflowClass
 } from '../../src/model/codedWorkflow/cwTypes';
 import type { ArtifactModel } from '../../src/model/types';
 import type { WebviewViewState } from '../../src/util/messages';
-import { emitStatement } from '../../src/model/codedWorkflow/edit/emitStatement';
 import {
   findPaletteItem,
   type PaletteItem
@@ -40,7 +40,10 @@ import {
 import { cwIcon } from './codedWorkflow/cwIcons';
 import { createGraphView, type GraphView } from './codedWorkflow/graphView';
 import { renderPalette } from './codedWorkflow/insertionPalette';
-import { renderPropertiesPanel } from './codedWorkflow/propertiesPanel';
+import { renderPropertiesPanel, renderPseudoPanel } from './codedWorkflow/propertiesPanel';
+
+/** A node the dock can inspect: a tier-1 activity card or a tier-2 pseudo-step. */
+type SelectableNode = CwActivityCard | CwPseudoStep;
 
 const SCROLL_PERSIST_DELAY_MS = 300;
 
@@ -102,18 +105,67 @@ function onActivate(node: HTMLElement, handler: () => void): void {
 }
 
 /**
- * Depth-first search for the activity card with `id`, descending container
- * slots AND a `using` container's `resourceCard` (which carries its own id and
- * a `[data-id]` card in the DOM). Returns null when no activity matches.
+ * Wires the WAI-ARIA keyboard contract onto a `role="tablist"`: a roving
+ * tabindex (only the active tab is in the tab order) plus ArrowLeft/ArrowRight
+ * (wrapping) and Home/End to move focus between the `role="tab"` children.
+ * MANUAL activation — arrows only MOVE focus; the user commits with Enter/Space,
+ * which these `<button>` tabs fire natively (running their click handler). Auto-
+ * activating on arrow would `render()` the canvas and rebuild the tablist,
+ * dropping focus to the document body after a single key. The starting tab in
+ * the tab order is the `aria-selected` one, or the first.
  */
-function findActivityCard(stmts: CwStatement[], id: string): CwActivityCard | null {
+function wireTablistKeys(tablist: HTMLElement): void {
+  const tabs = Array.from(tablist.querySelectorAll<HTMLElement>('[role="tab"]'));
+  if (tabs.length === 0) {
+    return;
+  }
+  const setRoving = (focusIndex: number): void => {
+    tabs.forEach((tab, i) => {
+      tab.tabIndex = i === focusIndex ? 0 : -1;
+    });
+  };
+  const activeIndex = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+  setRoving(activeIndex >= 0 ? activeIndex : 0);
+  tablist.addEventListener('keydown', (event: KeyboardEvent) => {
+    const current = tabs.indexOf(document.activeElement as HTMLElement);
+    if (current < 0) {
+      return;
+    }
+    let next: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      next = (current - 1 + tabs.length) % tabs.length;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = tabs.length - 1;
+    }
+    if (next === null) {
+      return;
+    }
+    // Move focus only (roving tabindex); activation stays manual via Enter/Space.
+    event.preventDefault();
+    setRoving(next);
+    tabs[next]?.focus();
+  });
+}
+
+/**
+ * Depth-first search for the selectable node with `id` — a tier-1 activity card
+ * OR a tier-2 pseudo-step (both render as `.cw-card[data-id]` and are dock
+ * inspectable) — descending container slots AND a `using` container's
+ * `resourceCard` (always an activity, with its own id and `[data-id]` card).
+ * Returns null when nothing matches.
+ */
+function findSelectableNode(stmts: CwStatement[], id: string): SelectableNode | null {
   for (const stmt of stmts) {
-    if (stmt.type === 'activity') {
+    if (stmt.type === 'activity' || stmt.type === 'pseudo') {
       if (stmt.id === id) return stmt;
     } else if (stmt.type === 'container') {
       if (stmt.resourceCard && stmt.resourceCard.id === id) return stmt.resourceCard;
       for (const slot of stmt.slots) {
-        const hit = findActivityCard(slot.children, id);
+        const hit = findSelectableNode(slot.children, id);
         if (hit) return hit;
       }
     }
@@ -157,6 +209,8 @@ class CodedWorkflowRenderer implements Renderer {
   private popoverEl: HTMLElement | null = null;
   /** Document-level keydown handler closing the popover on Escape, if mounted. */
   private popoverKeydown: ((e: KeyboardEvent) => void) | null = null;
+  /** The element focused when the popover opened, to restore focus on close. */
+  private popoverOpener: HTMLElement | null = null;
 
   public mount(container: HTMLElement, host: RendererHost, savedState: WebviewViewState | null): void {
     this.container = container;
@@ -281,14 +335,15 @@ class CodedWorkflowRenderer implements Renderer {
   }
 
   /**
-   * Makes every activity card in the canvas selectable: a click (or Enter /
+   * Makes every inspectable card in the canvas selectable: a click (or Enter /
    * Space) sets `selectedNodeId` and refreshes the dock in place — no canvas
-   * rebuild, so scroll and collapse state are untouched. Activity cards carry
-   * `data-id` (see stepCard.ts); container/chip nodes also carry `data-id`, so
-   * we match only `.cw-card--activity` to avoid selecting non-cards.
+   * rebuild, so scroll and collapse state are untouched. Tier-1 activity cards
+   * AND tier-2 pseudo-steps both carry the base `cw-card` class plus `data-id`
+   * (see stepCard.ts); chips (`cw-chip`) and containers (`cw-container`) do not,
+   * so matching `.cw-card[data-id]` selects exactly the inspectable cards.
    */
   private wireCardSelection(root: HTMLElement): void {
-    const cards = root.querySelectorAll<HTMLElement>('.cw-card--activity[data-id]');
+    const cards = root.querySelectorAll<HTMLElement>('.cw-card[data-id]');
     cards.forEach((cardEl) => {
       const id = cardEl.dataset.id;
       if (id === undefined) {
@@ -315,16 +370,25 @@ class CodedWorkflowRenderer implements Renderer {
     this.host?.notifyViewChanged();
   }
 
-  /** Adds `.cw-card--selected` to the selected card, removing it elsewhere. */
+  /**
+   * Adds `.cw-card--selected` to the selected card, removing it elsewhere, and
+   * mirrors that state into `aria-selected` so screen readers announce which
+   * inspectable card (tier-1 activity OR tier-2 pseudo-step) is selected. The
+   * previously-selected card is set back to `aria-selected="false"`.
+   */
   private applySelectionHighlight(root: HTMLElement): void {
     root.querySelectorAll('.cw-card--selected').forEach((n) => n.classList.remove('cw-card--selected'));
+    root.querySelectorAll<HTMLElement>('.cw-card[data-id]').forEach((n) => {
+      n.setAttribute('aria-selected', 'false');
+    });
     if (this.selectedNodeId === null) {
       return;
     }
     const sel = root.querySelector<HTMLElement>(
-      `.cw-card--activity[data-id="${CSS.escape(this.selectedNodeId)}"]`
+      `.cw-card[data-id="${CSS.escape(this.selectedNodeId)}"]`
     );
     sel?.classList.add('cw-card--selected');
+    sel?.setAttribute('aria-selected', 'true');
   }
 
   /**
@@ -339,9 +403,9 @@ class CodedWorkflowRenderer implements Renderer {
     clearChildren(dock);
     dock.append(this.buildEditToggle());
 
-    const card =
-      this.selectedNodeId !== null ? this.findSelectedCard(model) : null;
-    if (card === null) {
+    const node =
+      this.selectedNodeId !== null ? this.findSelectedNode(model) : null;
+    if (node === null) {
       dock.append(
         el('div', {
           class: 'cw-props-hint',
@@ -350,8 +414,15 @@ class CodedWorkflowRenderer implements Renderer {
       );
       return;
     }
+    // A tier-2 pseudo-step (e.g. an Assign card) is a recognized pattern with no
+    // editable args — it gets the read-only detail inspector. Tier-1 activity
+    // cards get the full (editable) properties panel.
+    if (node.type === 'pseudo') {
+      dock.append(renderPseudoPanel(node));
+      return;
+    }
     dock.append(
-      renderPropertiesPanel(card, {
+      renderPropertiesPanel(node, {
         editing: this.editing,
         onEdit: (edit) => {
           this.host?.post({
@@ -375,18 +446,18 @@ class CodedWorkflowRenderer implements Renderer {
     );
   }
 
-  /** The selected `CwActivityCard`, walking all classes/entries/helpers, or null. */
-  private findSelectedCard(model: CodedWorkflowModel): CwActivityCard | null {
+  /** The selected node (activity card or pseudo-step), walking all classes/entries/helpers, or null. */
+  private findSelectedNode(model: CodedWorkflowModel): SelectableNode | null {
     if (this.selectedNodeId === null) {
       return null;
     }
     for (const cls of model.classes) {
       for (const ep of cls.entryPoints) {
-        const hit = findActivityCard(ep.body, this.selectedNodeId);
+        const hit = findSelectableNode(ep.body, this.selectedNodeId);
         if (hit) return hit;
       }
       for (const hm of cls.helperMethods) {
-        const hit = findActivityCard(hm.body, this.selectedNodeId);
+        const hit = findSelectableNode(hm.body, this.selectedNodeId);
         if (hit) return hit;
       }
     }
@@ -419,10 +490,11 @@ class CodedWorkflowRenderer implements Renderer {
 
   /**
    * Opens the searchable palette anchored near a clicked insertion point. On
-   * pick it resolves the item, collects arg values from a tiny inline form,
-   * emits the statement source via the pure `emitStatement`, and posts the
-   * source-based `addStatement` intent (the host stays the sole mutator and
-   * parse-gates it). Closed on pick or Escape.
+   * pick it resolves the item, collects arg values from a tiny inline form, and
+   * posts a STRUCTURED `addStatement` intent — the palette item id plus per-arg
+   * values. The HOST emits the C# from the trusted catalog template (and stays
+   * the sole mutator + parse-gate), so the webview never hands over finished
+   * code for a cataloged insert. Closed on pick or Escape.
    */
   private openInsertPalette(slot: SlotIdentity, index: number): void {
     const popover = renderPalette({
@@ -435,8 +507,15 @@ class CodedWorkflowRenderer implements Renderer {
           if (filled === null) {
             return;
           }
-          const source = emitStatement(item, filled.values, filled.resultBinding, filled.rawText);
-          this.host?.post({ type: 'addStatement', slot, index, source });
+          this.host?.post({
+            type: 'addStatement',
+            slot,
+            index,
+            paletteItemId: id,
+            argValues: filled.values,
+            ...(filled.resultBinding !== undefined ? { resultBinding: filled.resultBinding } : {}),
+            ...(filled.rawText !== undefined ? { rawText: filled.rawText } : {})
+          });
           this.closePopover();
         });
       }
@@ -514,6 +593,10 @@ class CodedWorkflowRenderer implements Renderer {
   /** Mounts a transient popover into the canvas; Escape closes it. */
   private mountPopover(content: HTMLElement): void {
     this.closePopover();
+    // Remember the opener (the clicked insertion point) so focus returns there
+    // when the popover closes — otherwise Escape drops focus to document.body.
+    const opener = document.activeElement;
+    this.popoverOpener = opener instanceof HTMLElement ? opener : null;
     const popover = el('div', { class: 'cw-popover' }, [content]);
     this.popoverEl = popover;
     (this.scrollEl ?? this.container)?.append(popover);
@@ -534,6 +617,13 @@ class CodedWorkflowRenderer implements Renderer {
     }
     this.popoverEl?.remove();
     this.popoverEl = null;
+    // Restore focus to the opener, but only if it is still in the document
+    // (a re-render may have torn it out, in which case there is nothing to focus).
+    const opener = this.popoverOpener;
+    this.popoverOpener = null;
+    if (opener && opener.isConnected) {
+      opener.focus();
+    }
   }
 
   /**
@@ -642,6 +732,7 @@ class CodedWorkflowRenderer implements Renderer {
       tab.addEventListener('click', () => this.setMode(mode));
       tabs.append(tab);
     }
+    wireTablistKeys(tabs);
     return tabs;
   }
 
@@ -730,6 +821,7 @@ class CodedWorkflowRenderer implements Renderer {
       });
       tabs.append(tab);
     }
+    wireTablistKeys(tabs);
     return tabs;
   }
 
