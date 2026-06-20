@@ -1,0 +1,1 @@
+Compose text | summary = $"Invoice {invoiceId} due {dueDate}"

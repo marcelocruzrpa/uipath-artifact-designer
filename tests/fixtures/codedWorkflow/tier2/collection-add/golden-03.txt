@@ -1,0 +1,1 @@
+Add column | dt.Columns.Add("Name", typeof(string))

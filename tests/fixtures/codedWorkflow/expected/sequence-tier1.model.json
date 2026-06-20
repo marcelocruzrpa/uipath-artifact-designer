@@ -1,0 +1,475 @@
+{
+  "kind": "coded-workflow",
+  "title": "sequence-tier1.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "sequence-tier1.cs",
+  "fileUri": "file:///fixtures/skeleton/sequence-tier1.cs",
+  "classes": [
+    {
+      "className": "SequenceFlow",
+      "namespace": "Acme.Sequence",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 8,
+        "startCol": 4,
+        "endLine": 22,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 10,
+            "startCol": 8,
+            "endLine": 21,
+            "endCol": 9
+          },
+          "signatureSummary": "→ string",
+          "body": [
+            {
+              "id": "SequenceFlow#Execute/0",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 13,
+                "endCol": 32
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "starting run",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 420,
+                    "end": 434
+                  },
+                  "valueSpan": {
+                    "start": 420,
+                    "end": 434
+                  },
+                  "valueRaw": "\"starting run\""
+                }
+              ],
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 420,
+                "end": 434
+              },
+              "methodNameSpan": {
+                "start": 416,
+                "end": 419
+              },
+              "offsets": {
+                "start": 416,
+                "end": 436
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/1",
+              "span": {
+                "startLine": 14,
+                "startCol": 12,
+                "endLine": 14,
+                "endCol": 58
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "GetAsset",
+              "catalogId": "system.GetAsset",
+              "title": "Get Asset",
+              "args": [
+                {
+                  "label": "Name",
+                  "value": "ApiEndpoint",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 480,
+                    "end": 493
+                  },
+                  "valueSpan": {
+                    "start": 480,
+                    "end": 493
+                  },
+                  "valueRaw": "\"ApiEndpoint\""
+                }
+              ],
+              "resultBinding": "endpoint",
+              "icon": "gear",
+              "argListSpan": {
+                "start": 480,
+                "end": 493
+              },
+              "methodNameSpan": {
+                "start": 471,
+                "end": 479
+              },
+              "offsets": {
+                "start": 449,
+                "end": 495
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/2",
+              "span": {
+                "startLine": 15,
+                "startCol": 12,
+                "endLine": 15,
+                "endCol": 60
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "GetCredential",
+              "catalogId": "system.GetCredential",
+              "title": "Get Credential",
+              "args": [
+                {
+                  "label": "Name",
+                  "value": "ServiceUser",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 541,
+                    "end": 554
+                  },
+                  "valueSpan": {
+                    "start": 541,
+                    "end": 554
+                  },
+                  "valueRaw": "\"ServiceUser\""
+                }
+              ],
+              "resultBinding": "creds",
+              "icon": "gear",
+              "argListSpan": {
+                "start": 541,
+                "end": 554
+              },
+              "methodNameSpan": {
+                "start": 527,
+                "end": 540
+              },
+              "offsets": {
+                "start": 508,
+                "end": 556
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/3",
+              "span": {
+                "startLine": 16,
+                "startCol": 12,
+                "endLine": 16,
+                "endCol": 54
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "AddQueueItem",
+              "catalogId": "system.AddQueueItem",
+              "title": "Add Queue Item",
+              "args": [
+                {
+                  "label": "Queue",
+                  "value": "Invoices",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 589,
+                    "end": 599
+                  },
+                  "valueSpan": {
+                    "start": 589,
+                    "end": 599
+                  },
+                  "valueRaw": "\"Invoices\""
+                },
+                {
+                  "label": "+1 more",
+                  "value": "endpoint",
+                  "kind": "expression",
+                  "editableKind": "none",
+                  "overflowArgs": [
+                    {
+                      "label": "arg2",
+                      "value": "endpoint",
+                      "kind": "expression",
+                      "editableKind": "none"
+                    }
+                  ]
+                }
+              ],
+              "icon": "gear",
+              "argListSpan": {
+                "start": 589,
+                "end": 609
+              },
+              "methodNameSpan": {
+                "start": 576,
+                "end": 588
+              },
+              "offsets": {
+                "start": 569,
+                "end": 611
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/4",
+              "span": {
+                "startLine": 17,
+                "startCol": 12,
+                "endLine": 17,
+                "endCol": 50
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "workflows",
+              "serviceDisplayName": "Workflows",
+              "method": "ProcessInvoice",
+              "title": "Invoke Workflow ProcessInvoice",
+              "args": [
+                {
+                  "label": "arg1",
+                  "value": "endpoint",
+                  "kind": "identifier",
+                  "editableKind": "identifier",
+                  "argSpan": {
+                    "start": 649,
+                    "end": 657
+                  },
+                  "valueSpan": {
+                    "start": 649,
+                    "end": 657
+                  },
+                  "valueRaw": "endpoint"
+                },
+                {
+                  "label": "arg2",
+                  "value": "3",
+                  "kind": "literal",
+                  "editableKind": "number",
+                  "argSpan": {
+                    "start": 659,
+                    "end": 660
+                  },
+                  "valueSpan": {
+                    "start": 659,
+                    "end": 660
+                  },
+                  "valueRaw": "3"
+                }
+              ],
+              "icon": "type-hierarchy",
+              "invokeKind": "workflows-member",
+              "invokeCallee": "ProcessInvoice",
+              "argListSpan": {
+                "start": 649,
+                "end": 660
+              },
+              "methodNameSpan": {
+                "start": 634,
+                "end": 648
+              },
+              "offsets": {
+                "start": 624,
+                "end": 662
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/5",
+              "span": {
+                "startLine": 18,
+                "startCol": 12,
+                "endLine": 18,
+                "endCol": 54
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "RunWorkflow",
+              "catalogId": "_base.RunWorkflow",
+              "title": "Run Workflow",
+              "args": [
+                {
+                  "label": "Workflow",
+                  "value": "Shared\\Notify.xaml",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 687,
+                    "end": 708
+                  },
+                  "valueSpan": {
+                    "start": 687,
+                    "end": 708
+                  },
+                  "valueRaw": "@\"Shared\\Notify.xaml\""
+                },
+                {
+                  "label": "+1 more",
+                  "value": "input",
+                  "kind": "expression",
+                  "editableKind": "none",
+                  "overflowArgs": [
+                    {
+                      "label": "arg2",
+                      "value": "input",
+                      "kind": "expression",
+                      "editableKind": "none"
+                    }
+                  ]
+                }
+              ],
+              "icon": "play-circle",
+              "invokeKind": "run-workflow",
+              "invokeCallee": "Shared\\Notify.xaml",
+              "argListSpan": {
+                "start": 687,
+                "end": 715
+              },
+              "methodNameSpan": {
+                "start": 675,
+                "end": 686
+              },
+              "offsets": {
+                "start": 675,
+                "end": 717
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/6",
+              "span": {
+                "startLine": 19,
+                "startCol": 12,
+                "endLine": 19,
+                "endCol": 41
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "done with {endpoint}",
+                  "kind": "interpolated",
+                  "editableKind": "raw",
+                  "argSpan": {
+                    "start": 734,
+                    "end": 757
+                  },
+                  "valueSpan": {
+                    "start": 734,
+                    "end": 757
+                  },
+                  "valueRaw": "$\"done with {endpoint}\""
+                }
+              ],
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 734,
+                "end": 757
+              },
+              "methodNameSpan": {
+                "start": 730,
+                "end": 733
+              },
+              "offsets": {
+                "start": 730,
+                "end": 759
+              }
+            },
+            {
+              "id": "SequenceFlow#Execute/7",
+              "span": {
+                "startLine": 20,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 49
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "GetAsset",
+              "catalogId": "system.GetAsset",
+              "title": "Get Asset",
+              "args": [
+                {
+                  "label": "Name",
+                  "value": "ReportName",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 795,
+                    "end": 807
+                  },
+                  "valueSpan": {
+                    "start": 795,
+                    "end": 807
+                  },
+                  "valueRaw": "\"ReportName\""
+                }
+              ],
+              "icon": "gear",
+              "argListSpan": {
+                "start": 795,
+                "end": 807
+              },
+              "methodNameSpan": {
+                "start": 786,
+                "end": 794
+              },
+              "offsets": {
+                "start": 772,
+                "end": 809
+              }
+            }
+          ],
+          "tierCounts": {
+            "tier1": 8,
+            "tier2": 0,
+            "tier3": 0
+          },
+          "bodyId": "SequenceFlow#Execute/",
+          "bodySpan": {
+            "start": 403,
+            "end": 818
+          },
+          "indentText": "            "
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 25,
+  "stats": {
+    "totalStatements": 8,
+    "tier1": 8,
+    "tier2": 0,
+    "tier3": 0
+  }
+}

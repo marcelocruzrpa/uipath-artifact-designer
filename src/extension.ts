@@ -3,7 +3,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ArtifactEditorProvider } from './artifactEditorProvider';
+import { findProjectRoot } from './artifacts/codedProject';
+import { CodedProjectIndex } from './artifacts/codedProjectIndex';
+import { clearLastGoodModels } from './artifacts/codedWorkflowDescriptor';
+import { VIEW_TYPES } from './constants';
 import { artifactRegistry, descriptorForUri } from './model/registry';
+import { isCodedWorkflowSource } from './model/codedWorkflow/detectSource';
+import { shouldAutoOpenCodedWorkflow } from './model/codedWorkflow/autoOpen';
+import { configureCSharpParser, disposeCSharpParser } from './model/codedWorkflow/parser';
 import { initLog, logError, logInfo, logWarn } from './util/log';
 
 /** Resolves the artifact URI to open a designer for, from a command argument. */
@@ -100,9 +107,106 @@ function installReloadWatcher(context: vscode.ExtensionContext): void {
   });
 }
 
+/**
+ * Keeps the `uipathArtifactDesigner.activeCsIsWorkflow` context key in sync
+ * with the active editor. It drives the editor-title "Open Designer" button
+ * on `.cs` files: shown only when the file actually looks like a coded
+ * workflow, so plain C# files never grow a designer affordance.
+ */
+function installCsWorkflowContextKey(context: vscode.ExtensionContext): void {
+  const CONTEXT_KEY = 'uipathArtifactDesigner.activeCsIsWorkflow';
+
+  const setKey = (value: boolean): void => {
+    vscode.commands
+      .executeCommand('setContext', CONTEXT_KEY, value)
+      .then(undefined, (e: unknown) => logError('setContext failed', e));
+  };
+
+  const evaluate = (document: vscode.TextDocument | undefined): void => {
+    const isWorkflow =
+      document !== undefined &&
+      document.uri.path.toLowerCase().endsWith('.cs') &&
+      isCodedWorkflowSource(document.getText());
+    setKey(isWorkflow);
+  };
+
+  evaluate(vscode.window.activeTextEditor?.document);
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => evaluate(editor?.document)),
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      // Only a save of the document the user is looking at can change the key.
+      if (vscode.window.activeTextEditor?.document === document) {
+        evaluate(document);
+      }
+    })
+  );
+}
+
+/** Controls the auto-open feature: lets the host suppress a URI the user reopened as text. */
+interface AutoOpenControl {
+  /** Stop auto-opening `uri` for the rest of this session (user chose text). */
+  suppress(uri: vscode.Uri): void;
+}
+
+/**
+ * Auto-opens coded-workflow `.cs` files in the visual Coded Workflow Canvas when
+ * the `uipathArtifactDesigner.codedWorkflow.autoOpenDesigner` setting is on.
+ * Content-aware (reuses `isCodedWorkflowSource`), so plain C# files keep opening
+ * as text. The decision rule lives in the pure `shouldAutoOpenCodedWorkflow`.
+ *
+ * Loop-safe: when the designer (a webview) is active, `onDidChangeActiveTextEditor`
+ * fires with `undefined`, so reopening never re-triggers itself. A session set of
+ * suppressed URIs (populated by **Reopen Artifact as Text**) keeps an explicit
+ * user override from being bounced straight back to the designer.
+ */
+function installCodedWorkflowAutoOpen(context: vscode.ExtensionContext): AutoOpenControl {
+  const suppressed = new Set<string>();
+
+  const maybeOpen = (editor: vscode.TextEditor | undefined): void => {
+    if (editor === undefined) {
+      return;
+    }
+    const enabled = vscode.workspace
+      .getConfiguration('uipathArtifactDesigner.codedWorkflow')
+      .get<boolean>('autoOpenDesigner', false);
+    const { uri } = editor.document;
+    const decision = shouldAutoOpenCodedWorkflow({
+      scheme: uri.scheme,
+      pathLower: uri.path.toLowerCase(),
+      enabled,
+      isWorkflow: isCodedWorkflowSource(editor.document.getText()),
+      suppressed: suppressed.has(uri.toString())
+    });
+    if (!decision) {
+      return;
+    }
+    vscode.commands
+      .executeCommand('vscode.openWith', uri, VIEW_TYPES['coded-workflow'])
+      .then(undefined, (e: unknown) => logError('auto-open coded workflow failed', e));
+  };
+
+  maybeOpen(vscode.window.activeTextEditor);
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(maybeOpen));
+
+  return { suppress: (uri) => suppressed.add(uri.toString()) };
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
   installReloadWatcher(context);
+  installCsWorkflowContextKey(context);
+  const autoOpen = installCodedWorkflowAutoOpen(context);
+
+  // Store wasm paths for the C# parser — pure storage, no I/O.  The wasm
+  // files are loaded lazily on the first getCSharpParser() call, so
+  // activation cost is zero.
+  configureCSharpParser({
+    runtimeWasmPath: vscode.Uri.joinPath(context.extensionUri, 'dist', 'web-tree-sitter.wasm').fsPath,
+    grammarWasmPath: vscode.Uri.joinPath(context.extensionUri, 'dist', 'tree-sitter-c_sharp.wasm').fsPath
+  });
+  context.subscriptions.push({ dispose: disposeCSharpParser });
+
   const provider = new ArtifactEditorProvider(context);
 
   const viewTypes: string[] = [];
@@ -133,7 +237,8 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!target) {
           void vscode.window.showInformationMessage(
             'UiPath Artifact Designer: open a UiPath artifact first ' +
-              '(agent.json, *.flow, *.bpmn, caseplan.json, or action-schema.json).'
+              '(agent.json, *.flow, *.bpmn, caseplan.json, action-schema.json, ' +
+              'or .cs coded workflows).'
           );
           return;
         }
@@ -150,11 +255,56 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!target) {
           return;
         }
+        // Honor the explicit choice: don't let auto-open bounce this file back
+        // to the designer for the rest of the session.
+        autoOpen.suppress(target);
         await vscode.commands.executeCommand('vscode.openWith', target, 'default');
       }
     ),
     vscode.commands.registerCommand('uipathArtifactDesigner.fitToView', () => provider.fitActive()),
-    vscode.commands.registerCommand('uipathArtifactDesigner.refresh', () => provider.refreshActive())
+    vscode.commands.registerCommand('uipathArtifactDesigner.refresh', () => provider.refreshActive()),
+    vscode.commands.registerCommand(
+      'uipathArtifactDesigner.showCallGraph',
+      async (uri?: vscode.Uri) => {
+        // Case 1: the active editor is already a coded-workflow designer —
+        // just ask its webview to switch views.
+        const activeDesignerUri = provider.getActiveDocumentUri();
+        if (
+          activeDesignerUri &&
+          descriptorForUri(activeDesignerUri)?.kind === 'coded-workflow'
+        ) {
+          provider.showGraphActive();
+          return;
+        }
+        // Case 2: a .cs target (command argument or active text editor)
+        // inside a UiPath project — open the designer, then ask for the
+        // graph. showGraphFor queues the control until the first model
+        // render, so the webview receives it after its renderer mounts.
+        const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+        if (target && target.path.toLowerCase().endsWith('.cs')) {
+          const root = await findProjectRoot(target);
+          if (root !== undefined) {
+            await vscode.commands.executeCommand(
+              'vscode.openWith',
+              target,
+              VIEW_TYPES['coded-workflow']
+            );
+            provider.showGraphFor(target);
+            return;
+          }
+        }
+        void vscode.window.showInformationMessage(
+          'UiPath: Show Call Graph needs a coded workflow — open a .cs file ' +
+            'inside a UiPath project (a folder with project.json).'
+        );
+      }
+    ),
+    // Drop the per-project graph indexes (and their parsed-fact caches) when
+    // the extension is deactivated.
+    { dispose: () => CodedProjectIndex.disposeAll() },
+    // Drop the coded-workflow last-good model cache on deactivate (per-document
+    // eviction is wired in the provider's dispose; this is the teardown sweep).
+    { dispose: () => clearLastGoodModels() }
   );
 }
 

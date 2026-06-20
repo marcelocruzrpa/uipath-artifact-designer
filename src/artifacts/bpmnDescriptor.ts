@@ -12,9 +12,49 @@ import { VIEW_TYPES } from '../constants';
 import type { ArtifactDescriptor, DetectResult, EditContext } from '../model/artifactDescriptor';
 import { scanBpmn, validateBpmnXml } from '../model/bpmn/parseBpmn';
 import type { ArtifactModel, MaestroBpmnModel } from '../model/types';
-import { uriBasename } from '../util/fsHelpers';
+import { stripBom, uriBasename } from '../util/fsHelpers';
 import type { WebviewToHost } from '../util/messages';
 import { logError } from '../util/log';
+
+/**
+ * Supplementary well-formedness gate run on top of `validateBpmnXml` before a
+ * `bpmnSetXml` write. `validateBpmnXml` (in the shared, webview-safe parse
+ * module) already rejects empty / unrecognizable / unclosed exports; this host
+ * caller adds two structural checks that catch a wider class of corrupt
+ * serializations without pulling a real XML parser into the host:
+ *
+ *  - exactly ONE `<definitions>` root (a serialization that emitted a second
+ *    root, or duplicated the document, is malformed), and
+ *  - the closing `</definitions>` is the LAST significant token (trailing
+ *    garbage after the root close means the export was concatenated or
+ *    truncated mid-rewrite).
+ *
+ * Returns a reason string when the text is malformed, otherwise `undefined`.
+ */
+function bpmnWellFormednessReason(rawText: string): string | undefined {
+  const text = stripBom(rawText);
+  const openRoot = /<(?:[\w.-]+:)?definitions\b/gi;
+  const openCount = (text.match(openRoot) ?? []).length;
+  if (openCount !== 1) {
+    return openCount === 0
+      ? 'no <bpmn:definitions> root element was found'
+      : 'more than one <bpmn:definitions> root element was found';
+  }
+  const closeRoot = /<\/(?:[\w.-]+:)?definitions\s*>/gi;
+  let lastClose: RegExpExecArray | null = null;
+  for (let m = closeRoot.exec(text); m !== null; m = closeRoot.exec(text)) {
+    lastClose = m;
+  }
+  if (lastClose === null) {
+    return 'the <bpmn:definitions> root element is not closed';
+  }
+  // Nothing significant may follow the root close (comments / whitespace OK).
+  const trailer = text.slice(lastClose.index + lastClose[0].length).replace(/<!--[\s\S]*?-->/g, '');
+  if (trailer.trim().length > 0) {
+    return 'unexpected content follows the </bpmn:definitions> close tag';
+  }
+  return undefined;
+}
 
 /**
  * Cheap content gate. BPMN is XML, not JSON, so there is no `parse-error`
@@ -71,6 +111,16 @@ async function applyBpmnEdit(
     if (!validation.ok) {
       void vscode.window.showWarningMessage(
         `UiPath Designer: ignored an invalid BPMN export — ${validation.reason}. ` +
+          'The file was left unchanged.'
+      );
+      return;
+    }
+    // Stronger structural gate (single root, clean trailer) on top of the
+    // shared validator, to reject concatenated / duplicated serializations.
+    const malformed = bpmnWellFormednessReason(next);
+    if (malformed !== undefined) {
+      void vscode.window.showWarningMessage(
+        `UiPath Designer: ignored an invalid BPMN export — ${malformed}. ` +
           'The file was left unchanged.'
       );
       return;

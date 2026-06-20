@@ -1,0 +1,265 @@
+{
+  "kind": "coded-workflow",
+  "title": "broken-syntax.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Some statements could not be parsed and are shown as raw code."
+    }
+  ],
+  "fileName": "broken-syntax.cs",
+  "fileUri": "file:///fixtures/skeleton/broken-syntax.cs",
+  "classes": [
+    {
+      "className": "BrokenFlow",
+      "namespace": "Acme.Broken",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 7,
+        "startCol": 4,
+        "endLine": 23,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 9,
+            "startCol": 8,
+            "endLine": 16,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "BrokenFlow#Execute/0",
+              "span": {
+                "startLine": 12,
+                "startCol": 12,
+                "endLine": 12,
+                "endCol": 37
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "before the damage",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 345,
+                    "end": 364
+                  },
+                  "valueSpan": {
+                    "start": 345,
+                    "end": 364
+                  },
+                  "valueRaw": "\"before the damage\""
+                }
+              ],
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 345,
+                "end": 364
+              },
+              "methodNameSpan": {
+                "start": 341,
+                "end": 344
+              },
+              "offsets": {
+                "start": 341,
+                "end": 366
+              }
+            },
+            {
+              "id": "BrokenFlow#Execute/1",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 13,
+                "endCol": 47
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "system",
+              "serviceDisplayName": "System",
+              "method": "GetAsset",
+              "catalogId": "system.GetAsset",
+              "title": "Get Asset",
+              "args": [
+                {
+                  "label": "Name",
+                  "value": "Key",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 407,
+                    "end": 412
+                  },
+                  "valueSpan": {
+                    "start": 407,
+                    "end": 412
+                  },
+                  "valueRaw": "\"Key\""
+                }
+              ],
+              "resultBinding": "asset",
+              "icon": "gear",
+              "argListSpan": {
+                "start": 407,
+                "end": 412
+              },
+              "methodNameSpan": {
+                "start": 398,
+                "end": 406
+              },
+              "offsets": {
+                "start": 379,
+                "end": 414
+              }
+            },
+            {
+              "id": "BrokenFlow#Execute/2",
+              "span": {
+                "startLine": 14,
+                "startCol": 12,
+                "endLine": 14,
+                "endCol": 24
+              },
+              "offsets": {
+                "start": 427,
+                "end": 439
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "count = = 1;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            },
+            {
+              "id": "BrokenFlow#Execute/3",
+              "span": {
+                "startLine": 15,
+                "startCol": 12,
+                "endLine": 15,
+                "endCol": 30
+              },
+              "type": "pseudo",
+              "tier": 2,
+              "ruleId": "assign-generic",
+              "title": "Assign",
+              "text": "count = count + 1",
+              "icon": "arrow-right",
+              "offsets": {
+                "start": 452,
+                "end": 470
+              }
+            }
+          ],
+          "tierCounts": {
+            "tier1": 2,
+            "tier2": 1,
+            "tier3": 1
+          },
+          "bodyId": "BrokenFlow#Execute/",
+          "bodySpan": {
+            "start": 328,
+            "end": 479
+          },
+          "indentText": "            "
+        },
+        {
+          "name": "Healthy",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 18,
+            "startCol": 8,
+            "endLine": 22,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "BrokenFlow#Healthy/0",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 21,
+                "endCol": 43
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "untouched by the damage",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 557,
+                    "end": 582
+                  },
+                  "valueSpan": {
+                    "start": 557,
+                    "end": 582
+                  },
+                  "valueRaw": "\"untouched by the damage\""
+                }
+              ],
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 557,
+                "end": 582
+              },
+              "methodNameSpan": {
+                "start": 553,
+                "end": 556
+              },
+              "offsets": {
+                "start": 553,
+                "end": 584
+              }
+            }
+          ],
+          "tierCounts": {
+            "tier1": 1,
+            "tier2": 0,
+            "tier3": 0
+          },
+          "bodyId": "BrokenFlow#Healthy/",
+          "bodySpan": {
+            "start": 540,
+            "end": 593
+          },
+          "indentText": "            "
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "partial",
+  "parseErrorCount": 1,
+  "truncated": false,
+  "totalLines": 26,
+  "stats": {
+    "totalStatements": 5,
+    "tier1": 3,
+    "tier2": 1,
+    "tier3": 1
+  }
+}

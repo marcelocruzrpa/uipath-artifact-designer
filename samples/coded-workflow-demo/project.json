@@ -1,0 +1,12 @@
+{
+  "name": "InvoiceDemo",
+  "projectVersion": "1.0.0",
+  "expressionLanguage": "CSharp",
+  "targetFramework": "Portable",
+  "entryPoints": [
+    {
+      "filePath": "Workflows/ProcessInvoices.cs",
+      "uniqueId": "00000000-0000-0000-0000-000000000001"
+    }
+  ]
+}

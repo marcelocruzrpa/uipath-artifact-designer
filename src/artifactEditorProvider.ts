@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fsp from 'node:fs/promises';
+import * as nodePath from 'node:path';
 import { VIEW_TYPES } from './constants';
 import type { ArtifactDescriptor, EditContext, FileEdit } from './model/artifactDescriptor';
 import { descriptorForUri } from './model/registry';
@@ -8,6 +10,15 @@ import type { HostToWebview, WebviewToHost } from './util/messages';
 import { getNonce } from './util/nonce';
 import { validateWebviewMessage } from './util/validateMessage';
 import { logError, logWarn } from './util/log';
+import {
+  computeAddStatement,
+  computeArgEdit,
+  computeDeleteStatement,
+  computeMoveStatement,
+  computeValueEdit,
+  type ComputedEdit
+} from './artifacts/codedWorkflowEdit';
+import { forgetLastGood } from './artifacts/codedWorkflowDescriptor';
 
 /**
  * A single, registry-driven CustomTextEditorProvider that renders any
@@ -31,6 +42,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
    * document in O(1) instead of scanning {@link panels}.
    */
   private activePanelKey: string | undefined;
+  /** Keys of panels that have received at least one `model` message. */
+  private readonly renderedKeys = new Set<string>();
+  /**
+   * Control messages queued for panels that have not rendered a model yet.
+   * `showCallGraph` on a not-yet-open document does `vscode.openWith` and then
+   * queues the control here; {@link resolveCustomTextEditor}'s render flushes
+   * the queue right after posting the model, so the webview receives the
+   * control strictly after the model that mounts its renderer (postMessage
+   * order is preserved). Entries for documents that never render a model
+   * (fallback / error) are discarded on panel dispose.
+   */
+  private readonly pendingControls = new Map<string, HostToWebview[]>();
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -124,6 +147,14 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         const model = await descriptor.loadModel(document);
         post({ type: 'model', model });
         firstRenderDone = true;
+        this.renderedKeys.add(key);
+        const pending = this.pendingControls.get(key);
+        if (pending) {
+          this.pendingControls.delete(key);
+          for (const queued of pending) {
+            post(queued);
+          }
+        }
       } catch (e) {
         post({ type: 'error', message: e instanceof Error ? e.message : String(e) });
       }
@@ -184,13 +215,38 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     );
 
     if (descriptor) {
-      const watcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(uriDirname(document.uri), descriptor.watchGlobs)
-      );
-      watcher.onDidChange(scheduleWatcherRender);
-      watcher.onDidCreate(scheduleWatcherRender);
-      watcher.onDidDelete(scheduleWatcherRender);
-      subscriptions.push(watcher);
+      const attachWatcher = (base: vscode.Uri): void => {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(base, descriptor.watchGlobs)
+        );
+        watcher.onDidChange(scheduleWatcherRender);
+        watcher.onDidCreate(scheduleWatcherRender);
+        watcher.onDidDelete(scheduleWatcherRender);
+        subscriptions.push(watcher);
+      };
+      if (descriptor.watchBase === undefined) {
+        // No hook — keep the original, fully synchronous path so descriptors
+        // without watchBase behave exactly as before.
+        attachWatcher(uriDirname(document.uri));
+      } else {
+        // watchBase may be async (e.g. walking up to a project root). Attach
+        // once it resolves; if the panel was disposed meanwhile, attaching
+        // would leak the watcher (the dispose loop already ran), so skip.
+        void Promise.resolve(descriptor.watchBase(document))
+          .catch((e: unknown) => {
+            logWarn(
+              `watchBase failed; falling back to the document directory: ${
+                e instanceof Error ? e.message : String(e)
+              }`
+            );
+            return undefined;
+          })
+          .then((base) => {
+            if (!disposed) {
+              attachWatcher(base ?? uriDirname(document.uri));
+            }
+          });
+      }
     }
 
     // Messages are processed strictly in order through a per-document queue.
@@ -252,8 +308,15 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       this.panels.delete(key);
       this.updaters.delete(key);
       this.lastWrittenText.delete(key);
+      this.renderedKeys.delete(key);
+      this.pendingControls.delete(key);
       if (this.activePanelKey === key) {
         this.activePanelKey = undefined;
+      }
+      // Evict this document's coded-workflow last-good model so a closed editor
+      // does not pin it in the module-level cache. A no-op for other kinds.
+      if (descriptor?.kind === 'coded-workflow') {
+        forgetLastGood(key);
       }
     });
   }
@@ -272,16 +335,40 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         try {
           // Strict parse: reject a schemeless URI instead of defaulting to file:.
           const target = vscode.Uri.parse(message.uri, true);
+          // The guard root defaults to the document's directory; a descriptor
+          // can widen it (e.g. to the project root) via resourceRoot. The
+          // isInside containment check itself is unchanged.
+          let root: vscode.Uri | undefined;
+          try {
+            root = await descriptor?.resourceRoot?.(document);
+          } catch {
+            root = undefined;
+          }
           if (
             target.scheme !== document.uri.scheme ||
-            !isInside(uriDirname(document.uri), target)
+            !isInside(root ?? uriDirname(document.uri), target)
           ) {
             void vscode.window.showWarningMessage(
               'UiPath Designer: refused to open a file outside the project.'
             );
             return;
           }
-          await vscode.window.showTextDocument(target, { preview: true });
+          // `preview === false` is the double-click "open the workflow" intent:
+          // open a PERSISTENT tab in the target's own designer when one is
+          // registered (a .cs coded workflow → the canvas), else as plain text.
+          // Anything else keeps the single-click transient preview.
+          if (message.preview === false) {
+            const targetDescriptor = descriptorForUri(target);
+            if (targetDescriptor !== undefined) {
+              await vscode.commands.executeCommand('vscode.openWith', target, targetDescriptor.viewType, {
+                preview: false
+              });
+            } else {
+              await vscode.window.showTextDocument(target, { preview: false });
+            }
+          } else {
+            await vscode.window.showTextDocument(target, { preview: true });
+          }
         } catch (e) {
           logWarn(
             `rejected malformed openResource URI "${message.uri}": ${
@@ -302,12 +389,202 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       case 'persistViewState':
       case 'log':
         break;
+      case 'editValue':
+      case 'editArg':
+      case 'addStatement':
+      case 'deleteStatement':
+      case 'moveStatement': {
+        // These five cases write to the open `.cs` through the coded-workflow
+        // edit engine. Gate them on the document actually being a coded
+        // workflow — the same descriptor isolation the JSON `applyEdit` path
+        // has — so a message crafted for one artifact kind cannot drive an
+        // edit on a different open document.
+        if (descriptor?.kind !== 'coded-workflow') {
+          logWarn(`ignored coded-workflow ${message.type} on a ${descriptor?.kind ?? 'unknown'} document`);
+          break;
+        }
+        // The model build + resolve + parse-gate live in vscode-free helpers so
+        // they stay unit-testable; here we only translate the result into a
+        // range WorkspaceEdit.
+        const text = document.getText();
+        const computed =
+          message.type === 'editValue'
+            ? await computeValueEdit(text, message)
+            : message.type === 'editArg'
+              ? await computeArgEdit(text, message)
+              : message.type === 'addStatement'
+                ? await computeAddStatement(text, message)
+                : message.type === 'deleteStatement'
+                  ? await computeDeleteStatement(text, message)
+                  : await computeMoveStatement(text, message);
+        await this.applyComputedEdit(document, computed, render);
+        break;
+      }
+      case 'editResourceField': {
+        // WRITE sink: the descriptor writes JSON back to `message.uri`. Its own
+        // `isInside` gate is a pure LEXICAL prefix check that does not resolve
+        // symlinks — a link inside the project pointing outside would pass. Add
+        // a host-side realpath/symlink gate here (where Node fs is allowed)
+        // BEFORE delegating, so a crafted target cannot redirect the write out
+        // of the project. The descriptor keeps its own lexical check too
+        // (defense in depth).
+        let root: vscode.Uri | undefined;
+        try {
+          root = await descriptor?.resourceRoot?.(document);
+        } catch {
+          root = undefined;
+        }
+        const ok = await this.isSafeWriteTarget(
+          message.uri,
+          root ?? uriDirname(document.uri),
+          document.uri
+        );
+        if (!ok) {
+          void vscode.window.showWarningMessage(
+            'UiPath Designer: refused to write to a file outside the project.'
+          );
+          break;
+        }
+        if (descriptor) {
+          await descriptor.applyEdit(message, document, this.editContext);
+          await render();
+        }
+        break;
+      }
       default:
         if (descriptor) {
           await descriptor.applyEdit(message, document, this.editContext);
           await render();
         }
         break;
+    }
+  }
+
+  /**
+   * Containment gate for a WRITE target, stronger than the pure-lexical
+   * {@link isInside}. Returns false (reject the write) unless ALL hold:
+   *  - the URI parses and shares the document's scheme,
+   *  - it passes the lexical `isInside` check against `root`,
+   *  - and, for `file:` targets, neither the target nor any ancestor is a
+   *    symlink that escapes `root` once real paths are resolved.
+   *
+   * Symlink resolution only applies to `file:` URIs (the only scheme Node's
+   * `fs.realpath` understands); other schemes fall back to the lexical check,
+   * which is all the descriptor had before. A target that does not yet exist is
+   * resolved through its nearest existing ancestor, so a brand-new file inside a
+   * symlinked-out directory is still rejected. Never throws.
+   */
+  private async isSafeWriteTarget(
+    rawUri: string,
+    root: vscode.Uri,
+    documentUri: vscode.Uri
+  ): Promise<boolean> {
+    let target: vscode.Uri;
+    try {
+      target = vscode.Uri.parse(rawUri, true);
+    } catch {
+      return false;
+    }
+    if (target.scheme !== documentUri.scheme || !isInside(root, target)) {
+      return false;
+    }
+    if (target.scheme !== 'file' || root.scheme !== 'file') {
+      // No real-path layer for non-file schemes; the lexical check stands.
+      return true;
+    }
+    try {
+      const realRoot = await fsp.realpath(root.fsPath);
+      // Resolve the target through its nearest existing ancestor so a
+      // not-yet-created file is still checked against resolved directories.
+      const realTarget = await this.realpathThroughAncestors(target.fsPath);
+      const rootUri = vscode.Uri.file(realRoot);
+      const targetUri = vscode.Uri.file(realTarget);
+      // Reject when the target itself is a symbolic link, regardless of where
+      // it resolves — a write sink should never follow a link.
+      const lst = await fsp.lstat(target.fsPath).catch(() => undefined);
+      if (lst?.isSymbolicLink()) {
+        return false;
+      }
+      return isInside(rootUri, targetUri);
+    } catch {
+      // realpath failure (permission, race) — fail closed.
+      return false;
+    }
+  }
+
+  /**
+   * Resolve `fsPath` to a real path, tolerating a target that does not exist
+   * yet: walk up to the nearest existing ancestor, realpath THAT, then re-append
+   * the not-yet-created trailing segments. So a write to a new file inside a
+   * symlinked directory resolves through the link and is caught by containment.
+   */
+  private async realpathThroughAncestors(fsPath: string): Promise<string> {
+    let current = nodePath.resolve(fsPath);
+    const trailing: string[] = [];
+    // Bounded walk: stop at the filesystem root.
+    for (let i = 0; i < 4096; i++) {
+      try {
+        const real = await fsp.realpath(current);
+        return trailing.length === 0 ? real : nodePath.join(real, ...trailing.reverse());
+      } catch {
+        const parent = nodePath.dirname(current);
+        if (parent === current) {
+          // Reached the root without an existing ancestor; return as-is.
+          return nodePath.join(current, ...trailing.reverse());
+        }
+        trailing.push(nodePath.basename(current));
+        current = parent;
+      }
+    }
+    return nodePath.resolve(fsPath);
+  }
+
+  /**
+   * Applies a {@link ComputedEdit} from one of the coded-workflow `compute*`
+   * helpers: surface a rejection, otherwise prime the echo-guard with the FULL
+   * resulting text BEFORE applying the range edit (so after the edit
+   * `document.getText() === computed.after` and the `onDidChangeTextDocument`
+   * listener's `=== lastWrittenText.get(key)` check skips the self-triggered
+   * re-render; native undo reverts in one step). Shared by editValue / editArg /
+   * addStatement / deleteStatement / moveStatement so all four take one path.
+   *
+   * `applyEdit` can REJECT (the document changed under us, or VS Code refused
+   * the edit). On rejection we must not leave the echo-guard primed with text
+   * that was never written — the next genuine external change would then be
+   * mistaken for our own echo and silently dropped. So we clear the guard, warn
+   * the user, and force a re-render to resync the webview to the document's
+   * actual content. Mirrors {@link applyFileEdits}.
+   */
+  private async applyComputedEdit(
+    document: vscode.TextDocument,
+    computed: ComputedEdit,
+    render: () => Promise<void>
+  ): Promise<void> {
+    if (!computed.ok) {
+      void vscode.window.showWarningMessage(`Edit rejected: ${computed.error}`);
+      return;
+    }
+    const key = this.documentKey(document.uri);
+    this.lastWrittenText.set(key, computed.after);
+    const edit = new vscode.WorkspaceEdit();
+    for (const p of computed.patches) {
+      edit.replace(
+        document.uri,
+        new vscode.Range(document.positionAt(p.start), document.positionAt(p.end)),
+        p.newText
+      );
+    }
+    const applied = await vscode.workspace.applyEdit(edit);
+    if (!applied) {
+      // The edit was rejected and the document is unchanged. Drop the primed
+      // echo-guard text (we never wrote it) so a later real edit is not skipped,
+      // tell the user, and resync the webview to disk.
+      this.lastWrittenText.delete(key);
+      void vscode.window.showWarningMessage(
+        'UiPath Designer: could not apply your change — the file may have been ' +
+          'modified outside the designer. The view has been refreshed.'
+      );
+      await render();
     }
   }
 
@@ -378,6 +655,42 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const panel = this.panels.get(this.activePanelKey);
     if (panel) {
       void panel.webview.postMessage({ type: 'control', action: 'fitToView' } as HostToWebview);
+    }
+  }
+
+  /** Asks the active designer webview to switch to the call-graph view. */
+  public showGraphActive(): void {
+    if (this.activePanelKey === undefined) {
+      return;
+    }
+    this.showGraphFor(vscode.Uri.parse(this.activePanelKey));
+  }
+
+  /**
+   * Asks the designer panel for `uri` to switch to the call-graph view.
+   * Posts immediately when the panel has already rendered a model; otherwise
+   * queues the control to be flushed right after the first model post, so a
+   * freshly `vscode.openWith`-opened panel receives it once its renderer is
+   * mounted (see {@link pendingControls}).
+   */
+  public showGraphFor(uri: vscode.Uri): void {
+    const key = this.documentKey(uri);
+    const message: HostToWebview = { type: 'control', action: 'showGraph' };
+    const panel = this.panels.get(key);
+    if (panel === undefined) {
+      // No panel for this document (open failed or it was closed) — dropping
+      // beats queueing into a map entry that nothing would ever clean up.
+      return;
+    }
+    if (this.renderedKeys.has(key)) {
+      void panel.webview.postMessage(message);
+      return;
+    }
+    const pending = this.pendingControls.get(key);
+    if (pending) {
+      pending.push(message);
+    } else {
+      this.pendingControls.set(key, [message]);
     }
   }
 

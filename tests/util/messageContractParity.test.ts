@@ -33,6 +33,18 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
     type: 'persistViewState',
     minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null } }
   },
+  {
+    // Same variant with the optional collapsedIds field (coded-workflow
+    // collapse state) — duplicates are fine, the declared-vs-fixtured
+    // comparison below is set-based.
+    type: 'persistViewState',
+    minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['c1'] } }
+  },
+  {
+    // And with the optional mode field (coded-workflow canvas/graph toggle).
+    type: 'persistViewState',
+    minValid: { state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 'graph' } }
+  },
   { type: 'log', minValid: { level: 'info', message: 'hi' } },
   { type: 'editAgentField', minValid: { path: ['a'], value: 'v' } },
   { type: 'editAgentPrompt', minValid: { role: 'system', content: 'c' } },
@@ -82,7 +94,13 @@ const PARITY_FIXTURES: Array<{ type: string; minValid: Record<string, unknown> }
     type: 'caseSetConditions',
     minValid: { scope: 'stage-entry', stageId: 's', conditions: [] }
   },
-  { type: 'caseSetSlaRules', minValid: { stageId: 's', slaRules: [] } }
+  { type: 'caseSetSlaRules', minValid: { stageId: 's', slaRules: [] } },
+  // --- coded workflow canvas ---
+  { type: 'editValue', minValid: { id: 'W#Execute/0', argIndex: 0, newText: '"x"' } },
+  { type: 'editArg', minValid: { id: 'W#Execute/0', op: 'change', argIndex: 0, newText: 'x' } },
+  { type: 'addStatement', minValid: { slot: { containerId: '', methodId: 'W#Execute/' }, index: 0, paletteItemId: 'raw', argValues: [] } },
+  { type: 'deleteStatement', minValid: { id: 'W#Execute/1' } },
+  { type: 'moveStatement', minValid: { id: 'W#Execute/1', direction: 1 } }
 ];
 
 describe('message-contract parity', () => {

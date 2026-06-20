@@ -17,9 +17,27 @@ import type {
   CaseTrigger,
   SlaRuleEntry
 } from './case/caseTypes';
+import type { CodedWorkflowModel } from './codedWorkflow/cwTypes';
 import type { FlowEdge, FlowNode, FlowVariable } from './flow/flowTypes';
 
 export type { FlowEdge, FlowNode, FlowNodeKind, FlowPort, FlowVariable } from './flow/flowTypes';
+export type {
+  CodedWorkflowModel,
+  CwActivityCard,
+  CwArgSummary,
+  CwContainer,
+  CwContainerKind,
+  CwEntryPoint,
+  CwHelperMethod,
+  CwPseudoStep,
+  CwRawChip,
+  CwSlot,
+  CwSlotRole,
+  CwStatement,
+  CwTierCounts,
+  CwWorkflowClass,
+  SourceSpan
+} from './codedWorkflow/cwTypes';
 export type {
   CaseCondition,
   CaseConditionScope,
@@ -325,4 +343,5 @@ export type ArtifactModel =
   | MaestroFlowModel
   | MaestroBpmnModel
   | MaestroCaseModel
-  | CodedAppModel;
+  | CodedAppModel
+  | CodedWorkflowModel;

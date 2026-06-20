@@ -13,3 +13,16 @@ coverage/
 .idea/
 *.swp
 .env*
+
+# M0 corpus spike (local repo clones + generated reports)
+corpus/
+corpus-report.json
+corpus-report.md
+subset-report.json
+subset-report.md
+
+# M2 perf evidence (generated sample projects — scripts/genSampleProject.mjs)
+tmp-sample-project/
+
+# Bundled-runtime parser smoke output (scripts/bundleSmoke.mjs)
+.smoke/

@@ -18,6 +18,28 @@ describe('validateWebviewMessage — valid messages', () => {
     expect(validateWebviewMessage({ type: 'reopenAsText' })).toEqual({ type: 'reopenAsText' });
   });
 
+  it('accepts openResource with and without the optional preview flag', () => {
+    expect(validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs' })).toEqual({
+      type: 'openResource',
+      uri: 'file:///p/a.cs'
+    });
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: false })
+    ).toEqual({ type: 'openResource', uri: 'file:///p/a.cs', preview: false });
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: true })
+    ).toEqual({ type: 'openResource', uri: 'file:///p/a.cs', preview: true });
+  });
+
+  it('rejects openResource with a non-boolean preview', () => {
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: 'yes' })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({ type: 'openResource', uri: 'file:///p/a.cs', preview: 1 })
+    ).toBeNull();
+  });
+
   it('accepts an editAgentField with a safe path', () => {
     const msg = { type: 'editAgentField', path: ['settings', 'model'], value: 'gpt-4o' };
     expect(validateWebviewMessage(msg)).toEqual(msg);
@@ -94,6 +116,30 @@ describe('validateWebviewMessage — valid messages', () => {
     };
     expect(validateWebviewMessage(msg)).toEqual(msg);
   });
+
+  it('accepts a persistViewState with string[] collapsedIds', () => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['c1', 'c2'] }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
+
+  it('accepts a persistViewState with an empty collapsedIds array', () => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: [] }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
+
+  it.each(['canvas', 'graph'])('accepts a persistViewState with mode %s', (mode) => {
+    const msg = {
+      type: 'persistViewState',
+      state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode }
+    };
+    expect(validateWebviewMessage(msg)).toEqual(msg);
+  });
 });
 
 describe('validateWebviewMessage — malformed shapes return null', () => {
@@ -126,6 +172,39 @@ describe('validateWebviewMessage — malformed shapes return null', () => {
 
   it('rejects flowMoveNode with a missing coordinate', () => {
     expect(validateWebviewMessage({ type: 'flowMoveNode', nodeId: 'n1', x: 10 })).toBeNull();
+  });
+
+  it('rejects a persistViewState whose collapsedIds has non-string entries', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['ok', 42] }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a persistViewState whose collapsedIds is not an array', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: 'c1' }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a persistViewState whose mode is not canvas/graph', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 'sideways' }
+      })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, mode: 42 }
+      })
+    ).toBeNull();
   });
 });
 
@@ -176,6 +255,102 @@ describe('validateWebviewMessage — prototype-pollution rejection (H1 regressio
   });
 });
 
+describe('validateWebviewMessage — editValue message', () => {
+  it('accepts a well-formed editValue message', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 0, newText: '"x"' })
+    ).toEqual({ type: 'editValue', id: 'W#Execute/0', argIndex: 0, newText: '"x"' });
+  });
+
+  it('rejects an editValue missing argIndex', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a non-integer argIndex', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 1.5, newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a missing id', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', argIndex: 0, newText: '"x"' })
+    ).toBeNull();
+  });
+
+  it('rejects an editValue with a missing newText', () => {
+    expect(
+      validateWebviewMessage({ type: 'editValue', id: 'W#Execute/0', argIndex: 0 })
+    ).toBeNull();
+  });
+});
+
+describe('validateWebviewMessage — editArg message', () => {
+  it('accepts a well-formed editArg change', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'change', argIndex: 1, newText: 'x' })
+    ).not.toBeNull();
+  });
+  it('accepts an editArg method switch', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: 'GetCredential' })
+    ).not.toBeNull();
+  });
+  it('rejects an editArg with an unknown op', () => {
+    expect(validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'nuke' })).toBeNull();
+  });
+  it('rejects an editArg whose newMethod is prototype-polluting', () => {
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: '__proto__' })
+    ).toBeNull();
+  });
+  it('rejects an editArg whose newMethod is not a bare identifier (code injection)', () => {
+    // The validator — not just the parse-gate — must reject a non-identifier name.
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: 'X(); Evil(' })
+    ).toBeNull();
+    expect(
+      validateWebviewMessage({ type: 'editArg', id: 'W#Execute/0', op: 'method', newMethod: '1Bad' })
+    ).toBeNull();
+  });
+});
+
+describe('validateWebviewMessage — statement messages', () => {
+  it('accepts addStatement with a palette item id + arg values', () => {
+    expect(validateWebviewMessage({
+      type: 'addStatement',
+      slot: { containerId: '', methodId: 'W#Execute/' },
+      index: 0,
+      paletteItemId: 'step:assign',
+      argValues: ['x', '42']
+    })).not.toBeNull();
+  });
+  it('rejects addStatement with no paletteItemId / non-array argValues', () => {
+    const slot = { containerId: '', methodId: 'W#Execute/' };
+    expect(validateWebviewMessage({ type: 'addStatement', slot, index: 0, argValues: [] })).toBeNull();
+    expect(validateWebviewMessage({
+      type: 'addStatement', slot, index: 0, paletteItemId: 'raw', argValues: 'nope'
+    })).toBeNull();
+  });
+  it('rejects addStatement whose slot.methodId is prototype-polluting', () => {
+    expect(validateWebviewMessage({
+      type: 'addStatement', slot: { containerId: '', methodId: '__proto__' }, index: 0,
+      paletteItemId: 'raw', argValues: []
+    })).toBeNull();
+  });
+  it('accepts deleteStatement', () => {
+    expect(validateWebviewMessage({ type: 'deleteStatement', id: 'W#Execute/1' })).not.toBeNull();
+  });
+  it('accepts a moveStatement with direction -1', () => {
+    expect(validateWebviewMessage({ type: 'moveStatement', id: 'W#Execute/1', direction: -1 })).not.toBeNull();
+  });
+  it('rejects a moveStatement with a bad direction', () => {
+    expect(validateWebviewMessage({ type: 'moveStatement', id: 'W#Execute/1', direction: 2 })).toBeNull();
+  });
+});
+
 describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
   it('rejects an over-cap free-text string', () => {
     const huge = 'a'.repeat(100_001);
@@ -198,6 +373,25 @@ describe('validateWebviewMessage — over-cap and non-finite rejection', () => {
     }));
     expect(
       validateWebviewMessage({ type: 'setActionSchemaSection', section: 'inputs', fields })
+    ).toBeNull();
+  });
+
+  it('rejects an over-cap collapsedIds array', () => {
+    const collapsedIds = Array.from({ length: 10_001 }, (_v, i) => `c${i}`);
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds }
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a collapsedIds entry over the identifier cap', () => {
+    expect(
+      validateWebviewMessage({
+        type: 'persistViewState',
+        state: { zoom: 1, panX: 0, panY: 0, selectedId: null, collapsedIds: ['a'.repeat(4_097)] }
+      })
     ).toBeNull();
   });
 

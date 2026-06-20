@@ -1,0 +1,1 @@
+Build text | log += $"row {i} done\n"

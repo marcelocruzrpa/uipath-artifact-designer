@@ -7,6 +7,8 @@ import './styles/codedApp.css';
 import './styles/flow.css';
 import './styles/case.css';
 import './styles/bpmn.css';
+import './styles/codedWorkflow.css';
+import './styles/codedGraph.css';
 import type { ArtifactModel } from '../src/model/types';
 import type {
   FallbackKind,
@@ -191,6 +193,8 @@ function fallbackTitle(kind: FallbackKind): string {
       return 'Not a UiPath Maestro BPMN process';
     case 'not-case':
       return 'Not a UiPath Maestro Case';
+    case 'not-coded-workflow':
+      return 'Not a coded workflow';
     default:
       return 'Not a UiPath low-code agent';
   }
@@ -306,6 +310,10 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'control':
       if (message.action === 'fitToView') {
         renderer?.fit();
+      } else if (message.action === 'showGraph') {
+        // No-op for renderers without handleControl; the coded-workflow
+        // renderer implements the graph view in T2.3.
+        renderer?.handleControl?.('showGraph');
       }
       break;
   }

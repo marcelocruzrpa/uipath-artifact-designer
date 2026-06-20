@@ -1,0 +1,346 @@
+/* Styles for the coded-workflow project call-graph view (T2.3).
+   All selectors are namespaced .cwg-*; `.cw-root--graph` adapts the shared
+   coded-workflow root for graph mode. */
+
+:root {
+  --cwg-edge: var(--vscode-charts-blue, #4f8cff);
+  --cwg-edge-muted: var(--vscode-descriptionForeground, #9aa0aa);
+  --cwg-coded: var(--vscode-charts-blue, #4f8cff);
+  --cwg-xaml: var(--vscode-charts-purple, #b07cf0);
+  --cwg-helper: #9aa0aa;
+  --cwg-entry: var(--vscode-charts-green, #57b86b);
+  --cwg-warn: var(--vscode-editorWarning-foreground, #f29b4a);
+}
+
+body.vscode-light {
+  --cwg-edge: #2f6fed;
+  --cwg-coded: #2f6fed;
+  --cwg-xaml: #7d49c4;
+  --cwg-helper: #6b7180;
+  --cwg-entry: #3c8f4d;
+}
+
+/* --- Graph-mode root layout --------------------------------------------- */
+.cw-root--graph {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.cwg-head {
+  flex: 0 0 auto;
+  padding: 14px 18px 0;
+}
+
+.cwg-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+/* --- Mode (segmented) control — echoes the .cw-tabs look ----------------- */
+.cwg-mode-tabs {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cwg-mode-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  border-right: 1px solid var(--card-border);
+  white-space: nowrap;
+}
+
+.cwg-mode-tab:last-child {
+  border-right: none;
+}
+
+.cwg-mode-tab:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.16));
+}
+
+.cwg-mode-tab--active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.cwg-mode-tab--active:hover {
+  background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+/* --- Stage / world -------------------------------------------------------- */
+.cwg-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cwg-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.cwg-stage.is-panning {
+  cursor: grabbing;
+}
+
+.cwg-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background-image: radial-gradient(circle, var(--dot, rgba(140, 140, 150, 0.16)) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+
+.cwg-edge-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cwg-node-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* --- Edges ----------------------------------------------------------------- */
+.cwg-edge {
+  fill: none;
+  stroke: var(--cwg-edge);
+  stroke-width: 1.8;
+  opacity: 0.9;
+}
+
+.cwg-edge--unresolved {
+  stroke: var(--cwg-edge-muted);
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+  /* Hoverable for the unresolvedReason tooltip; pan still starts fine here. */
+  pointer-events: visibleStroke;
+  cursor: help;
+}
+
+.cwg-arrowhead {
+  fill: var(--cwg-edge);
+}
+
+.cwg-arrowhead--unresolved {
+  fill: var(--cwg-edge-muted);
+}
+
+.cwg-edge-count {
+  font-size: 10px;
+  font-family: var(--vscode-font-family, sans-serif);
+  fill: var(--vscode-descriptionForeground);
+  paint-order: stroke;
+  stroke: var(--vscode-editor-background, #1e1e1e);
+  stroke-width: 3px;
+}
+
+/* --- Node cards ---------------------------------------------------------------- */
+.cwg-node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 12px;
+  background: var(--card-bg, var(--vscode-editorWidget-background, #252526));
+  border: 1px solid var(--card-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+  border-left: 3px solid var(--cwg-accent, var(--cwg-coded));
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+.cwg-node--coded-workflow { --cwg-accent: var(--cwg-coded); }
+.cwg-node--helper-class { --cwg-accent: var(--cwg-helper); }
+
+/* Legacy .xaml workflows — visually distinct: dashed frame + purple accent. */
+.cwg-node--xaml-workflow {
+  --cwg-accent: var(--cwg-xaml);
+  border-style: dashed;
+}
+
+/* Unresolved targets — muted, dashed, inert (no role, no tabindex). */
+.cwg-node--unresolved {
+  --cwg-accent: var(--cwg-edge-muted);
+  border-style: dashed;
+  opacity: 0.72;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cwg-node--link {
+  cursor: pointer;
+}
+
+.cwg-node--link:hover {
+  border-color: var(--cwg-accent);
+}
+
+.cwg-node:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.cwg-node-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.cwg-node-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cwg-accent, var(--cwg-coded));
+}
+
+.cwg-node-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cwg-node-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cwg-node-path {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* `▶ Entry` pill on project entry points. */
+.cwg-entry-pill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cwg-entry);
+  border: 1px solid var(--cwg-entry);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.cwg-entry-pill svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* Amber stale dot — file had parse errors, edges best-effort. */
+.cwg-stale-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cwg-warn);
+  cursor: help;
+}
+
+/* --- Status bar -------------------------------------------------------------------- */
+.cwg-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-editorWidget-background, #252526);
+  border-top: 1px solid var(--card-border);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cwg-status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cwg-status-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cwg-warn);
+  color: var(--cwg-warn);
+}
+
+/* --- Transient "no graph" note ------------------------------------------------------- */
+.cwg-float-note {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* --- Light theme adjustments ----------------------------------------------------------- */
+body.vscode-light .cwg-node {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+
+body.vscode-light .cwg-float-note {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+body.vscode-light .cwg-edge-count {
+  stroke: var(--vscode-editor-background, #ffffff);
+}
+
+/* --- Focus ------------------------------------------------------------------------------- */
+.cwg-mode-tab:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}

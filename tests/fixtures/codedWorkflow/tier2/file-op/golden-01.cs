@@ -1,0 +1,1 @@
+var text = File.ReadAllText(invoicePath);

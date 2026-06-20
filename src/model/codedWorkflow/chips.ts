@@ -1,0 +1,118 @@
+/**
+ * Per-slot raw-chip post-pass: adjacent `CwRawChip` children merge into one
+ * chip whose `code` is RE-SLICED from source between the first chip's start
+ * and the last chip's end — interleaved comments and blank lines are kept
+ * verbatim.  Cards and containers between chips break the run.
+ *
+ * Merged chips sum `statementCount`; `lineCount` is span-derived.  EVERY chip
+ * leaving this pass (merged or single) is subject to the
+ * `CHIP_CODE_MAX_LINES` cap: `code` keeps the first 40 lines,
+ * `codeTruncated` flips true, and `lineCount` keeps the full span height —
+ * so accounting never loses statements, only display text.
+ *
+ * Non-truncated chips keep the invariant `code === exact source slice of
+ * span`.
+ *
+ * PURITY RULE: no `vscode`, `fs`, `path`, or `node:*` imports.
+ */
+import type { CwRawChip, CwStatement, SourceSpan } from './cwTypes';
+import { CHIP_CODE_MAX_LINES } from './limits';
+
+/**
+ * Merge adjacent raw chips in one slot's children.  Returns a new array;
+ * non-chip children are passed through untouched.
+ */
+export function mergeAdjacentChips(children: CwStatement[], source: string): CwStatement[] {
+  const out: CwStatement[] = [];
+  let run: CwRawChip[] = [];
+
+  const flush = (): void => {
+    if (run.length === 0) return;
+    out.push(run.length === 1 ? capChip(run[0]) : mergeRun(run, source));
+    run = [];
+  };
+
+  for (const child of children) {
+    // A helper-call chip carries an in-file navigation target and must stay an
+    // individually-addressable unit — never fold it into a multi-statement run
+    // (e.g. `SafeCloseAndKill(Config); return;` keeps the call navigable).
+    if (child.type === 'raw' && child.helperTarget === undefined) {
+      run.push(child);
+    } else {
+      flush();
+      out.push(child.type === 'raw' ? capChip(child) : child);
+    }
+  }
+  flush();
+  return out;
+}
+
+/** Merge a run of >=2 chips into one re-sliced chip. */
+function mergeRun(run: CwRawChip[], source: string): CwRawChip {
+  const merged = chipFromSpan(
+    {
+      startLine: run[0].span.startLine,
+      startCol: run[0].span.startCol,
+      endLine: run[run.length - 1].span.endLine,
+      endCol: run[run.length - 1].span.endCol
+    },
+    source,
+    run.reduce((sum, chip) => sum + chip.statementCount, 0)
+  );
+  // Fence F: the merged chip spans run[0].start … run[last].end in char offsets,
+  // so it deletes/moves as a unit. Inputs always have offsets (set in classifyLeaf
+  // before this merge post-pass); fall back to span-only (undefined) only if not.
+  const first = run[0].offsets;
+  const last = run[run.length - 1].offsets;
+  if (first !== undefined && last !== undefined) {
+    merged.offsets = { start: first.start, end: last.end };
+  }
+  return merged;
+}
+
+/**
+ * Build a capped raw chip covering `span` with the given statement count —
+ * used for merged runs and for the truncation pass's terminal fold chip.
+ */
+export function chipFromSpan(
+  span: SourceSpan,
+  source: string,
+  statementCount: number
+): CwRawChip {
+  return capChip({
+    id: '',
+    span,
+    type: 'raw',
+    tier: 3,
+    code: sliceSpan(source, span),
+    lineCount: span.endLine - span.startLine + 1,
+    statementCount,
+    codeTruncated: false
+  });
+}
+
+/** Apply the CHIP_CODE_MAX_LINES cap to one chip (idempotent). */
+function capChip(chip: CwRawChip): CwRawChip {
+  if (chip.codeTruncated) return chip;
+  const lines = chip.code.split('\n');
+  if (lines.length <= CHIP_CODE_MAX_LINES) return chip;
+  return {
+    ...chip,
+    code: lines.slice(0, CHIP_CODE_MAX_LINES).join('\n'),
+    codeTruncated: true
+  };
+}
+
+/** Exact source slice of a 0-based line/col span. */
+function sliceSpan(source: string, span: SourceSpan): string {
+  const lines = source.split('\n');
+  if (span.startLine === span.endLine) {
+    return lines[span.startLine]?.slice(span.startCol, span.endCol) ?? '';
+  }
+  const parts: string[] = [lines[span.startLine]?.slice(span.startCol) ?? ''];
+  for (let i = span.startLine + 1; i < span.endLine; i += 1) {
+    parts.push(lines[i] ?? '');
+  }
+  parts.push(lines[span.endLine]?.slice(0, span.endCol) ?? '');
+  return parts.join('\n');
+}

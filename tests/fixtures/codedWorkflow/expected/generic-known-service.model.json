@@ -1,0 +1,366 @@
+{
+  "kind": "coded-workflow",
+  "title": "generic-known-service.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "generic-known-service.cs",
+  "fileUri": "file:///fixtures/skeleton/generic-known-service.cs",
+  "classes": [
+    {
+      "className": "GenericFlow",
+      "namespace": "Acme.Generic",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 8,
+        "startCol": 4,
+        "endLine": 23,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 10,
+            "startCol": 8,
+            "endLine": 22,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "GenericFlow#Execute/0",
+              "span": {
+                "startLine": 13,
+                "startCol": 12,
+                "endLine": 16,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 411,
+                "end": 542
+              },
+              "type": "container",
+              "kind": "using",
+              "header": "Use var pow = powerpoint.UsePowerPointPresentation(\"deck.pptx\")",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "GenericFlow#Execute/0.body.0",
+                      "span": {
+                        "startLine": 15,
+                        "startCol": 16,
+                        "endLine": 15,
+                        "endCol": 35
+                      },
+                      "type": "activity",
+                      "tier": 1,
+                      "service": "powerpoint",
+                      "serviceDisplayName": "PowerPoint",
+                      "method": "AddNewSlide",
+                      "title": "Add New Slide",
+                      "args": [
+                        {
+                          "label": "arg1",
+                          "value": "1",
+                          "kind": "literal",
+                          "editableKind": "number",
+                          "argSpan": {
+                            "start": 525,
+                            "end": 526
+                          },
+                          "valueSpan": {
+                            "start": 525,
+                            "end": 526
+                          },
+                          "valueRaw": "1"
+                        }
+                      ],
+                      "icon": "file-media",
+                      "argListSpan": {
+                        "start": 525,
+                        "end": 526
+                      },
+                      "methodNameSpan": {
+                        "start": 513,
+                        "end": 524
+                      },
+                      "offsets": {
+                        "start": 509,
+                        "end": 528
+                      }
+                    }
+                  ],
+                  "span": {
+                    "startLine": 14,
+                    "startCol": 12,
+                    "endLine": 16,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 492,
+                    "end": 541
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false,
+              "resourceCard": {
+                "id": "GenericFlow#Execute/0.resource",
+                "span": {
+                  "startLine": 13,
+                  "startCol": 23,
+                  "endLine": 13,
+                  "endCol": 78
+                },
+                "type": "activity",
+                "tier": 1,
+                "service": "powerpoint",
+                "serviceDisplayName": "PowerPoint",
+                "method": "UsePowerPointPresentation",
+                "title": "Use Power Point Presentation",
+                "args": [
+                  {
+                    "label": "arg1",
+                    "value": "deck.pptx",
+                    "kind": "literal",
+                    "editableKind": "string",
+                    "argSpan": {
+                      "start": 465,
+                      "end": 476
+                    },
+                    "valueSpan": {
+                      "start": 465,
+                      "end": 476
+                    },
+                    "valueRaw": "\"deck.pptx\""
+                  }
+                ],
+                "resultBinding": "pow",
+                "icon": "file-media",
+                "argListSpan": {
+                  "start": 465,
+                  "end": 476
+                },
+                "methodNameSpan": {
+                  "start": 439,
+                  "end": 464
+                }
+              }
+            },
+            {
+              "id": "GenericFlow#Execute/1",
+              "span": {
+                "startLine": 17,
+                "startCol": 12,
+                "endLine": 17,
+                "endCol": 88
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "java",
+              "serviceDisplayName": "Java",
+              "method": "UseJavaScope",
+              "catalogId": "java.UseJavaScope",
+              "title": "Use Java Scope",
+              "args": [
+                {
+                  "label": "Options",
+                  "value": "JavaPath: C:\\jdk",
+                  "kind": "expression",
+                  "editableKind": "none",
+                  "argSpan": {
+                    "start": 582,
+                    "end": 629
+                  }
+                }
+              ],
+              "resultBinding": "js",
+              "icon": "coffee",
+              "argListSpan": {
+                "start": 582,
+                "end": 629
+              },
+              "methodNameSpan": {
+                "start": 569,
+                "end": 581
+              },
+              "offsets": {
+                "start": 555,
+                "end": 631
+              }
+            },
+            {
+              "id": "GenericFlow#Execute/2",
+              "span": {
+                "startLine": 18,
+                "startCol": 12,
+                "endLine": 18,
+                "endCol": 89
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "python",
+              "serviceDisplayName": "Python",
+              "method": "UsePythonScope",
+              "catalogId": "python.UsePythonScope",
+              "title": "Use Python Scope",
+              "args": [
+                {
+                  "label": "Options",
+                  "value": "Path: C:\\py",
+                  "kind": "expression",
+                  "editableKind": "none",
+                  "argSpan": {
+                    "start": 675,
+                    "end": 719
+                  }
+                }
+              ],
+              "resultBinding": "py",
+              "icon": "code",
+              "argListSpan": {
+                "start": 675,
+                "end": 719
+              },
+              "methodNameSpan": {
+                "start": 660,
+                "end": 674
+              },
+              "offsets": {
+                "start": 644,
+                "end": 721
+              }
+            },
+            {
+              "id": "GenericFlow#Execute/3",
+              "span": {
+                "startLine": 19,
+                "startCol": 12,
+                "endLine": 19,
+                "endCol": 62
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "testing",
+              "serviceDisplayName": "Testing",
+              "method": "GetTestDataRow",
+              "title": "Get Test Data Row",
+              "args": [
+                {
+                  "label": "arg1",
+                  "value": "Addresses",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 771,
+                    "end": 782
+                  },
+                  "valueSpan": {
+                    "start": 771,
+                    "end": 782
+                  },
+                  "valueRaw": "\"Addresses\""
+                }
+              ],
+              "resultBinding": "address",
+              "icon": "beaker",
+              "argListSpan": {
+                "start": 771,
+                "end": 782
+              },
+              "methodNameSpan": {
+                "start": 756,
+                "end": 770
+              },
+              "offsets": {
+                "start": 734,
+                "end": 784
+              }
+            },
+            {
+              "id": "GenericFlow#Execute/4",
+              "span": {
+                "startLine": 20,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 48
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "testing",
+              "serviceDisplayName": "Testing",
+              "method": "[indexer]",
+              "title": "Get Item",
+              "args": [
+                {
+                  "label": "Key",
+                  "value": "Country",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "valueSpan": {
+                    "start": 822,
+                    "end": 831
+                  },
+                  "valueRaw": "\"Country\""
+                }
+              ],
+              "resultBinding": "country",
+              "icon": "beaker",
+              "offsets": {
+                "start": 797,
+                "end": 833
+              }
+            },
+            {
+              "id": "GenericFlow#Execute/5",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 21,
+                "endCol": 50
+              },
+              "type": "pseudo",
+              "tier": 2,
+              "ruleId": "assign-from-call",
+              "title": "Assign",
+              "text": "compact = string.Join(\",\", parts)",
+              "icon": "arrow-right",
+              "offsets": {
+                "start": 846,
+                "end": 884
+              }
+            }
+          ],
+          "tierCounts": {
+            "tier1": 6,
+            "tier2": 1,
+            "tier3": 0
+          },
+          "bodyId": "GenericFlow#Execute/",
+          "bodySpan": {
+            "start": 398,
+            "end": 893
+          },
+          "indentText": "            "
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 26,
+  "stats": {
+    "totalStatements": 7,
+    "tier1": 6,
+    "tier2": 1,
+    "tier3": 0
+  }
+}

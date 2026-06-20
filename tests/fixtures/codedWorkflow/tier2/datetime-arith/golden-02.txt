@@ -1,0 +1,1 @@
+Calculate date | cutoff = now (UTC) − 1 month

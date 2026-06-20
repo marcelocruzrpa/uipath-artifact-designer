@@ -8,6 +8,7 @@ import { createAgentRenderer } from './renderers/agentRenderer';
 import { createBpmnRenderer } from './renderers/bpmnRenderer';
 import { createCaseRenderer } from './renderers/caseRenderer';
 import { createCodedAppRenderer } from './renderers/codedAppRenderer';
+import { createCodedWorkflowRenderer } from './renderers/codedWorkflowRenderer';
 import { createFlowRenderer } from './renderers/flowRenderer';
 
 export const rendererRegistry: Record<ArtifactKind, RendererFactory> = {
@@ -15,5 +16,6 @@ export const rendererRegistry: Record<ArtifactKind, RendererFactory> = {
   'maestro-flow': createFlowRenderer,
   'maestro-bpmn': createBpmnRenderer,
   'maestro-case': createCaseRenderer,
-  'coded-app': createCodedAppRenderer
+  'coded-app': createCodedAppRenderer,
+  'coded-workflow': createCodedWorkflowRenderer
 };

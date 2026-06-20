@@ -20,6 +20,13 @@
     "src/model/layout.ts",
     "src/model/flow/flowTypes.ts",
     "src/model/case/caseTypes.ts",
+    "src/model/codedWorkflow/cwTypes.ts",
+    "src/model/codedWorkflow/graph/graphTypes.ts",
+    "src/model/codedWorkflow/edit/editCatalog.ts",
+    "src/model/codedWorkflow/edit/editTypes.ts",
+    "src/model/codedWorkflow/edit/emitStatement.ts",
+    "src/model/codedWorkflow/edit/quoting.ts",
+    "src/model/codedWorkflow/classify/tier1Catalog.ts",
     "src/util/messages.ts",
     "src/util/jsonShape.ts",
     "src/util/objects.ts"

@@ -1,0 +1,1 @@
+var snapshot = items.ToArray();

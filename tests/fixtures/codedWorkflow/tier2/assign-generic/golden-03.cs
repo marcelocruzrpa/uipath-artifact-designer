@@ -1,0 +1,1 @@
+var ratio = width / height;

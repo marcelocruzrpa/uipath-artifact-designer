@@ -1,0 +1,1 @@
+var total = await CalculateTotalAsync(lines);

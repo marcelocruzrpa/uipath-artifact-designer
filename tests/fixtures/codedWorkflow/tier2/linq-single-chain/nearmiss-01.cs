@@ -1,0 +1,1 @@
+var byVendor = invoices.GroupBy(i => i.Vendor).Select(g => g.Count());

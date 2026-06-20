@@ -9,6 +9,7 @@ import { agentDescriptor } from '../artifacts/agentDescriptor';
 import { bpmnDescriptor } from '../artifacts/bpmnDescriptor';
 import { caseDescriptor } from '../artifacts/caseDescriptor';
 import { codedAppDescriptor } from '../artifacts/codedAppDescriptor';
+import { codedWorkflowDescriptor } from '../artifacts/codedWorkflowDescriptor';
 import { flowDescriptor } from '../artifacts/flowDescriptor';
 import { uriBasename } from '../util/fsHelpers';
 
@@ -18,7 +19,8 @@ export const artifactRegistry: Record<ArtifactKind, ArtifactDescriptor> = {
   'maestro-flow': flowDescriptor,
   'maestro-bpmn': bpmnDescriptor,
   'maestro-case': caseDescriptor,
-  'coded-app': codedAppDescriptor
+  'coded-app': codedAppDescriptor,
+  'coded-workflow': codedWorkflowDescriptor
 };
 
 /** Matches a document URI to its artifact descriptor by file name. */
@@ -38,6 +40,9 @@ export function descriptorForUri(uri: vscode.Uri): ArtifactDescriptor | undefine
   }
   if (name === 'action-schema.json') {
     return artifactRegistry['coded-app'];
+  }
+  if (name.endsWith('.cs')) {
+    return artifactRegistry['coded-workflow'];
   }
   return undefined;
 }

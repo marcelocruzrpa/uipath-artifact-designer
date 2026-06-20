@@ -59,6 +59,15 @@ const MAX_XML = 2_000_000;
 const MAX_ARRAY = 10_000;
 /** Cap for the depth of a JSON edit path. */
 const MAX_PATH_DEPTH = 64;
+/**
+ * Caps for an opaquely round-tripped condition / SLA tree (see
+ * {@link isPlainObjectArray}). Real DNF condition sets and SLA rules nest only
+ * a handful of levels and hold tens of nodes; these bounds leave generous
+ * headroom while keeping a crafted artifact from forcing a pathological
+ * recursive walk — or smuggling an unbounded string — to disk.
+ */
+const MAX_NESTED_DEPTH = 16;
+const MAX_NESTED_NODES = 50_000;
 
 function isString(v: unknown, max: number): v is string {
   return typeof v === 'string' && v.length <= max;
@@ -72,6 +81,9 @@ function isFiniteNumber(v: unknown): v is number {
 function isSafeKey(v: unknown): v is string {
   return typeof v === 'string' && v.length <= MAX_ID && !DANGEROUS_KEYS.has(v);
 }
+
+/** A bare C# identifier — the only shape a switched method name may take. */
+const IDENTIFIER_RE = /^[A-Za-z_]\w*$/;
 
 /** A JSON edit path: a non-empty array of safe object keys. */
 function isSafePath(v: unknown): v is string[] {
@@ -118,13 +130,94 @@ function isActionSchemaSectionName(v: unknown): v is ActionSchemaSectionName {
 }
 
 /**
+ * Recursively validates one node of an opaquely round-tripped value tree:
+ *  - every object key is a {@link isSafeKey} (no `__proto__` / `constructor`
+ *    / over-long key at ANY depth, not just the top level),
+ *  - every string is within {@link MAX_TEXT} (no unbounded nested string),
+ *  - nesting never exceeds {@link MAX_NESTED_DEPTH}, and
+ *  - the whole tree holds at most {@link MAX_NESTED_NODES} nodes.
+ *
+ * `counter.n` is shared across the walk so the node budget is global, not
+ * per-branch. Returns false the moment any bound is violated.
+ */
+function isSafeNestedValue(v: unknown, depth: number, counter: { n: number }): boolean {
+  if (++counter.n > MAX_NESTED_NODES) {
+    return false;
+  }
+  if (v === null || typeof v === 'boolean' || v === undefined) {
+    return true;
+  }
+  if (typeof v === 'number') {
+    return Number.isFinite(v);
+  }
+  if (typeof v === 'string') {
+    return v.length <= MAX_TEXT;
+  }
+  if (depth >= MAX_NESTED_DEPTH) {
+    return false;
+  }
+  if (Array.isArray(v)) {
+    return v.length <= MAX_ARRAY && v.every((item) => isSafeNestedValue(item, depth + 1, counter));
+  }
+  if (isRecord(v)) {
+    for (const key of Object.keys(v)) {
+      // A dangerous or over-long key anywhere in the tree reaches disk verbatim
+      // when the value is round-tripped; reject it here (not just at the top).
+      if (!isSafeKey(key) || !isSafeNestedValue(v[key], depth + 1, counter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  // Functions, symbols, bigint — never present in a postMessage-decoded value.
+  return false;
+}
+
+/**
  * A bounded array whose entries are all plain objects. Used for condition /
- * SLA arrays that are round-tripped opaquely into `caseplan.json` — the
- * parser drops malformed entries silently, so the validator's job here is
- * just to keep primitives, nulls and nested arrays out of disk.
+ * SLA arrays that are round-tripped opaquely into `caseplan.json`. The parser
+ * drops malformed entries silently, so this gate's job is to keep primitives,
+ * nulls and bare nested arrays out of the top level AND — recursively — to
+ * reject prototype-polluting keys and unbounded strings buried anywhere in a
+ * nested object, plus cap nesting depth and total node count.
  */
 function isPlainObjectArray(v: unknown): v is Record<string, unknown>[] {
-  return Array.isArray(v) && v.length <= MAX_ARRAY && v.every((entry) => isRecord(entry));
+  if (!Array.isArray(v) || v.length > MAX_ARRAY) {
+    return false;
+  }
+  const counter = { n: 0 };
+  return v.every((entry) => isRecord(entry) && isSafeNestedValue(entry, 0, counter));
+}
+
+/** An optional id array: absent, or a bounded array of bounded strings. */
+function isOptionalIdArray(v: unknown): v is string[] | undefined {
+  return (
+    v === undefined ||
+    (Array.isArray(v) && v.length <= MAX_ARRAY && v.every((s) => isString(s, MAX_ID)))
+  );
+}
+
+/**
+ * A webview-side slot reference (mirrors `SlotRef` / `SlotRefMessage`).
+ *
+ * `methodId`/`containerId` are not written as object keys downstream, but we
+ * still validate them through `isSafeKey` so this validator stays the single
+ * gate (defense in depth — a `__proto__` ref is rejected here, not silently
+ * no-matched in `findSlot`). An empty `containerId` denotes the method body
+ * and is always allowed.
+ */
+function isSlotRef(
+  v: unknown
+): v is { containerId: string; methodId: string; role?: string; roleIndex?: number } {
+  return (
+    isRecord(v) &&
+    // '' (method body) is allowed; any non-empty container id must be a safe key.
+    (v.containerId === '' || isSafeKey(v.containerId)) &&
+    isSafeKey(v.methodId) &&
+    // role is matched against a fixed slot-role set on the host; bound it.
+    (v.role === undefined || isString(v.role, MAX_ID)) &&
+    (v.roleIndex === undefined || (typeof v.roleIndex === 'number' && Number.isInteger(v.roleIndex)))
+  );
 }
 
 function isViewState(v: unknown): v is WebviewViewState {
@@ -133,7 +226,10 @@ function isViewState(v: unknown): v is WebviewViewState {
     isFiniteNumber(v.zoom) &&
     isFiniteNumber(v.panX) &&
     isFiniteNumber(v.panY) &&
-    (v.selectedId === null || isString(v.selectedId, MAX_ID))
+    (v.selectedId === null || isString(v.selectedId, MAX_ID)) &&
+    isOptionalIdArray(v.collapsedIds) &&
+    (v.mode === undefined || v.mode === 'canvas' || v.mode === 'graph') &&
+    (v.editing === undefined || typeof v.editing === 'boolean')
   );
 }
 
@@ -154,7 +250,14 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
     case 'reopenAsText':
       return { type: 'reopenAsText' };
     case 'openResource':
-      return isString(raw.uri, MAX_ID) ? { type: 'openResource', uri: raw.uri } : null;
+      return isString(raw.uri, MAX_ID) &&
+        (raw.preview === undefined || typeof raw.preview === 'boolean')
+        ? {
+            type: 'openResource',
+            uri: raw.uri,
+            ...(raw.preview !== undefined ? { preview: raw.preview } : {})
+          }
+        : null;
     case 'persistViewState':
       return isViewState(raw.state) ? { type: 'persistViewState', state: raw.state } : null;
     case 'log':
@@ -298,6 +401,60 @@ export function validateWebviewMessage(raw: unknown): WebviewToHost | null {
       }
       return null;
     }
+
+    // --- coded workflow canvas ---
+    case 'editValue':
+      return isString(raw.id, MAX_ID) &&
+        typeof raw.argIndex === 'number' &&
+        Number.isInteger(raw.argIndex) &&
+        isString(raw.newText, MAX_TEXT)
+        ? { type: 'editValue', id: raw.id, argIndex: raw.argIndex, newText: raw.newText }
+        : null;
+    case 'editArg':
+      return isString(raw.id, MAX_ID) &&
+        (raw.op === 'change' || raw.op === 'add' || raw.op === 'remove' || raw.op === 'method') &&
+        (raw.argIndex === undefined || (typeof raw.argIndex === 'number' && Number.isInteger(raw.argIndex))) &&
+        (raw.newText === undefined || isString(raw.newText, MAX_TEXT)) &&
+        // A method name is written into source as an identifier — require BOTH a
+        // safe key (no prototype pollution) AND a bare-identifier shape (so a
+        // payload like `X(); Evil(` is rejected here, not just at the parse-gate).
+        (raw.newMethod === undefined ||
+          (isSafeKey(raw.newMethod) && IDENTIFIER_RE.test(raw.newMethod)))
+        ? {
+            type: 'editArg',
+            id: raw.id,
+            op: raw.op,
+            ...(raw.argIndex !== undefined ? { argIndex: raw.argIndex } : {}),
+            ...(raw.newText !== undefined ? { newText: raw.newText } : {}),
+            ...(raw.newMethod !== undefined ? { newMethod: raw.newMethod } : {})
+          }
+        : null;
+    case 'addStatement':
+      // The webview sends a palette item id + per-arg values, NOT final C#; the
+      // host emits from the trusted template. `rawText` is bounded here but only
+      // honored host-side for the `raw` escape item.
+      return isSlotRef(raw.slot) &&
+        typeof raw.index === 'number' && Number.isInteger(raw.index) && raw.index >= 0 &&
+        isString(raw.paletteItemId, MAX_ID) &&
+        isStringArray(raw.argValues) &&
+        (raw.resultBinding === undefined || isString(raw.resultBinding, MAX_ID)) &&
+        (raw.rawText === undefined || isString(raw.rawText, MAX_TEXT))
+        ? {
+            type: 'addStatement',
+            slot: raw.slot,
+            index: raw.index,
+            paletteItemId: raw.paletteItemId,
+            argValues: raw.argValues,
+            ...(raw.resultBinding !== undefined ? { resultBinding: raw.resultBinding } : {}),
+            ...(raw.rawText !== undefined ? { rawText: raw.rawText } : {})
+          }
+        : null;
+    case 'deleteStatement':
+      return isString(raw.id, MAX_ID) ? { type: 'deleteStatement', id: raw.id } : null;
+    case 'moveStatement':
+      return isString(raw.id, MAX_ID) && (raw.direction === 1 || raw.direction === -1)
+        ? { type: 'moveStatement', id: raw.id, direction: raw.direction }
+        : null;
 
     default:
       return null;

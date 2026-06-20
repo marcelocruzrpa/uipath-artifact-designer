@@ -1,0 +1,261 @@
+{
+  "kind": "coded-workflow",
+  "title": "chips-merge.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "chips-merge.cs",
+  "fileUri": "file:///fixtures/skeleton/chips-merge.cs",
+  "classes": [
+    {
+      "className": "ChipsFlow",
+      "namespace": "Acme.Chips",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 10,
+        "startCol": 4,
+        "endLine": 84,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 12,
+            "startCol": 8,
+            "endLine": 28,
+            "endCol": 9
+          },
+          "signatureSummary": "int total",
+          "body": [
+            {
+              "id": "ChipsFlow#Execute/0",
+              "span": {
+                "startLine": 15,
+                "startCol": 12,
+                "endLine": 19,
+                "endCol": 20
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "StepA(total);\n            StepB(); // trailing comment stays inside the merged slice\n\n            // a standalone comment between chips is re-sliced verbatim\n            StepC();",
+              "lineCount": 5,
+              "statementCount": 3,
+              "codeTruncated": false,
+              "offsets": {
+                "start": 566,
+                "end": 744
+              }
+            },
+            {
+              "id": "ChipsFlow#Execute/1",
+              "span": {
+                "startLine": 20,
+                "startCol": 12,
+                "endLine": 20,
+                "endCol": 28
+              },
+              "type": "activity",
+              "tier": 1,
+              "service": "_base",
+              "serviceDisplayName": "Workflow",
+              "method": "Log",
+              "catalogId": "_base.Log",
+              "title": "Log",
+              "args": [
+                {
+                  "label": "Message",
+                  "value": "midpoint",
+                  "kind": "literal",
+                  "editableKind": "string",
+                  "argSpan": {
+                    "start": 761,
+                    "end": 771
+                  },
+                  "valueSpan": {
+                    "start": 761,
+                    "end": 771
+                  },
+                  "valueRaw": "\"midpoint\""
+                }
+              ],
+              "icon": "play-circle",
+              "argListSpan": {
+                "start": 761,
+                "end": 771
+              },
+              "methodNameSpan": {
+                "start": 757,
+                "end": 760
+              },
+              "offsets": {
+                "start": 757,
+                "end": 773
+              }
+            },
+            {
+              "id": "ChipsFlow#Execute/2",
+              "span": {
+                "startLine": 21,
+                "startCol": 12,
+                "endLine": 22,
+                "endCol": 20
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "StepD();\n            StepE();",
+              "lineCount": 2,
+              "statementCount": 2,
+              "codeTruncated": false,
+              "offsets": {
+                "start": 786,
+                "end": 815
+              }
+            },
+            {
+              "id": "ChipsFlow#Execute/3",
+              "span": {
+                "startLine": 23,
+                "startCol": 12,
+                "endLine": 26,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 828,
+                "end": 899
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If total > 0",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "ChipsFlow#Execute/3.then.0",
+                      "span": {
+                        "startLine": 25,
+                        "startCol": 16,
+                        "endLine": 25,
+                        "endCol": 28
+                      },
+                      "offsets": {
+                        "start": 873,
+                        "end": 885
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "StepInner();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 24,
+                    "startCol": 12,
+                    "endLine": 26,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 856,
+                    "end": 898
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ChipsFlow#Execute/4",
+              "span": {
+                "startLine": 27,
+                "startCol": 12,
+                "endLine": 27,
+                "endCol": 20
+              },
+              "offsets": {
+                "start": 912,
+                "end": 920
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "StepF();",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 1,
+            "tier2": 0,
+            "tier3": 7
+          },
+          "bodyId": "ChipsFlow#Execute/",
+          "bodySpan": {
+            "start": 553,
+            "end": 929
+          },
+          "indentText": "            "
+        },
+        {
+          "name": "Big",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 30,
+            "startCol": 8,
+            "endLine": 83,
+            "endCol": 9
+          },
+          "signatureSummary": "",
+          "body": [
+            {
+              "id": "ChipsFlow#Big/0",
+              "span": {
+                "startLine": 33,
+                "startCol": 12,
+                "endLine": 82,
+                "endCol": 19
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();\n            Tick();",
+              "lineCount": 50,
+              "statementCount": 50,
+              "codeTruncated": true,
+              "offsets": {
+                "start": 999,
+                "end": 1986
+              }
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 50
+          },
+          "bodyId": "ChipsFlow#Big/",
+          "bodySpan": {
+            "start": 986,
+            "end": 1995
+          },
+          "indentText": "            "
+        }
+      ],
+      "helperMethods": []
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 87,
+  "stats": {
+    "totalStatements": 58,
+    "tier1": 1,
+    "tier2": 0,
+    "tier3": 57
+  }
+}

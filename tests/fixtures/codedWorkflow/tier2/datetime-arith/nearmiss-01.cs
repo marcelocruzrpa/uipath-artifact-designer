@@ -1,0 +1,1 @@
+var age = (DateTime.Today - birthDate).Days;

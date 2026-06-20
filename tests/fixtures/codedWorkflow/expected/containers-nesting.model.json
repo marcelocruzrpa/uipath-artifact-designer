@@ -1,0 +1,1069 @@
+{
+  "kind": "coded-workflow",
+  "title": "containers-nesting.cs",
+  "subtitle": "Coded Workflow",
+  "diagnostics": [],
+  "fileName": "containers-nesting.cs",
+  "fileUri": "file:///fixtures/skeleton/containers-nesting.cs",
+  "classes": [
+    {
+      "className": "ContainerFlow",
+      "namespace": "Acme.Containers",
+      "baseType": "CodedWorkflow",
+      "span": {
+        "startLine": 12,
+        "startCol": 4,
+        "endLine": 103,
+        "endCol": 5
+      },
+      "entryPoints": [
+        {
+          "name": "Execute",
+          "attribute": "Workflow",
+          "span": {
+            "startLine": 14,
+            "startCol": 8,
+            "endLine": 92,
+            "endCol": 9
+          },
+          "signatureSummary": "int mode, string name",
+          "body": [
+            {
+              "id": "ContainerFlow#Execute/0",
+              "span": {
+                "startLine": 17,
+                "startCol": 12,
+                "endLine": 17,
+                "endCol": 20
+              },
+              "offsets": {
+                "start": 706,
+                "end": 714
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "Begin();",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            },
+            {
+              "id": "ContainerFlow#Execute/1",
+              "span": {
+                "startLine": 18,
+                "startCol": 12,
+                "endLine": 44,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 727,
+                "end": 1369
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If name.Length > 0",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/1.then.0",
+                      "span": {
+                        "startLine": 20,
+                        "startCol": 16,
+                        "endLine": 20,
+                        "endCol": 24
+                      },
+                      "offsets": {
+                        "start": 778,
+                        "end": 786
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Touch();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    },
+                    {
+                      "id": "ContainerFlow#Execute/1.then.1",
+                      "span": {
+                        "startLine": 21,
+                        "startCol": 16,
+                        "endLine": 31,
+                        "endCol": 17
+                      },
+                      "offsets": {
+                        "start": 803,
+                        "end": 1109
+                      },
+                      "type": "container",
+                      "kind": "foreach",
+                      "header": "For Each c in name",
+                      "slots": [
+                        {
+                          "role": "body",
+                          "label": "Body",
+                          "children": [
+                            {
+                              "id": "ContainerFlow#Execute/1.then.1.body.0",
+                              "span": {
+                                "startLine": 23,
+                                "startCol": 20,
+                                "endLine": 30,
+                                "endCol": 21
+                              },
+                              "offsets": {
+                                "start": 865,
+                                "end": 1091
+                              },
+                              "type": "container",
+                              "kind": "while",
+                              "header": "While mode > 0",
+                              "slots": [
+                                {
+                                  "role": "body",
+                                  "label": "Body",
+                                  "children": [
+                                    {
+                                      "id": "ContainerFlow#Execute/1.then.1.body.0.body.0",
+                                      "span": {
+                                        "startLine": 25,
+                                        "startCol": 24,
+                                        "endLine": 28,
+                                        "endCol": 25
+                                      },
+                                      "offsets": {
+                                        "start": 928,
+                                        "end": 1031
+                                      },
+                                      "type": "container",
+                                      "kind": "if",
+                                      "header": "If c == 'x'",
+                                      "slots": [
+                                        {
+                                          "role": "then",
+                                          "label": "Then",
+                                          "children": [
+                                            {
+                                              "id": "ContainerFlow#Execute/1.then.1.body.0.body.0.then.0",
+                                              "span": {
+                                                "startLine": 27,
+                                                "startCol": 28,
+                                                "endLine": 27,
+                                                "endCol": 37
+                                              },
+                                              "offsets": {
+                                                "start": 996,
+                                                "end": 1005
+                                              },
+                                              "type": "raw",
+                                              "tier": 3,
+                                              "code": "DoDeep();",
+                                              "lineCount": 1,
+                                              "statementCount": 1,
+                                              "codeTruncated": false
+                                            }
+                                          ],
+                                          "span": {
+                                            "startLine": 26,
+                                            "startCol": 24,
+                                            "endLine": 28,
+                                            "endCol": 25
+                                          },
+                                          "braced": true,
+                                          "bodySpan": {
+                                            "start": 967,
+                                            "end": 1030
+                                          },
+                                          "indentText": "                            "
+                                        }
+                                      ],
+                                      "collapsedByDefault": true
+                                    },
+                                    {
+                                      "id": "ContainerFlow#Execute/1.then.1.body.0.body.1",
+                                      "span": {
+                                        "startLine": 29,
+                                        "startCol": 24,
+                                        "endLine": 29,
+                                        "endCol": 37
+                                      },
+                                      "offsets": {
+                                        "start": 1056,
+                                        "end": 1069
+                                      },
+                                      "type": "raw",
+                                      "tier": 3,
+                                      "code": "AfterInner();",
+                                      "lineCount": 1,
+                                      "statementCount": 1,
+                                      "codeTruncated": false
+                                    }
+                                  ],
+                                  "span": {
+                                    "startLine": 24,
+                                    "startCol": 20,
+                                    "endLine": 30,
+                                    "endCol": 21
+                                  },
+                                  "braced": true,
+                                  "bodySpan": {
+                                    "start": 903,
+                                    "end": 1090
+                                  },
+                                  "indentText": "                        "
+                                }
+                              ],
+                              "collapsedByDefault": true
+                            }
+                          ],
+                          "span": {
+                            "startLine": 22,
+                            "startCol": 16,
+                            "endLine": 31,
+                            "endCol": 17
+                          },
+                          "braced": true,
+                          "bodySpan": {
+                            "start": 844,
+                            "end": 1108
+                          },
+                          "indentText": "                    "
+                        }
+                      ],
+                      "collapsedByDefault": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 19,
+                    "startCol": 12,
+                    "endLine": 32,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 761,
+                    "end": 1122
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "elseif",
+                  "label": "Else If mode == 1",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/1.elseif0.0",
+                      "span": {
+                        "startLine": 35,
+                        "startCol": 16,
+                        "endLine": 35,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1186,
+                        "end": 1196
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Handle1();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 34,
+                    "startCol": 12,
+                    "endLine": 36,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1169,
+                    "end": 1209
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "elseif",
+                  "label": "Else If mode == 2",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/1.elseif1.0",
+                      "span": {
+                        "startLine": 39,
+                        "startCol": 16,
+                        "endLine": 39,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1273,
+                        "end": 1283
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Handle2();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 38,
+                    "startCol": 12,
+                    "endLine": 40,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1256,
+                    "end": 1296
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "else",
+                  "label": "Else",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/1.else.0",
+                      "span": {
+                        "startLine": 43,
+                        "startCol": 16,
+                        "endLine": 43,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1345,
+                        "end": 1355
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Handle3();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 42,
+                    "startCol": 12,
+                    "endLine": 44,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1328,
+                    "end": 1368
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/2",
+              "span": {
+                "startLine": 45,
+                "startCol": 12,
+                "endLine": 48,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 1382,
+                "end": 1467
+              },
+              "type": "container",
+              "kind": "for",
+              "header": "For var i = 0; i < mode; i++",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/2.body.0",
+                      "span": {
+                        "startLine": 47,
+                        "startCol": 16,
+                        "endLine": 47,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1443,
+                        "end": 1453
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Iterate();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 46,
+                    "startCol": 12,
+                    "endLine": 48,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1426,
+                    "end": 1466
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/3",
+              "span": {
+                "startLine": 49,
+                "startCol": 12,
+                "endLine": 52,
+                "endCol": 31
+              },
+              "offsets": {
+                "start": 1480,
+                "end": 1552
+              },
+              "type": "container",
+              "kind": "do",
+              "header": "Do … While mode < 0",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/3.body.0",
+                      "span": {
+                        "startLine": 51,
+                        "startCol": 16,
+                        "endLine": 51,
+                        "endCol": 23
+                      },
+                      "offsets": {
+                        "start": 1513,
+                        "end": 1520
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Loop();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 50,
+                    "startCol": 12,
+                    "endLine": 52,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1496,
+                    "end": 1533
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/4",
+              "span": {
+                "startLine": 53,
+                "startCol": 12,
+                "endLine": 68,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 1565,
+                "end": 1857
+              },
+              "type": "container",
+              "kind": "try",
+              "header": "Try / Catch",
+              "slots": [
+                {
+                  "role": "try",
+                  "label": "Try",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/4.try.0",
+                      "span": {
+                        "startLine": 55,
+                        "startCol": 16,
+                        "endLine": 55,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1599,
+                        "end": 1609
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Process();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false,
+                      "helperTarget": {
+                        "name": "Process",
+                        "targetId": "ContainerFlow#helper:Process"
+                      }
+                    }
+                  ],
+                  "span": {
+                    "startLine": 54,
+                    "startCol": 12,
+                    "endLine": 56,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1582,
+                    "end": 1622
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "catch",
+                  "label": "Catch IOException ex",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/4.catch0.0",
+                      "span": {
+                        "startLine": 59,
+                        "startCol": 16,
+                        "endLine": 59,
+                        "endCol": 24
+                      },
+                      "offsets": {
+                        "start": 1689,
+                        "end": 1697
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Fail1();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 58,
+                    "startCol": 12,
+                    "endLine": 60,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1672,
+                    "end": 1710
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "catch",
+                  "label": "Catch",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/4.catch1.0",
+                      "span": {
+                        "startLine": 63,
+                        "startCol": 16,
+                        "endLine": 63,
+                        "endCol": 24
+                      },
+                      "offsets": {
+                        "start": 1760,
+                        "end": 1768
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Fail2();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 62,
+                    "startCol": 12,
+                    "endLine": 64,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1743,
+                    "end": 1781
+                  },
+                  "indentText": "                "
+                },
+                {
+                  "role": "finally",
+                  "label": "Finally",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/4.finally.0",
+                      "span": {
+                        "startLine": 67,
+                        "startCol": 16,
+                        "endLine": 67,
+                        "endCol": 26
+                      },
+                      "offsets": {
+                        "start": 1833,
+                        "end": 1843
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Cleanup();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 66,
+                    "startCol": 12,
+                    "endLine": 68,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 1816,
+                    "end": 1856
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/5",
+              "span": {
+                "startLine": 69,
+                "startCol": 12,
+                "endLine": 78,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 1870,
+                "end": 2113
+              },
+              "type": "container",
+              "kind": "switch",
+              "header": "Switch mode",
+              "slots": [
+                {
+                  "role": "case",
+                  "label": "Case 1",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/5.case0.0",
+                      "span": {
+                        "startLine": 72,
+                        "startCol": 20,
+                        "endLine": 72,
+                        "endCol": 27
+                      },
+                      "offsets": {
+                        "start": 1942,
+                        "end": 1949
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "return;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 71,
+                    "startCol": 16,
+                    "endLine": 72,
+                    "endCol": 27
+                  },
+                  "braced": false
+                },
+                {
+                  "role": "case",
+                  "label": "Case 2",
+                  "children": [],
+                  "span": {
+                    "startLine": 73,
+                    "startCol": 16,
+                    "endLine": 73,
+                    "endCol": 23
+                  },
+                  "braced": false
+                },
+                {
+                  "role": "case",
+                  "label": "Case 3",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/5.case2.0",
+                      "span": {
+                        "startLine": 75,
+                        "startCol": 20,
+                        "endLine": 75,
+                        "endCol": 48
+                      },
+                      "offsets": {
+                        "start": 2018,
+                        "end": 2046
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "throw new Exception(\"boom\");",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 74,
+                    "startCol": 16,
+                    "endLine": 75,
+                    "endCol": 48
+                  },
+                  "braced": false
+                },
+                {
+                  "role": "default",
+                  "label": "Default",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/5.default.0",
+                      "span": {
+                        "startLine": 77,
+                        "startCol": 20,
+                        "endLine": 77,
+                        "endCol": 27
+                      },
+                      "offsets": {
+                        "start": 2092,
+                        "end": 2099
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "return;",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 76,
+                    "startCol": 16,
+                    "endLine": 77,
+                    "endCol": 27
+                  },
+                  "braced": false
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/6",
+              "span": {
+                "startLine": 79,
+                "startCol": 12,
+                "endLine": 82,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 2126,
+                "end": 2210
+              },
+              "type": "container",
+              "kind": "using",
+              "header": "Use var file = OpenFile(name)",
+              "slots": [
+                {
+                  "role": "body",
+                  "label": "Body",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/6.body.0",
+                      "span": {
+                        "startLine": 81,
+                        "startCol": 16,
+                        "endLine": 81,
+                        "endCol": 22
+                      },
+                      "offsets": {
+                        "start": 2190,
+                        "end": 2196
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Use();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 80,
+                    "startCol": 12,
+                    "endLine": 82,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 2173,
+                    "end": 2209
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/7",
+              "span": {
+                "startLine": 83,
+                "startCol": 12,
+                "endLine": 83,
+                "endCol": 34
+              },
+              "offsets": {
+                "start": 2223,
+                "end": 2245
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If mode > 9",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/7.then.0",
+                      "span": {
+                        "startLine": 83,
+                        "startCol": 26,
+                        "endLine": 83,
+                        "endCol": 34
+                      },
+                      "offsets": {
+                        "start": 2237,
+                        "end": 2245
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Spike();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 83,
+                    "startCol": 26,
+                    "endLine": 83,
+                    "endCol": 34
+                  },
+                  "braced": false
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/8",
+              "span": {
+                "startLine": 84,
+                "startCol": 12,
+                "endLine": 87,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 2258,
+                "end": 2418
+              },
+              "type": "container",
+              "kind": "if",
+              "header": "If name.Contains(\"alpha\") && name.Contains(\"bravo\") && name.Contains(\"charlie\") …",
+              "slots": [
+                {
+                  "role": "then",
+                  "label": "Then",
+                  "children": [
+                    {
+                      "id": "ContainerFlow#Execute/8.then.0",
+                      "span": {
+                        "startLine": 86,
+                        "startCol": 16,
+                        "endLine": 86,
+                        "endCol": 24
+                      },
+                      "offsets": {
+                        "start": 2396,
+                        "end": 2404
+                      },
+                      "type": "raw",
+                      "tier": 3,
+                      "code": "Final();",
+                      "lineCount": 1,
+                      "statementCount": 1,
+                      "codeTruncated": false
+                    }
+                  ],
+                  "span": {
+                    "startLine": 85,
+                    "startCol": 12,
+                    "endLine": 87,
+                    "endCol": 13
+                  },
+                  "braced": true,
+                  "bodySpan": {
+                    "start": 2379,
+                    "end": 2417
+                  },
+                  "indentText": "                "
+                }
+              ],
+              "collapsedByDefault": false
+            },
+            {
+              "id": "ContainerFlow#Execute/9",
+              "span": {
+                "startLine": 88,
+                "startCol": 12,
+                "endLine": 91,
+                "endCol": 13
+              },
+              "offsets": {
+                "start": 2431,
+                "end": 2505
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "int Local(int v)\n            {\n                return v + 1;\n            }",
+              "lineCount": 4,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 20
+          },
+          "bodyId": "ContainerFlow#Execute/",
+          "bodySpan": {
+            "start": 693,
+            "end": 2514
+          },
+          "indentText": "            "
+        }
+      ],
+      "helperMethods": [
+        {
+          "name": "Process",
+          "span": {
+            "startLine": 94,
+            "startCol": 8,
+            "endLine": 97,
+            "endCol": 9
+          },
+          "body": [
+            {
+              "id": "ContainerFlow#Process/0",
+              "span": {
+                "startLine": 96,
+                "startCol": 12,
+                "endLine": 96,
+                "endCol": 21
+              },
+              "offsets": {
+                "start": 2570,
+                "end": 2579
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "Record();",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 1
+          },
+          "bodyId": "ContainerFlow#Process/",
+          "bodySpan": {
+            "start": 2557,
+            "end": 2588
+          },
+          "indentText": "            "
+        },
+        {
+          "name": "OpenFile",
+          "span": {
+            "startLine": 99,
+            "startCol": 8,
+            "endLine": 102,
+            "endCol": 9
+          },
+          "body": [
+            {
+              "id": "ContainerFlow#OpenFile/0",
+              "span": {
+                "startLine": 101,
+                "startCol": 12,
+                "endLine": 101,
+                "endCol": 24
+              },
+              "offsets": {
+                "start": 2658,
+                "end": 2670
+              },
+              "type": "raw",
+              "tier": 3,
+              "code": "return null;",
+              "lineCount": 1,
+              "statementCount": 1,
+              "codeTruncated": false
+            }
+          ],
+          "tierCounts": {
+            "tier1": 0,
+            "tier2": 0,
+            "tier3": 1
+          },
+          "bodyId": "ContainerFlow#OpenFile/",
+          "bodySpan": {
+            "start": 2645,
+            "end": 2679
+          },
+          "indentText": "            "
+        }
+      ]
+    }
+  ],
+  "otherClassNames": [],
+  "parseHealth": "ok",
+  "parseErrorCount": 0,
+  "truncated": false,
+  "totalLines": 106,
+  "stats": {
+    "totalStatements": 22,
+    "tier1": 0,
+    "tier2": 0,
+    "tier3": 22
+  }
+}

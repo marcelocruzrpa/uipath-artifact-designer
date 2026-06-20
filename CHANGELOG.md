@@ -3,6 +3,70 @@
 All notable changes to this extension are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-06-20
+
+Legibility and navigation improvements for the Coded Workflow Canvas, focused on
+real-world REFramework projects (Dispatcher/Performer) where large orchestrators
+previously rendered as one deeply-nested wall.
+
+### Added
+
+- **Workflow-invoke navigation.** Double-click an **Invoke Workflow** card
+  (`workflows.Foo(...)`) or a `RunWorkflow("X.xaml")` activity to open the
+  invoked workflow in its own designer tab; the inspector shows the resolved
+  target (or why it is unresolved — no-match / ambiguous / dynamic / missing).
+- **In-file helper-call navigation.** A bare call to one of the class's own
+  helper methods (`SetStatus(...)`, `this.SafeCloseAndKill(...)`) renders as a
+  "Call helper" chip; double-click reveals and focuses that `Helper:` section.
+- **REFramework state-machine recognition.** A loop-driven `switch` over an enum
+  state variable (the coded `while(true){ switch(state){…} }` port of an
+  REFramework state machine) shows a states overview and per-case transition
+  chips (`→ GetTransactionData`) — without changing the underlying code view.
+- **Initialization grouping.** A leading run of `x = null/0` variable-init
+  Assign cards folds into a collapsible "Initialization (N)" group so the real
+  activity stays at the top of the canvas (read-only view).
+- **Auto-open coded workflows in the designer (opt-in).** A new setting,
+  `uipathArtifactDesigner.codedWorkflow.autoOpenDesigner` (off by default), opens
+  UiPath coded-workflow `.cs` files directly in the **Coded Workflow Canvas**
+  instead of the text editor. Content-aware — only files that look like a coded
+  workflow (a `CodedWorkflow` base class or a `[Workflow]` / `[TestCase]`
+  attribute) are affected, so plain C# files still open as text — and it respects
+  **UiPath: Reopen Artifact as Text** (a file you reopen as source is not bounced
+  back to the designer for the rest of the session).
+
+### Changed
+
+- **Smarter default collapse.** Large orchestrator methods now collapse their
+  nested containers by per-method density (and any container nested ≥3 deep),
+  while small workflows stay fully expanded — turning a 60+-statement state
+  machine into a navigable overview instead of a fully-expanded wall.
+- **Full argument detail in the inspector.** A many-argument call still shows a
+  compact `+N more` summary on the card, but the properties panel now lists
+  every folded argument instead of hiding them behind the count.
+
+## [1.1.0] - 2026-06-14
+
+### Added
+
+- **Coded Workflow Canvas (`*.cs`).** A structural source editor for UiPath
+  coded workflows. Open any `.cs` file via **Open With… → UiPath: Open
+  Designer** to see an activity-graph representation of the workflow's
+  structure. The canvas is read-only by default; editing is opt-in per-file
+  via the inspector toggle and gated by a parse check that rejects edits
+  introducing C# syntax errors.
+- **Call graph view.** When the Coded Workflow Canvas is active, the
+  **UiPath: Show Call Graph** toolbar button switches the canvas to a
+  call-graph view that renders the inter-workflow call graph, making it easy
+  to trace call chains across multiple coded workflows in the project.
+- **L0 value editing (opt-in).** Top-level argument values in a coded workflow
+  can be edited directly from the canvas inspector.
+- **L1 argument editing (opt-in).** Add, remove, and switch the invocation
+  method of arguments on any activity node — directly from the inspector's
+  edit mode.
+- **L2 statement editing (opt-in).** Add new statements, delete existing ones,
+  and reorder them via the canvas — all protected by the parse gate so only
+  syntactically valid changes are written back to the source file.
+
 ## [1.0.2] - 2026-05-24
 
 Bug-fix release. Restores rendering of every visual designer under the

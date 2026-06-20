@@ -1,0 +1,1 @@
+Assign | s = string.Empty

@@ -1,0 +1,1 @@
+var first = name.Split(',')[0];
