@@ -13,10 +13,10 @@ on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   structure. The canvas is read-only by default; editing is opt-in per-file
   via the inspector toggle and gated by a parse check that rejects edits
   introducing C# syntax errors.
-- **Call graph panel.** When the Coded Workflow Canvas is active, the
-  **UiPath: Show Call Graph** toolbar button opens a side panel that renders
-  the inter-workflow call graph, making it easy to trace call chains across
-  multiple coded workflows in the project.
+- **Call graph view.** When the Coded Workflow Canvas is active, the
+  **UiPath: Show Call Graph** toolbar button switches the canvas to a
+  call-graph view that renders the inter-workflow call graph, making it easy
+  to trace call chains across multiple coded workflows in the project.
 - **L0 value editing (opt-in).** Top-level argument values in a coded workflow
   can be edited directly from the canvas inspector.
 - **L1 argument editing (opt-in).** Add, remove, and switch the invocation

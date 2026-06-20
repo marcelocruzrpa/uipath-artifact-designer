@@ -1,8 +1,9 @@
 # UiPath Artifact Designer
 
 *A community extension — not an official UiPath product. Adds visual editing
-for five UiPath artifact file types — `agent.json`, `*.flow`, `*.bpmn`,
-`caseplan.json`, and `action-schema.json` — directly inside VS Code, Cursor,
+for six UiPath artifact file types — `agent.json`, `*.flow`, `*.bpmn`,
+`caseplan.json`, `action-schema.json`, and `*.cs` (Coded Workflow Canvas) —
+directly inside VS Code, Cursor,
 and other VS Code-based IDEs, without needing to deploy and switch to UiPath Studio Web.*
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-v1.0.2-blue)](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer)
