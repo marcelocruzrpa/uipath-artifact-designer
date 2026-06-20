@@ -184,6 +184,16 @@
           "when": "activeCustomEditorId == uipathArtifactDesigner.codedWorkflowEditor || resourceExtname == .cs && uipathArtifactDesigner.activeCsIsWorkflow"
         }
       ]
+    },
+    "configuration": {
+      "title": "UiPath Artifact Designer",
+      "properties": {
+        "uipathArtifactDesigner.codedWorkflow.autoOpenDesigner": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Automatically open UiPath coded-workflow `.cs` files in the visual **Coded Workflow Canvas** instead of the text editor. Only files that look like a coded workflow (a `CodedWorkflow` base class or a `[Workflow]`/`[TestCase]` attribute) are affected — plain C# files always open as text. Switch any open designer back to source with **UiPath: Reopen Artifact as Text**."
+        }
+      }
     }
   },
   "scripts": {

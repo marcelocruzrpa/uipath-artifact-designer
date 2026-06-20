@@ -25,6 +25,14 @@ previously rendered as one deeply-nested wall.
 - **Initialization grouping.** A leading run of `x = null/0` variable-init
   Assign cards folds into a collapsible "Initialization (N)" group so the real
   activity stays at the top of the canvas (read-only view).
+- **Auto-open coded workflows in the designer (opt-in).** A new setting,
+  `uipathArtifactDesigner.codedWorkflow.autoOpenDesigner` (off by default), opens
+  UiPath coded-workflow `.cs` files directly in the **Coded Workflow Canvas**
+  instead of the text editor. Content-aware — only files that look like a coded
+  workflow (a `CodedWorkflow` base class or a `[Workflow]` / `[TestCase]`
+  attribute) are affected, so plain C# files still open as text — and it respects
+  **UiPath: Reopen Artifact as Text** (a file you reopen as source is not bounced
+  back to the designer for the rest of the session).
 
 ### Changed
 

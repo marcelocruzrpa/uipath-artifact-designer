@@ -9,6 +9,7 @@ import { clearLastGoodModels } from './artifacts/codedWorkflowDescriptor';
 import { VIEW_TYPES } from './constants';
 import { artifactRegistry, descriptorForUri } from './model/registry';
 import { isCodedWorkflowSource } from './model/codedWorkflow/detectSource';
+import { shouldAutoOpenCodedWorkflow } from './model/codedWorkflow/autoOpen';
 import { configureCSharpParser, disposeCSharpParser } from './model/codedWorkflow/parser';
 import { initLog, logError, logInfo, logWarn } from './util/log';
 
@@ -142,10 +143,60 @@ function installCsWorkflowContextKey(context: vscode.ExtensionContext): void {
   );
 }
 
+/** Controls the auto-open feature: lets the host suppress a URI the user reopened as text. */
+interface AutoOpenControl {
+  /** Stop auto-opening `uri` for the rest of this session (user chose text). */
+  suppress(uri: vscode.Uri): void;
+}
+
+/**
+ * Auto-opens coded-workflow `.cs` files in the visual Coded Workflow Canvas when
+ * the `uipathArtifactDesigner.codedWorkflow.autoOpenDesigner` setting is on.
+ * Content-aware (reuses `isCodedWorkflowSource`), so plain C# files keep opening
+ * as text. The decision rule lives in the pure `shouldAutoOpenCodedWorkflow`.
+ *
+ * Loop-safe: when the designer (a webview) is active, `onDidChangeActiveTextEditor`
+ * fires with `undefined`, so reopening never re-triggers itself. A session set of
+ * suppressed URIs (populated by **Reopen Artifact as Text**) keeps an explicit
+ * user override from being bounced straight back to the designer.
+ */
+function installCodedWorkflowAutoOpen(context: vscode.ExtensionContext): AutoOpenControl {
+  const suppressed = new Set<string>();
+
+  const maybeOpen = (editor: vscode.TextEditor | undefined): void => {
+    if (editor === undefined) {
+      return;
+    }
+    const enabled = vscode.workspace
+      .getConfiguration('uipathArtifactDesigner.codedWorkflow')
+      .get<boolean>('autoOpenDesigner', false);
+    const { uri } = editor.document;
+    const decision = shouldAutoOpenCodedWorkflow({
+      scheme: uri.scheme,
+      pathLower: uri.path.toLowerCase(),
+      enabled,
+      isWorkflow: isCodedWorkflowSource(editor.document.getText()),
+      suppressed: suppressed.has(uri.toString())
+    });
+    if (!decision) {
+      return;
+    }
+    vscode.commands
+      .executeCommand('vscode.openWith', uri, VIEW_TYPES['coded-workflow'])
+      .then(undefined, (e: unknown) => logError('auto-open coded workflow failed', e));
+  };
+
+  maybeOpen(vscode.window.activeTextEditor);
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(maybeOpen));
+
+  return { suppress: (uri) => suppressed.add(uri.toString()) };
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
   installReloadWatcher(context);
   installCsWorkflowContextKey(context);
+  const autoOpen = installCodedWorkflowAutoOpen(context);
 
   // Store wasm paths for the C# parser — pure storage, no I/O.  The wasm
   // files are loaded lazily on the first getCSharpParser() call, so
@@ -204,6 +255,9 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!target) {
           return;
         }
+        // Honor the explicit choice: don't let auto-open bounce this file back
+        // to the designer for the rest of the session.
+        autoOpen.suppress(target);
         await vscode.commands.executeCommand('vscode.openWith', target, 'default');
       }
     ),
