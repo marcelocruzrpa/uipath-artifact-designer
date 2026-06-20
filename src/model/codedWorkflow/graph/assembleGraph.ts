@@ -67,6 +67,13 @@ export interface AssembleInput {
   files: ReadonlyArray<FileFacts & { uri?: string }>;
   /** Host-supplied existence probe for normalized xaml rel paths. */
   xamlFileExists?: (normRelPath: string) => boolean;
+  /**
+   * Fold case when matching entry-point rel paths (set by the host on a
+   * case-insensitive file system, e.g. Windows/NTFS). Without it, a project.json
+   * `filePath` whose casing drifts from disk (`Workflows/main.cs` vs
+   * `Workflows/Main.cs`) fails to badge its entry point.
+   */
+  pathsCaseInsensitive?: boolean;
   nodeCap?: number;
 }
 
@@ -75,7 +82,12 @@ export const DEFAULT_NODE_CAP = 300;
 /** Assemble the project graph.  `buildMs` is left 0 — the host stamps it. */
 export function assembleGraph(input: AssembleInput): CodedProjectGraph {
   const files = [...input.files].sort((a, b) => cmp(normPath(a.relPath), normPath(b.relPath)));
-  const entrySet = new Set([...input.entryPointRelPaths].map(normPath));
+  // Fold case for entry-point matching when the host says the file system is
+  // case-insensitive (Windows), mirroring the xaml existence probe.
+  const foldPath = input.pathsCaseInsensitive
+    ? (p: string) => p.toLowerCase()
+    : (p: string) => p;
+  const entrySet = new Set([...input.entryPointRelPaths].map((p) => foldPath(normPath(p))));
 
   const nodes = new Map<string, CodedGraphNode>();
   const edges = new Map<string, CodedGraphEdge>();
@@ -101,7 +113,10 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
   for (const file of files) {
     const rel = normPath(file.relPath);
     for (const decl of file.decls) {
-      const id = `cs:${rel}#${decl.className}`;
+      // Key the id on the disambiguation key (`idKey`) when a simple name repeats
+      // within the file, so two same-named classes get distinct nodes; the label
+      // and `workflows.Foo` resolution still use the display `className`.
+      const id = `cs:${rel}#${decl.idKey ?? decl.className}`;
       if (decl.isCodedWorkflow) {
         if (!nodes.has(id)) {
           const node: CodedGraphNode = {
@@ -138,7 +153,7 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
 
   // -- Entry-point badging ---------------------------------------------------
   if (entrySet.size > 0) {
-    for (const e of codedDecls) e.node.isEntryPoint = entrySet.has(e.relPath);
+    for (const e of codedDecls) e.node.isEntryPoint = entrySet.has(foldPath(e.relPath));
   } else if (anyAttributeEntry) {
     for (const e of codedDecls) e.node.isEntryPoint = e.decl.hasWorkflowAttribute;
   } else {
@@ -157,8 +172,25 @@ export function assembleGraph(input: AssembleInput): CodedProjectGraph {
   for (const file of files) {
     const rel = normPath(file.relPath);
     for (const fact of file.invocations) {
-      const sourceId = `cs:${rel}#${fact.ownerClassName}`;
-      if (!codedIds.has(sourceId)) continue; // see EDGE SOURCES in the header
+      let sourceId = `cs:${rel}#${fact.ownerKey ?? fact.ownerClassName}`;
+      if (!codedIds.has(sourceId)) {
+        // Partial-class fragment: a CodedWorkflow can be split across files, and
+        // the fragment holding the orchestration calls may have no base list and
+        // no [Workflow] attribute — so THIS file's id isn't a coded id, even
+        // though the class IS a coded workflow (declared in another fragment).
+        // Re-attach the edge to the canonical coded node by class name, but only
+        // when the name maps to EXACTLY ONE coded node; otherwise the owner is
+        // genuinely ambiguous and we drop rather than fabricate a wrong edge.
+        // An owner with a disambiguation key (`ownerKey`) is a genuinely DISTINCT
+        // same-named class within its own file, never a partial fragment — so it
+        // is never redirected.
+        const byName = classNameIndex.get(fact.ownerClassName);
+        if (fact.ownerKey === undefined && byName !== undefined && byName.size === 1) {
+          sourceId = [...byName][0];
+        } else {
+          continue; // see EDGE SOURCES in the header
+        }
+      }
 
       switch (fact.kind) {
         case 'workflows-member': {

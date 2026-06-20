@@ -50,6 +50,14 @@ import {
 
 export interface WorkflowDecl {
   className: string;
+  /**
+   * Id-disambiguation suffix for a class whose SIMPLE NAME repeats within this
+   * file (nested, or two namespaces in one file). Present only on the 2nd+ such
+   * declaration (`Worker@2`), so a non-colliding class is byte-for-byte
+   * unchanged. The assembler keys the node id on `idKey ?? className`; `className`
+   * stays the display/label and the `workflows.Foo` resolution name.
+   */
+  idKey?: string;
   /** WORKFLOW-CLASS RULE: `CodedWorkflow` base OR an entry-attribute method. */
   isCodedWorkflow: boolean;
   /**
@@ -73,6 +81,13 @@ export interface InvocationFact {
   line: number;
   /** Nearest enclosing class name; '' for top-level statements. */
   ownerClassName: string;
+  /**
+   * Id-disambiguation key of the enclosing class — present only when that class's
+   * simple name repeats within the file (see {@link WorkflowDecl.idKey}). The
+   * assembler keys the edge SOURCE on `ownerKey ?? ownerClassName` so a call in a
+   * genuinely-distinct same-named class attaches to ITS node, not the first.
+   */
+  ownerKey?: string;
 }
 
 export interface FileFacts {
@@ -99,11 +114,11 @@ export const DYNAMIC_WORKFLOW_NAME = '<dynamic workflow>';
  * today every needed slice comes from tree-node `.text`.
  */
 export function extractFileFacts(relPath: string, _source: string, tree: Tree): FileFacts {
-  const decls = collectClasses(tree.rootNode, undefined).map((found) =>
-    declFacts(found.classDecl)
-  );
+  const found = collectClasses(tree.rootNode, undefined);
+  const classKey = makeClassKeyResolver(found.map((f) => f.classDecl));
+  const decls = found.map((f) => declFacts(f.classDecl, classKey));
   const invocations: InvocationFact[] = [];
-  collectInvocations(tree.rootNode, '', invocations);
+  collectInvocations(tree.rootNode, { name: '', key: '' }, invocations, classKey);
   return {
     relPath,
     parseHadErrors: tree.rootNode.hasError,
@@ -116,11 +131,46 @@ export function extractFileFacts(relPath: string, _source: string, tree: Tree): 
 // Declarations
 // ---------------------------------------------------------------------------
 
-function declFacts(classDecl: Node): WorkflowDecl {
-  const className = classDecl.childForFieldName('name')?.text ?? '(anonymous)';
+function classNameOf(node: Node): string {
+  return node.childForFieldName('name')?.text ?? '(anonymous)';
+}
+
+/**
+ * Builds a stable per-file id key for each class declaration. A simple name that
+ * appears once returns unchanged; a name that repeats (nested, or two namespaces
+ * in one file) gets `name@2`, `name@3`, … by source position — so two
+ * same-named classes never collapse to one node id. Mirrors the class-level
+ * overload suffix `buildModel.ts` uses for the edit model.
+ */
+function makeClassKeyResolver(classDecls: Node[]): (node: Node) => string {
+  const counts = new Map<string, number>();
+  for (const d of classDecls) {
+    const n = classNameOf(d);
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  const rankByStart = new Map<number, number>();
+  const seen = new Map<string, number>();
+  for (const d of [...classDecls].sort((a, b) => a.startIndex - b.startIndex)) {
+    const n = classNameOf(d);
+    const r = (seen.get(n) ?? 0) + 1;
+    seen.set(n, r);
+    rankByStart.set(d.startIndex, r);
+  }
+  return (node: Node) => {
+    const n = classNameOf(node);
+    if ((counts.get(n) ?? 0) <= 1) return n;
+    const r = rankByStart.get(node.startIndex) ?? 1;
+    return r === 1 ? n : `${n}@${r}`;
+  };
+}
+
+function declFacts(classDecl: Node, classKey: (node: Node) => string): WorkflowDecl {
+  const className = classNameOf(classDecl);
+  const key = classKey(classDecl);
   const methods = classMethods(classDecl);
   return {
     className,
+    ...(key !== className ? { idKey: key } : {}),
     isCodedWorkflow: isWorkflowClass(classDecl),
     workflowMethods: methods
       .filter(isPublicMethod)
@@ -142,22 +192,35 @@ const PASCAL_IDENTIFIER = /^[A-Z][A-Za-z0-9_]*$/;
 
 const RUN_WORKFLOW_NAMES: ReadonlySet<string> = new Set(['RunWorkflow', 'RunWorkflowAsync']);
 
+/** Nearest enclosing class: display name + id-disambiguation key (see idKey). */
+interface Owner {
+  name: string;
+  key: string;
+}
+
+/** The owner fields for a fact: `ownerKey` is set only when it differs from the name. */
+function ownerFields(owner: Owner): { ownerClassName: string; ownerKey?: string } {
+  return owner.key !== owner.name
+    ? { ownerClassName: owner.name, ownerKey: owner.key }
+    : { ownerClassName: owner.name };
+}
+
 /**
  * Depth-first walk over ALL named nodes (ERROR subtrees included — R8 error
- * tolerance), tracking the nearest enclosing class name.  Nested invocations
+ * tolerance), tracking the nearest enclosing class.  Nested invocations
  * (`workflows.Outer(workflows.Inner())`) each produce their own fact because
  * the walk continues into invocation children.
  */
-function collectInvocations(node: Node, ownerClassName: string, out: InvocationFact[]): void {
+function collectInvocations(node: Node, owner: Owner, out: InvocationFact[], classKey: (n: Node) => string): void {
   for (const child of node.namedChildren) {
-    let owner = ownerClassName;
+    let next = owner;
     if (child.type === 'class_declaration') {
-      owner = child.childForFieldName('name')?.text ?? ownerClassName;
+      next = { name: classNameOf(child), key: classKey(child) };
     } else if (child.type === 'invocation_expression') {
-      const fact = classifyInvocation(child, ownerClassName);
+      const fact = classifyInvocation(child, owner);
       if (fact !== null) out.push(fact);
     }
-    collectInvocations(child, owner, out);
+    collectInvocations(child, next, out, classKey);
   }
 }
 
@@ -171,7 +234,7 @@ function methodNameText(nameNode: Node): string {
 }
 
 /** Classify one invocation against patterns (a)/(b)/(c); null = not a fact. */
-function classifyInvocation(inv: Node, ownerClassName: string): InvocationFact | null {
+function classifyInvocation(inv: Node, owner: Owner): InvocationFact | null {
   const fn = inv.childForFieldName('function');
   if (fn === null) return null;
   const line = inv.startPosition.row;
@@ -179,7 +242,7 @@ function classifyInvocation(inv: Node, ownerClassName: string): InvocationFact |
   // Bare calls: only RunWorkflow / RunWorkflowAsync are interesting.
   if (fn.type === 'identifier' || fn.type === 'generic_name') {
     return RUN_WORKFLOW_NAMES.has(methodNameText(fn))
-      ? runWorkflowFact(inv, ownerClassName, line)
+      ? runWorkflowFact(inv, owner, line)
       : null;
   }
 
@@ -191,22 +254,22 @@ function classifyInvocation(inv: Node, ownerClassName: string): InvocationFact |
 
   // (a) workflows.Foo(...) / this.workflows.Foo(...)
   if (isWorkflowsReceiver(receiver)) {
-    return { kind: 'workflows-member', calleeName: method, isLiteralArg: true, line, ownerClassName };
+    return { kind: 'workflows-member', calleeName: method, isLiteralArg: true, line, ...ownerFields(owner) };
   }
 
   // (b) member-form RunWorkflow / RunWorkflowAsync on any receiver.
   if (RUN_WORKFLOW_NAMES.has(method)) {
-    return runWorkflowFact(inv, ownerClassName, line);
+    return runWorkflowFact(inv, owner, line);
   }
 
   // (c) trivially-static helper receivers only.
   if (receiver.type === 'identifier' && PASCAL_IDENTIFIER.test(receiver.text)) {
-    return { kind: 'helper-call', calleeName: receiver.text, isLiteralArg: true, line, ownerClassName };
+    return { kind: 'helper-call', calleeName: receiver.text, isLiteralArg: true, line, ...ownerFields(owner) };
   }
   if (receiver.type === 'object_creation_expression') {
     const type = receiver.childForFieldName('type');
     if (type !== null && type.type === 'identifier' && PASCAL_IDENTIFIER.test(type.text)) {
-      return { kind: 'helper-call', calleeName: type.text, isLiteralArg: true, line, ownerClassName };
+      return { kind: 'helper-call', calleeName: type.text, isLiteralArg: true, line, ...ownerFields(owner) };
     }
   }
   return null;
@@ -222,14 +285,14 @@ function isWorkflowsReceiver(receiver: Node): boolean {
   return false;
 }
 
-function runWorkflowFact(inv: Node, ownerClassName: string, line: number): InvocationFact {
+function runWorkflowFact(inv: Node, owner: Owner, line: number): InvocationFact {
   const literal = firstArgumentStringLiteral(inv);
   return {
     kind: 'run-workflow',
     calleeName: literal ?? DYNAMIC_WORKFLOW_NAME,
     isLiteralArg: literal !== null,
     line,
-    ownerClassName
+    ...ownerFields(owner)
   };
 }
 

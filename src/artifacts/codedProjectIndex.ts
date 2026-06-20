@@ -171,7 +171,10 @@ export class CodedProjectIndex {
       projectRootUri: this.root.toString(),
       entryPointRelPaths: info.entryPointRelPaths,
       files,
-      xamlFileExists: (normRelPath) => xamlRelPaths.has(normalizeForCompare(normRelPath))
+      xamlFileExists: (normRelPath) => xamlRelPaths.has(normalizeForCompare(normRelPath)),
+      // Windows/NTFS: fold case when matching project.json entry-point paths to
+      // disk, consistent with the xaml probe above.
+      pathsCaseInsensitive: process.platform === 'win32'
     });
     graph.buildMs = Math.round(nowMs() - start);
     logInfo(

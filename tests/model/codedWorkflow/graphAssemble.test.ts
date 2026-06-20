@@ -83,6 +83,115 @@ function edgeIds(graph: CodedProjectGraph): string[] {
 // workflows.* resolution
 // ---------------------------------------------------------------------------
 
+describe('assembleGraph — partial-class edge sources (#5)', () => {
+  it('attaches edges from a partial fragment lacking the base list/attribute', () => {
+    const graph = assemble({
+      files: [
+        // The recognized fragment: Worker is a coded workflow here.
+        file('Workflows/Worker.Main.cs', [decl('Worker')]),
+        // The plain partial fragment: no base list / [Workflow] attr, but it
+        // holds the orchestration call, owned by the coded Worker class.
+        file('Workflows/Worker.Steps.cs', [helperDecl('Worker')], [
+          inv('workflows-member', 'SubFlow', 'Worker')
+        ]),
+        file('Workflows/SubFlow.cs', [decl('SubFlow')])
+      ]
+    });
+    const worker = 'cs:Workflows/Worker.Main.cs#Worker';
+    const subflow = 'cs:Workflows/SubFlow.cs#SubFlow';
+    const edge = graph.edges.find((e) => e.source === worker && e.target === subflow);
+    expect(edge, 'partial-fragment call should attach to the canonical coded node').toBeDefined();
+    expect(edge!.kind).toBe('invoke-workflow');
+  });
+
+  it('drops (does NOT fabricate) the edge when the owner name is ambiguous across coded nodes', () => {
+    const graph = assemble({
+      files: [
+        // TWO genuinely distinct coded classes named Worker.
+        file('A/Worker.cs', [decl('Worker')]),
+        file('B/Worker.cs', [decl('Worker')]),
+        // A plain fragment whose owner `Worker` is now ambiguous.
+        file('C/Worker.Steps.cs', [helperDecl('Worker')], [
+          inv('workflows-member', 'SubFlow', 'Worker')
+        ]),
+        file('SubFlow.cs', [decl('SubFlow')])
+      ]
+    });
+    // No invoke-workflow edge to SubFlow may be fabricated under ambiguity.
+    const fabricated = graph.edges.filter(
+      (e) => e.target === 'cs:SubFlow.cs#SubFlow' && e.kind === 'invoke-workflow'
+    );
+    expect(fabricated).toHaveLength(0);
+  });
+});
+
+describe('assembleGraph — duplicate class names in one file (#7)', () => {
+  async function factsFor(relPath: string, src: string): Promise<FileFacts> {
+    configureCSharpParserFromNodeModules();
+    const tree = (await getCSharpParser()).parse(src);
+    try {
+      return { ...extractFileFacts(relPath, src, tree) };
+    } finally {
+      tree.delete();
+    }
+  }
+
+  it('does NOT fabricate an edge from a nested class that shares the outer name', async () => {
+    // Outer `Wf` is the coded workflow; a NESTED class also named `Wf` makes the
+    // call. Pre-fix both collapsed to `cs:F.cs#Wf`, fabricating a Wf->Payroll
+    // edge the outer Execute body never makes.
+    const facts = await factsFor('F.cs', [
+      'namespace P {',
+      '  public class Wf : CodedWorkflow {',
+      '    [Workflow] public void Execute() { Log("x"); }',
+      '    class Wf { public void Helper() { workflows.Payroll(); } }',
+      '  }',
+      '}'
+    ].join('\n'));
+    const graph = assemble({ files: [facts] });
+    expect(graph.nodes.some((n) => n.id === 'cs:F.cs#Wf')).toBe(true); // outer coded node
+    // No fabricated Payroll node or edge sourced from the outer Wf.
+    expect(graph.nodes.some((n) => n.id.includes('Payroll'))).toBe(false);
+    expect(graph.edges.some((e) => e.target.includes('Payroll'))).toBe(false);
+  });
+
+  it('keeps two same-named coded classes (different namespaces) as DISTINCT nodes/sources', async () => {
+    const facts = await factsFor('F.cs', [
+      'namespace A { public class W : CodedWorkflow { [Workflow] public void Execute() { workflows.Alpha(); } } }',
+      'namespace B { public class W : CodedWorkflow { [Workflow] public void Execute() { workflows.Beta(); } } }'
+    ].join('\n'));
+    const graph = assemble({ files: [facts] });
+    // Two distinct coded nodes, both labelled W, with disambiguated ids.
+    expect(graph.nodes.filter((n) => n.kind === 'coded-workflow' && n.label === 'W')).toHaveLength(2);
+    expect(graph.nodes.some((n) => n.id === 'cs:F.cs#W')).toBe(true);
+    expect(graph.nodes.some((n) => n.id === 'cs:F.cs#W@2')).toBe(true);
+    // Each call is sourced from ITS OWN class, not merged onto the first.
+    expect(graph.edges.find((e) => e.target.includes('Alpha'))?.source).toBe('cs:F.cs#W');
+    expect(graph.edges.find((e) => e.target.includes('Beta'))?.source).toBe('cs:F.cs#W@2');
+  });
+});
+
+describe('assembleGraph — entry-point case folding (#11)', () => {
+  const files = [file('Workflows/Main.cs', [decl('Main')])];
+  const node = (g: CodedProjectGraph) =>
+    g.nodes.find((n) => n.id === 'cs:Workflows/Main.cs#Main');
+
+  it('badges an entry point despite project.json↔disk case drift when case-insensitive', () => {
+    // Manifest says `main.cs`; disk is `Main.cs`.
+    const g = assemble({
+      files,
+      entryPointRelPaths: new Set(['Workflows/main.cs']),
+      pathsCaseInsensitive: true
+    });
+    expect(node(g)?.isEntryPoint).toBe(true);
+  });
+
+  it('stays case-sensitive by default (no fold) — drift does not badge', () => {
+    const g = assemble({ files, entryPointRelPaths: new Set(['Workflows/main.cs']) });
+    expect(node(g)?.isEntryPoint).toBe(false);
+  });
+});
+
 describe('assembleGraph — workflows.* resolution', () => {
   it('resolves a unique class-name match to a solid invoke-workflow edge', () => {
     const graph = assemble({
