@@ -10,6 +10,7 @@ checking that each designer renders and edits correctly.
 | Maestro BPMN | `maestro-bpmn/maestro-bpmn.bpmn` | A BPMN 2.0 process — start event, service task, exclusive gateway, two end events — with UiPath extension elements. |
 | Maestro Case | `maestro-case/caseplan.json` | A v20 case plan — trigger, 3 stages + an exception stage, 3 edges, an entry condition, an exit condition, and stage- and case-level SLA rules. |
 | Coded App | `coded-app/action-schema.json` | An action-schema contract whose inputs / outputs / inOuts / outcomes cover every field type (string, number, integer, boolean, array, object), plus `.uipath/app.config.json` status. |
+| Coded Workflow Canvas | `coded-workflow-demo/Workflows/ProcessInvoices.cs` | A coded workflow that invokes a sibling coded workflow (`workflows.ValidateInvoice` → `ValidateInvoice.cs`) and a `RunWorkflow("Legacy/Archive.xaml")` call, plus Excel / `foreach` / `try`-`catch` containers — exercises the activity-graph view, workflow-invoke navigation, and the **Show Call Graph** view. |
 
 > **Note on the agent tool:** `GetEmployeeRecord` deliberately has an unbound
 > connection, so the designer shows a "connection not bound" warning badge —
@@ -24,8 +25,11 @@ checking that each designer renders and edits correctly.
 1. In the extension repo, run `npm run build`.
 2. Press **F5** and pick **"Run Extension — Samples"** — an Extension
    Development Host opens with this `samples/` folder loaded.
-3. Open each entry file above; its visual designer opens automatically. Use the
-   **Raw** toolbar button (or **Reopen as Text**) to view the underlying source.
+3. Open each entry file above; its visual designer opens automatically — except
+   the coded workflow (`*.cs`), which opens as text: click the editor-title
+   **UiPath: Open Designer** button, or use **Open With… → UiPath Coded Workflow
+   Canvas**. Use the **Raw** toolbar button (or **Reopen as Text**) to view the
+   underlying source.
 4. Try an edit (e.g. rename a Flow node, toggle a Coded App field's *Required*):
    the file goes dirty and **Ctrl+S** saves it.
 

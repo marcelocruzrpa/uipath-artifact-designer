@@ -6,7 +6,7 @@ for six UiPath artifact file types — `agent.json`, `*.flow`, `*.bpmn`,
 directly inside VS Code, Cursor,
 and other VS Code-based IDEs, without needing to deploy and switch to UiPath Studio Web.*
 
-[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-v1.0.2-blue)](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-v1.2.0-blue)](https://marketplace.visualstudio.com/items?itemName=marcelocruzrpa.uipath-artifact-designer)
 [![Open VSX](https://img.shields.io/open-vsx/v/marcelocruzrpa/uipath-artifact-designer?label=Open%20VSX)](https://open-vsx.org/extension/marcelocruzrpa/uipath-artifact-designer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -15,7 +15,8 @@ look in UiPath Studio Web, without leaving your editor.
 
 ## Supported artifacts
 
-Each file type opens in its own designer automatically, as its default editor.
+Each file type opens in its own designer automatically, as its default editor —
+except coded workflows (`*.cs`), which open in the canvas on demand (see below).
 
 | Artifact | File | Designer |
 |----------|------|----------|
@@ -24,7 +25,7 @@ Each file type opens in its own designer automatically, as its default editor.
 | **Maestro BPMN** | `*.bpmn` | Full BPMN 2.0 modeler (`bpmn-js`); UiPath `uipath:*` extension XML round-trips losslessly on save. |
 | **Maestro Case** | `caseplan.json` | Stage-graph canvas (v19 & v20 schemas) with stage, edge, entry / exit condition, and SLA editing. |
 | **Coded App** | `action-schema.json` | Form editor for the inputs / outputs / inOuts / outcomes data contract, with a read-only deployment-status panel. |
-| **Coded Workflow Canvas** | `*.cs` | Structural source editor for UiPath coded workflows, with an inter-workflow call graph panel. Opens via **Open With… → UiPath: Open Designer** (not the default editor for `.cs` files). Read-only by default; editing is opt-in per-file via the inspector toggle. Supports L0 value edits, L1 argument add/remove/method-switch, and L2 statement add/delete/reorder — all gated by a parse check that rejects edits introducing C# syntax errors. |
+| **Coded Workflow Canvas** | `*.cs` | Structural activity-graph view of a UiPath coded workflow. Double-click a resolved **Invoke Workflow** card or a helper-call chip to jump to the target; REFramework state machines render as a states overview with transition chips, and a separate **Show Call Graph** view traces inter-workflow calls across the project. Not the default editor for `.cs` — open it from the editor-title **UiPath: Open Designer** button, via **Open With… → UiPath Coded Workflow Canvas**, or automatically with the `…codedWorkflow.autoOpenDesigner` setting (off by default). Read-only by default; editing is opt-in per-file via the inspector toggle, covering L0 value, L1 argument add/remove/method-switch, and L2 statement add/delete/reorder — all gated by a parse check that rejects edits introducing C# syntax errors. |
 
 *Maestro is UiPath's low-code agentic orchestration platform — flows, BPMN processes,
 and case management.*
@@ -70,6 +71,16 @@ exit conditions edited in the inspector.*
 with a read-only `.uipath/app.config.json` deployment-status panel at the
 top.*
 
+### Coded Workflow Canvas (`*.cs`)
+
+<img src="docs/screenshots/coded-automation.png" alt="Coded Workflow Canvas designer" width="600">
+
+*Coded workflow as an activity
+graph — UI Automation, System, and Workflow activities as titled cards with
+navigable selector targets (`→ login`, `→ dashboard`) and a `Try / Catch`
+container. The **Workflow / Call graph** toggle switches views; the inspector is
+read-only until you click to edit.*
+
 ## Requirements
 
 VS Code. Also compatible with Cursor and other VS Code based compatible editors that support standard `.vsix` extensions.
@@ -106,7 +117,20 @@ sibling file changes on disk, and surfaces validation issues (missing files,
 unrecognized resources) in a strip at the top.
 
 **Navigating** — zoom with the toolbar **+ / −** or the `+` / `−` keys; press
-`0` or **Fit** to frame the whole diagram.
+`0` or **Fit** to frame the whole diagram. In the Coded Workflow Canvas,
+double-click a resolved **Invoke Workflow** card to open the called workflow in
+its own tab, or a helper-call chip to reveal and focus that helper's section.
+
+**Coded workflows (`*.cs`)** — unlike the other artifacts, `.cs` files keep the
+plain text editor by default. Open one in the canvas from the editor-title
+**UiPath: Open Designer** button (shown on coded-workflow files), or via
+**Open With… → UiPath Coded Workflow Canvas**. To have UiPath coded-workflow
+files open in the canvas automatically, enable
+`uipathArtifactDesigner.codedWorkflow.autoOpenDesigner` in settings — only files
+that look like a coded workflow are affected, so plain C# files still open as
+text. The canvas is read-only until you turn on editing for that file from the
+inspector; **Reopen Artifact as Text** switches back to source (and keeps that
+file from being auto-opened again for the session).
 
 **Plain text** — click **Raw** in the toolbar, or use **Reopen as Text** /
 **Open With…**. To always use the plain editor for a file type, add e.g.

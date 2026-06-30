@@ -1,7 +1,7 @@
 {
   "name": "uipath-artifact-designer",
   "displayName": "UiPath Artifact Designer",
-  "description": "Visual designers for UiPath artifacts — low-code agents, Maestro Flow/BPMN/Case, and Coded Apps — inside VS Code, Cursor, and other VS Code-based IDEs.",
+  "description": "Visual designers for UiPath artifacts — low-code agents, Maestro Flow/BPMN/Case, Coded Apps, and Coded Workflows (.cs) — inside VS Code, Cursor, and other VS Code-based IDEs.",
   "version": "1.2.0",
   "publisher": "marcelocruzrpa",
   "author": {
