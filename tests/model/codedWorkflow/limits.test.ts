@@ -231,7 +231,7 @@ describe('scale — two-thousand-lines fixture (perf + flags + accounting)', () 
     // Generous smoke bound: real parse+classify cost is ~260ms on CI runners.
     // This catches a catastrophic regression (e.g. accidental O(n^2)), not
     // normal runner jitter (a tighter 250ms bound flaked on macOS CI). Precise
-    // perf is tracked out-of-band via scripts/graphPerf.mjs + docs/m1-verification.md.
+    // perf is tracked out-of-band via scripts/graphPerf.mjs.
     expect(totalMs).toBeLessThan(2000);
   });
 });

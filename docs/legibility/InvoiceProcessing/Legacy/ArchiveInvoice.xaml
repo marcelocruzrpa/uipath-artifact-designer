@@ -1,6 +1,0 @@
-<!-- Placeholder for the legacy archive workflow invoked by
-     RunWorkflow("Legacy/ArchiveInvoice.xaml", payment). Its mere existence on
-     disk makes the call-graph edge from ReconcilePayments resolve to a solid
-     run-xaml edge with a clickable target node. The real XAML body is out of
-     scope for the legibility fixtures. -->
-<Activity x:Class="ArchiveInvoice" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" />
