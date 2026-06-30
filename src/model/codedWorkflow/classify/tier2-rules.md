@@ -7,7 +7,7 @@ Admission criteria (all three required):
 2. **General C# or UiPath-universal** — never a project-local symbol.
 3. **Worth a slot** — corpus frequency, or floor status fixed by the transpiler spec.
 
-Selection data: M0 corpus spike (`corpus-report.json`, 840 leaf statements, 485 tier-3) and the codedautomations-samples subset re-run. Per-rule statement estimates are exact sums of `normalizeStatement` bucket counts; the full bucket-to-rule mapping is Appendix A of [`docs/m0-report.md`](./m0-report.md).
+Selection data: M0 corpus spike (`corpus-report.json`, 840 leaf statements, 485 tier-3) and the codedautomations-samples subset re-run. Per-rule statement estimates are exact sums of `normalizeStatement` bucket counts; the full bucket-to-rule mapping was Appendix A of the M0 corpus report (removed from the tree; see git history).
 
 ## Active rules (10 of 15 slots)
 
@@ -26,7 +26,7 @@ Selection data: M0 corpus spike (`corpus-report.json`, 840 leaf statements, 485 
 | 9 | `assign-new-object` | assign | long tail (21 buckets, counts ≤ 2) | 25 / 15 | `var x = new T(...)` (incl. collection initializers) → “Create T” card. No single big bucket, but the aggregated long tail is the 4th-largest honest mass; type name is purely syntactic. | Implicit arrays (`new[] {...}`), `return new T()`, and `new` nested inside argument lists. |
 | 10 | `assign-generic` | assign | tail (rejected buckets: decl=expr 10, arith-binop ~20, property-read 9) | ~39 / — | Canvas-comprehension floor (consumes 1 of the 6 open slots). Any SINGLE-LINE assignment that no specific rule recognizes renders an honest “Assign” card showing `<target> <op> <verbatim RHS>` instead of an opaque collapsed “1 line of code” chip — and uniquely handles member/element-access targets (`order.Total = subtotal`, `items[i] = value`) that `boundValueOf` cannot. Last in the registry, so first-match-wins lets every more specific rule claim its shape first; supersedes the earlier per-shape rejections (decl=expr / arithmetic-binop / property-read) now that the team requires assignments to be legible on the canvas. | RHS shown verbatim, so no honesty loss; only MULTI-LINE assignments stay tier-3 (a folded one-liner would misrepresent), as do multi-declarator declarations and non-lvalue targets (tuple deconstruction). Anything a more specific assign/string/linq/file/datetime rule already claims is matched there first. |
 
-Projected totals (from `docs/m0-report.md` §6): rules cover 255/485 corpus tier-3 statements (165/256 on the subset). With the M1 classifier levers (+37, no slots), tier-1+tier-2 projects to **0.77 corpus-wide / 0.86 on the official-samples subset**.
+Projected totals (from the M0 corpus report §6): rules cover 255/485 corpus tier-3 statements (165/256 on the subset). With the M1 classifier levers (+37, no slots), tier-1+tier-2 projects to **0.77 corpus-wide / 0.86 on the official-samples subset**.
 
 **Slots intentionally left open: 5.** Nothing else in the corpus clears the admission bar (see rejections); the open slots are reserved for whatever the client corpus (`corpus/private/`) actually shows. Padding to 15 now would optimize the ratio against demo skew, not user value. (Rule #10 `assign-generic` consumed one of the original 6 open slots — see its row and the cap-rule note below.)
 
@@ -47,11 +47,11 @@ Projected totals (from `docs/m0-report.md` §6): rules cover 255/485 corpus tier
 | `throw` family | 6 | Rejected — same control-flow reasoning; low count. |
 | Property-read assigns (`decl=prop:*`, non-datetime) | 9 | **Now subsumed by `assign-generic` (#10)** — a labeled Assign card showing `x = obj.Prop` beats an opaque collapsed chip for canvas comprehension, the team's reported need. |
 | Arithmetic/bit binop assigns (singleton buckets) | ~20 | **Now subsumed by `assign-generic` (#10)** — "the expression text *is* the content" is exactly why the verbatim Assign card is honest; the win is the labeled, selectable card (with its target) over a collapsed chip. |
-| `decl=index:handle:testing` | 5 | Not a rule — classifier lever L2 (tier-1 handle data access); see m0-report §4. |
-| PowerPoint/Java/Python member calls | 30 | Not rules — classifier lever L1 (catalog family-id fixes); see m0-report §4. |
+| `decl=index:handle:testing` | 5 | Not a rule — classifier lever L2 (tier-1 handle data access); see the M0 corpus report §4. |
+| PowerPoint/Java/Python member calls | 30 | Not rules — classifier lever L1 (catalog family-id fixes); see the M0 corpus report §4. |
 | `break` / `continue` / ternary decls | 7 | Rejected — control flow / needs condition rendering; low count. |
 | `Parallel.ForEach` / `Task.Run` | 3 | Rejected — concurrency requires a real design, not a card. |
 
 ## Provisional note
 
-Ranks and estimates above are measured on the M0 public corpus (demo/sample-skewed; see m0-report §1). They will be **re-measured when client samples land in `corpus/private/`**, and the whitelist re-ranked at M3 before the manifest-parity tests freeze it. After G0, changes obey the cap rule: the cap stays at 15 and **adding a rule requires removing one** (or consuming one of the open slots with fresh corpus evidence attached to the PR). Rule #10 `assign-generic` consumed one open slot (now 5 remain): its evidence is the previously-measured rejected buckets it absorbs (decl=expr 10 + arithmetic-binop ~20 + property-read 9 ≈ 39 corpus statements) plus the explicit team requirement that canvas assignments be legible as Assign cards rather than collapsed chips.
+Ranks and estimates above are measured on the M0 public corpus (demo/sample-skewed; see the M0 corpus report §1). They will be **re-measured when client samples land in `corpus/private/`**, and the whitelist re-ranked at M3 before the manifest-parity tests freeze it. After G0, changes obey the cap rule: the cap stays at 15 and **adding a rule requires removing one** (or consuming one of the open slots with fresh corpus evidence attached to the PR). Rule #10 `assign-generic` consumed one open slot (now 5 remain): its evidence is the previously-measured rejected buckets it absorbs (decl=expr 10 + arithmetic-binop ~20 + property-read 9 ≈ 39 corpus statements) plus the explicit team requirement that canvas assignments be legible as Assign cards rather than collapsed chips.

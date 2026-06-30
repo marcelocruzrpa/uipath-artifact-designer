@@ -1,9 +1,9 @@
 /**
  * T3.1 — tier-2 STRUCTURAL GUARDS: registry budget, id uniqueness, family
  * whitelist, m0Rank ordering, fixture evidence, and manifest parity against
- * `docs/tier2-rules.md`.
+ * `src/model/codedWorkflow/classify/tier2-rules.md`.
  *
- * These guards enforce the cap discipline on the 9 shipped tier-2 rules: each
+ * These guards enforce the cap discipline on the 10 shipped tier-2 rules: each
  * rule must carry corpus provenance (m0Rank order), fixture evidence (≥2 golden
  * pairs + ≥1 near-miss under `tests/fixtures/codedWorkflow/tier2/<id>/`), and a
  * manifest row whose id cell has had its `*(proposed)*` marker removed — or
@@ -25,7 +25,7 @@ import {
 
 const PROJECT_ROOT = join(__dirname, '..', '..', '..');
 const FIXTURE_ROOT = join(PROJECT_ROOT, 'tests', 'fixtures', 'codedWorkflow', 'tier2');
-const MANIFEST_PATH = join(PROJECT_ROOT, 'docs', 'tier2-rules.md');
+const MANIFEST_PATH = join(PROJECT_ROOT, 'src', 'model', 'codedWorkflow', 'classify', 'tier2-rules.md');
 
 const ALLOWED_FAMILIES: readonly Tier2Rule['family'][] = [
   'assign',
@@ -55,7 +55,7 @@ const ruleIds = TIER2_RULES.map((rule) => rule.id as string);
 describe('tier-2 structural guards — registry', () => {
   it('(a) stays within the MAX_TIER2_RULES budget', () => {
     expect(TIER2_RULES.length).toBeLessThanOrEqual(MAX_TIER2_RULES);
-    // The cap itself is part of the contract (docs/tier2-rules.md: "the cap
+    // The cap itself is part of the contract (src/model/codedWorkflow/classify/tier2-rules.md: "the cap
     // stays at 15") — raising it must be a deliberate two-file change.
     expect(MAX_TIER2_RULES).toBe(15);
   });
@@ -152,7 +152,7 @@ describe('tier-2 structural guards — fixture evidence', () => {
 });
 
 // ---------------------------------------------------------------------------
-// (f) Manifest parity — docs/tier2-rules.md "## Active rules" table
+// (f) Manifest parity — src/model/codedWorkflow/classify/tier2-rules.md "## Active rules" table
 // ---------------------------------------------------------------------------
 
 interface ManifestRow {
@@ -181,7 +181,7 @@ function splitTableRow(row: string): string[] {
 function parseActiveRulesTable(markdown: string): ManifestRow[] {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n');
   const start = lines.findIndex((line) => /^##\s+Active rules/.test(line));
-  if (start < 0) throw new Error('docs/tier2-rules.md: missing "## Active rules" heading');
+  if (start < 0) throw new Error('src/model/codedWorkflow/classify/tier2-rules.md: missing "## Active rules" heading');
   let end = lines.findIndex((line, i) => i > start && /^##\s/.test(line));
   if (end < 0) end = lines.length;
 
@@ -206,10 +206,10 @@ function parseActiveRulesTable(markdown: string): ManifestRow[] {
   });
 }
 
-describe('tier-2 structural guards — manifest parity (docs/tier2-rules.md)', () => {
+describe('tier-2 structural guards — manifest parity (src/model/codedWorkflow/classify/tier2-rules.md)', () => {
   it('parses the Active-rules table (parser sanity)', () => {
     const rows = parseActiveRulesTable(readFileSync(MANIFEST_PATH, 'utf8'));
-    // The manifest proposes 9 rules at Gate G0; the table can never exceed
+    // The manifest lists 10 shipped rules; the table can never exceed
     // the cap.  This pins the parser against silent format drift — if the
     // table shape changes, fix the parser, not the guard.
     expect(rows.length).toBeGreaterThanOrEqual(1);

@@ -8,7 +8,7 @@
  * budget so the tier-2 layer never grows into a general C# transpiler.
  * `Tier2RuleId` is the union of shipped ids, which makes it a compile error
  * to reference rule ids that do not exist.  The manifest
- * (`docs/tier2-rules.md`) is kept in parity by tier2Cap.test.ts.
+ * (`./tier2-rules.md`) is kept in parity by tier2Cap.test.ts.
  *
  * The evaluator is deliberately tiny: first match wins, and the rule's
  * `captures` are substituted into both templates with naive `{name}`
